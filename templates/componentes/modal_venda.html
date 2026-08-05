@@ -1,0 +1,387 @@
+<!-- MODAL NOVA VENDA -->
+
+<div id="venda-panel" class="usuarios-modal" style="display:none;">
+
+
+    <div class="dashboard-card usuarios-box" style="width:1000px;">
+
+
+
+        <div class="card-header">
+
+
+
+            <h4>
+                Nova Venda
+            </h4>
+
+
+
+
+
+            <button
+                class="btn btn-danger"
+                onclick="fecharVenda()">
+
+
+
+                <i class="bi bi-x-lg"></i>
+
+
+
+            </button>
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <div class="row">
+
+
+
+
+
+
+            <!-- PRODUTOS -->
+
+            <div class="col-md-7">
+
+
+
+
+
+                <input
+                    id="pesquisa-produto"
+                    class="form-control mb-3"
+                    placeholder="Pesquisar produto..."
+                    oninput="filtrarProdutos()">
+
+
+
+
+
+
+
+                <table class="table table-hover">
+
+
+
+
+
+
+                    <thead>
+
+
+
+
+
+                        <tr>
+
+
+
+                            <th>
+                                Produto
+                            </th>
+
+
+
+                            <th>
+                                Preço
+                            </th>
+
+
+
+                            <th>
+                                Stock
+                            </th>
+
+
+
+                            <th>
+                            </th>
+
+
+
+
+
+                        </tr>
+
+
+
+
+
+                    </thead>
+
+
+
+
+
+
+
+
+                    <tbody id="lista-produtos-venda">
+
+
+
+
+
+                    </tbody>
+
+
+
+
+
+
+
+
+                </table>
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            <!-- CARRINHO -->
+
+            <div class="col-md-5">
+
+
+
+
+
+
+                <h5>
+                    Carrinho
+                </h5>
+
+
+
+
+
+
+
+                <table class="table">
+
+
+
+
+
+                    <thead>
+
+
+
+
+
+                        <tr>
+
+
+
+                            <th>
+                                Produto
+                            </th>
+
+
+
+                            <th>
+                                Qtd
+                            </th>
+
+
+
+                            <th>
+                                Total
+                            </th>
+
+
+
+                            <th>
+                            </th>
+
+
+
+
+
+                        </tr>
+
+
+
+
+
+                    </thead>
+
+
+
+
+
+
+
+
+                    <tbody id="lista-carrinho">
+
+
+
+
+
+                    </tbody>
+
+
+
+
+
+
+
+
+                </table>
+
+
+
+
+
+
+
+
+                <hr>
+
+
+
+
+
+
+
+                <h4>
+
+
+
+                    Total:
+
+
+
+
+
+                    <span id="total-venda">
+                        0 MT
+                    </span>
+
+
+
+
+
+                </h4>
+
+
+
+
+
+
+
+
+                <input
+                    id="valor-entregue"
+                    type="number"
+                    class="form-control mt-3"
+                    placeholder="Valor entregue"
+                    oninput="calcularTroco()">
+
+
+
+
+
+
+
+
+                <h5 class="mt-3">
+
+
+
+
+
+                    Troco:
+
+
+
+
+
+                    <span id="troco">
+                        0 MT
+                    </span>
+
+
+
+
+
+                </h5>
+
+
+
+
+
+
+
+
+                <button
+                    class="btn btn-success w-100 mt-3"
+                    onclick="finalizarVenda()">
+
+
+
+
+
+                    Finalizar Venda
+
+
+
+
+
+                </button>
+
+
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+</div>

@@ -1,0 +1,176 @@
+<!-- MODAL ENTRADA DE STOCK -->
+
+<div id="entrada-stock-panel"
+     class="usuarios-modal"
+     style="display:none;">
+
+
+
+    <div class="dashboard-card" style="width:450px;">
+
+
+
+
+
+        <div class="card-header">
+
+
+
+
+
+            <h4>
+                Entrada de Stock
+            </h4>
+
+
+
+
+
+
+            <button
+                class="btn btn-danger"
+                onclick="fecharEntradaStock()">
+
+
+
+
+
+                <i class="bi bi-x-lg"></i>
+
+
+
+
+
+            </button>
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+        <input
+            id="entrada-produto-id"
+            type="hidden">
+
+
+
+
+
+
+
+
+        <div class="mb-3">
+
+
+
+
+
+            <label class="form-label">
+                Produto
+            </label>
+
+
+
+
+
+
+            <input
+                id="entrada-produto"
+                class="form-control"
+                readonly>
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+        <div class="mb-3">
+
+
+
+
+
+            <label class="form-label">
+                Quantidade a adicionar
+            </label>
+
+
+
+
+
+
+
+            <input
+                id="entrada-quantidade"
+                type="number"
+                min="1"
+                class="form-control">
+
+
+
+
+
+
+
+        </div>
+
+
+
+
+
+
+
+
+        <button
+            class="btn btn-success w-100"
+            onclick="salvarEntradaStock()">
+
+
+
+
+
+
+            Confirmar Entrada
+
+
+
+
+
+
+
+        </button>
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+</div>

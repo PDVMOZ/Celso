@@ -1,0 +1,163 @@
+<!-- =====================================
+     CARDS SUPERIORES
+====================================== -->
+
+<section class="cards">
+
+    <div class="card-item">
+
+        <div class="card-icon purple">
+            <i class="bi bi-cart3"></i>
+        </div>
+
+        <div class="card-content">
+
+            <h3 id="vendas-dia">
+                0 MT
+            </h3>
+
+
+            <div
+            id="ver-detalhes-vendas"
+            style="display:none;cursor:pointer;color:blue"
+            onclick="abrirModalVendedores()"
+            >
+                Ver detalhes
+            </div>
+
+    </div>
+
+
+    <div class="card-item">
+
+        <div class="card-icon green">
+            <i class="bi bi-cash-stack"></i>
+        </div>
+
+        <div class="card-content">
+
+            <span>SALDO DO CAIXA</span>
+
+            <h3 id="saldo-caixa">
+                0 MT
+            </h3>
+
+            <small class="text-success">
+                <i class="bi bi-arrow-up-right"></i>
+                8% vs ontem
+            </small>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- PRODUTOS EM STOCK -->
+
+    <div class="card-item">
+
+        <div class="card-icon violet">
+            <i class="bi bi-box-seam"></i>
+        </div>
+
+        <div class="card-content">
+
+            <span>
+                PRODUTOS EM STOCK
+            </span>
+
+            <h3 id="total-stock">
+                0
+            </h3>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- PRODUTOS COM BAIXO STOCK -->
+
+    <div class="card-item">
+
+        <div class="card-icon red">
+            <i class="bi bi-exclamation-triangle"></i>
+        </div>
+
+        <div class="card-content">
+
+            <span>
+                PRODUTOS COM BAIXO STOCK
+            </span>
+
+            <h3 id="baixo-stock">
+                0
+            </h3>
+
+
+            <small>
+
+                <a id="ver-detalhes-stock"
+                   href="#"
+                   onclick="abrirStock(); return false;">
+
+                    Ver detalhes
+
+                </a>
+
+            </small>
+
+
+        </div>
+
+    </div>
+
+
+
+    <!-- DESEMPENHO DA LOJA -->
+
+    <div class="card-item">
+
+        <div class="card-icon green">
+
+            <i class="bi bi-graph-up-arrow"></i>
+
+        </div>
+
+
+        <div class="card-content">
+
+            <span>
+                DESEMPENHO DA LOJA
+            </span>
+
+
+            <h3 id="desempenho-loja">
+                Ótimo
+            </h3>
+
+
+            <small class="text-success">
+
+                <i class="bi bi-arrow-up-right"></i>
+
+
+                <span id="desempenho-percentual">
+                    18%
+                </span>
+
+
+                vs mês passado
+
+
+            </small>
+
+
+        </div>
+
+
+    </div>
+
+
+</section>
