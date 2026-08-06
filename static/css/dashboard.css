@@ -2598,8 +2598,6 @@ button{
 
     .user-btn{
 
-        display:flex !important;
-
         position:relative !important;
 
         padding:10px 12px !important;
