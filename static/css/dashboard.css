@@ -2249,9 +2249,8 @@ button{
    BAR DO CELSO
    DASHBOARD.CSS
    PARTE 4/4
-   RESPONSIVO MOBILE CORRIGIDO
+   RESPONSIVO MOBILE FINAL
 ========================================================== */
-
 
 
 /* ==========================
@@ -2264,9 +2263,7 @@ button{
 
     .cards{
 
-
         grid-template-columns:repeat(3,1fr);
-
 
     }
 
@@ -2274,9 +2271,7 @@ button{
 
     .dashboard-grid{
 
-
         grid-template-columns:1fr;
-
 
     }
 
@@ -2296,15 +2291,11 @@ button{
 @media(max-width:1100px){
 
 
-
     .sidebar{
-
 
         width:90px;
 
-
         padding:20px 12px;
-
 
     }
 
@@ -2314,73 +2305,56 @@ button{
     .profile-info,
     .menu-title{
 
-
         display:none;
 
-
     }
-
 
 
 
     .logo{
 
-
         justify-content:center;
 
-
     }
-
 
 
 
     .sidebar-profile{
 
-
         justify-content:center;
 
-
     }
-
 
 
 
     .sidebar-menu a{
 
-
         justify-content:center;
 
-
     }
-
 
 
 
     .content{
 
-
         margin-left:90px;
-
 
         width:calc(100% - 90px);
 
-
     }
-
 
 
 
     .cards{
 
-
         grid-template-columns:repeat(2,1fr);
-
 
     }
 
 
-
 }
+
+
 
 
 
@@ -2395,73 +2369,71 @@ button{
 
 
 
+    /* ==========================
+       BLOQUEAR DESLIZE
+    ========================== */
+
+
+    html,
     body{
 
+        width:100% !important;
 
-        overflow-x:hidden;
+        max-width:100% !important;
 
+        overflow-x:hidden !important;
 
     }
+
+
+
+    *{
+
+        max-width:100%;
+
+    }
+
 
 
 
 
 
     /* ==========================
-       SIDEBAR FECHADA
+       SIDEBAR MOBILE
     ========================== */
 
 
     .sidebar{
 
-
         position:fixed !important;
-
 
         top:0 !important;
 
-
         left:0 !important;
-
 
         width:290px !important;
 
-
         height:100vh !important;
-
 
         background:#111827 !important;
 
-
         z-index:9999 !important;
-
 
         transform:translateX(-100%) !important;
 
-
         transition:.3s ease !important;
 
-
         display:flex !important;
-
-
-        flex-direction:column !important;
-
 
     }
 
 
 
-
-
-    /* SIDEBAR ABERTA */
 
 
     .sidebar.mobile-open{
 
-
         transform:translateX(0) !important;
-
 
     }
 
@@ -2471,20 +2443,44 @@ button{
 
 
 
-    /* CONTEÚDO */
+    /* FUNDO ESCURO SIDEBAR */
+
+
+    .sidebar.mobile-open::after{
+
+        content:"";
+
+        position:fixed;
+
+        top:0;
+
+        left:290px;
+
+        width:calc(100vw - 290px);
+
+        height:100vh;
+
+        background:rgba(0,0,0,.45);
+
+    }
+
+
+
+
+
+
+    /* ==========================
+       CONTEÚDO
+    ========================== */
 
 
     .content{
 
+        width:100% !important;
 
         margin-left:0 !important;
 
-
-        width:100% !important;
-
-
         padding:20px !important;
-
 
     }
 
@@ -2492,29 +2488,25 @@ button{
 
 
 
-    /* BOTÃO MENU */
+
+    /* ==========================
+       BOTÃO MENU
+    ========================== */
 
 
     .menu-btn{
 
-
         position:fixed !important;
-
 
         top:15px !important;
 
-
         left:15px !important;
-
 
         width:48px !important;
 
-
         height:48px !important;
 
-
         z-index:100000 !important;
-
 
     }
 
@@ -2524,46 +2516,55 @@ button{
 
 
 
-    /* TOPBAR */
+    /* ==========================
+       TOPBAR
+    ========================== */
 
 
     .topbar{
 
+        width:100% !important;
 
-        padding-left:60px;
+        padding-left:65px !important;
 
+        padding-right:10px !important;
 
-        display:flex;
+        display:flex !important;
 
+        align-items:center !important;
 
-        align-items:center;
-
-
-        justify-content:space-between;
-
-
-    }
-
-
-
-
-
-    .date{
-
-
-        display:none !important;
-
+        justify-content:space-between !important;
 
     }
 
 
 
+    .top-left{
 
+        display:flex !important;
+
+        align-items:center !important;
+
+    }
+
+
+
+    .top-right{
+
+        display:flex !important;
+
+        align-items:center !important;
+
+        margin-left:auto !important;
+
+    }
+
+
+
+    .date,
     .store-btn{
 
-
         display:none !important;
-
 
     }
 
@@ -2571,21 +2572,28 @@ button{
 
 
 
+
+    /* LOGIN TOPO */
 
     .user-btn{
 
+        display:flex !important;
 
-        position:fixed !important;
+        position:relative !important;
+
+        padding:10px 12px !important;
+
+        z-index:100001 !important;
+
+        white-space:nowrap;
+
+    }
 
 
-        top:15px !important;
 
+    .user-btn i{
 
-        right:15px !important;
-
-
-        z-index:100000 !important;
-
+        font-size:20px;
 
     }
 
@@ -2596,46 +2604,50 @@ button{
 
 
 
-    /* BANNER */
+    /* ==========================
+       BANNER
+    ========================== */
 
 
     .welcome-card{
 
+        width:100% !important;
 
-        height:200px;
-
+        height:180px !important;
 
         margin-top:20px;
 
+        border-radius:20px;
+
+        overflow:hidden;
 
     }
-
-
 
 
 
     .welcome-text{
 
+        width:100% !important;
 
-        width:100%;
-
-
-        padding:20px;
-
+        padding:20px !important;
 
         text-align:center;
 
-
     }
-
 
 
 
     .welcome-text h1{
 
+        font-size:24px !important;
 
-        font-size:26px;
+    }
 
+
+
+    .welcome-text p{
+
+        font-size:14px !important;
 
     }
 
@@ -2645,65 +2657,129 @@ button{
 
 
 
-    /* CARDS */
+
+    /* ==========================
+        CARDS MOBILE
+    ========================== */
 
 
     .cards{
 
+        width:100% !important;
 
-        grid-template-columns:repeat(2,1fr) !important;
+        display:flex !important;
 
+        flex-direction:column !important;
 
-        gap:10px;
-
+        gap:12px !important;
 
     }
-
 
 
 
 
     .card-item{
 
+        width:100% !important;
 
-        padding:12px;
+        display:flex !important;
 
+        flex-direction:row !important;
 
-        border-radius:15px;
+        align-items:center !important;
 
+        justify-content:flex-start !important;
 
-        gap:8px;
+        padding:15px !important;
 
+        border-radius:15px !important;
 
     }
-
 
 
 
 
     .card-icon{
 
+        flex-shrink:0 !important;
 
-        width:40px;
+        width:45px !important;
 
+        height:45px !important;
 
-        height:40px;
+        display:flex !important;
 
+        align-items:center !important;
 
-        font-size:18px;
-
+        justify-content:center !important;
 
     }
 
 
+
+
+    .card-content{
+
+        flex:1 !important;
+
+        overflow:hidden !important;
+
+    }
 
 
 
     .card-content h3{
 
+        font-size:18px !important;
 
-        font-size:16px;
+        margin:0 !important;
 
+    }
+
+
+
+    .card-content span{
+
+        font-size:11px !important;
+
+    }
+
+
+
+    .card-content small{
+
+        font-size:10px !important;
+
+    }
+
+    /* ==========================
+       GRÁFICOS
+    ========================== */
+
+
+    .dashboard-card{
+
+        width:100% !important;
+
+        overflow:hidden !important;
+
+    }
+
+
+
+    canvas{
+
+        max-width:100% !important;
+
+    }
+
+
+
+    #salesChart{
+
+        width:100% !important;
+
+        height:280px !important;
 
     }
 
@@ -2713,48 +2789,130 @@ button{
 
 
 
-    /* GRID */
+    /* ==========================
+       PAINÉIS INFERIORES MOBILE
+    ========================== */
 
 
-    .dashboard-grid{
-
-
-        grid-template-columns:1fr;
-
-
-    }
-
-
-
-
-    .bottom-grid{
-
-
-        grid-template-columns:1fr;
-
-
-    }
-
-
-
-
-
+    .dashboard-grid,
+    .bottom-grid,
     .financial-summary{
 
 
-        grid-template-columns:1fr;
+        display:flex !important;
+
+        flex-direction:column !important;
+
+        width:100% !important;
+
+        max-width:100% !important;
+
+        gap:15px !important;
 
 
     }
 
 
 
+
+
+    /* MOVIMENTAÇÕES DO CAIXA */
+
+
+    .cash-grid{
+
+
+        display:flex !important;
+
+        flex-direction:column !important;
+
+        width:100% !important;
+
+        gap:12px !important;
+
+
+    }
+
+
+
+
+    .cash-card{
+
+
+        width:100% !important;
+
+        max-width:100% !important;
+
+        box-sizing:border-box !important;
+
+
+    }
+
+
+
+
+
+    /* DESEMPENHO */
+
+
+    .performance-grid{
+
+
+        display:flex !important;
+
+        flex-direction:column !important;
+
+        width:100% !important;
+
+        gap:12px !important;
+
+
+    }
+
+
+
+
+    .performance-item{
+
+
+        width:100% !important;
+
+        max-width:100% !important;
+
+
+    }
+
+
+
+
+
+    /* RESUMO FINANCEIRO */
 
 
     .finance-grid{
 
 
-        grid-template-columns:1fr;
+        display:flex !important;
+
+        flex-direction:column !important;
+
+        width:100% !important;
+
+        gap:12px !important;
+
+
+    }
+
+
+
+
+
+    .finance-item{
+
+
+        width:100% !important;
+
+        max-width:100% !important;
 
 
     }
@@ -2764,53 +2922,44 @@ button{
 
 
 
-    /* MODAIS */
+
+
+    /* ==========================
+       MODAIS
+    ========================== */
 
 
     .login-screen,
     .usuarios-modal,
     .modal{
 
-
         position:fixed !important;
-
 
         top:0 !important;
 
-
         left:0 !important;
-
 
         width:100vw !important;
 
-
         height:100vh !important;
 
-
         z-index:999999 !important;
-
 
     }
 
 
 
-
-
     .login-box{
 
-
-        width:90%;
-
+        width:90% !important;
 
         max-width:350px;
-
 
     }
 
 
 
 }
-
 
 
 
@@ -2827,64 +2976,27 @@ button{
 
 
 
-    .cards{
+    .content{
 
-
-        grid-template-columns:1fr !important;
-
+        padding:15px !important;
 
     }
-
-
 
 
 
     .top-left h3{
 
-
         font-size:20px;
 
-
     }
-
-
 
 
 
     .dashboard-card{
 
-
         padding:15px;
 
-
     }
-
-
-
-
-
-}
-
-@media(max-width:900px){
-
-
-.sidebar.mobile-open::after{
-
-    content:"";
-
-    position:fixed;
-
-    top:0;
-
-    left:290px;
-
-    width:calc(100vw - 290px);
-
-    height:100vh;
-
-    background:rgba(0,0,0,.45);
-
-}
 
 
 }
