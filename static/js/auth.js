@@ -296,48 +296,22 @@ function carregarUsuario(usuario){
     // ==========================
 
 
+    // ==========================
+    // ESCONDER BOTÃO LOGIN APÓS ENTRAR
+    // ==========================
+
+
     const botaoLogin =
     document.getElementById(
         "login-button"
     );
 
 
-
     if(botaoLogin){
 
-
-
-        botaoLogin.style.display="flex";
-
-        botaoLogin.style.visibility="visible";
-
-        botaoLogin.style.opacity="1";
-
-
-
-        botaoLogin.innerHTML =
-        `
-        <i class="bi bi-box-arrow-right"></i>
-        <span>Sair</span>
-        `;
-
-
-
-        botaoLogin.onclick =
-        function(){
-
-            logout();
-
-        };
-
+        botaoLogin.style.display="none";
 
     }
-
-
-
-
-
-
 
 
 
