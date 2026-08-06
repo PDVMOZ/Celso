@@ -2302,12 +2302,19 @@ button{
 
 
     .logo h2,
-    .profile-info,
     .menu-title{
 
         display:none;
 
     }
+
+
+    .profile-info{
+
+        display:block !important;
+
+    }
+
 
 
 

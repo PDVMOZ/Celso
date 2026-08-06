@@ -2,17 +2,22 @@
 // AUTENTICAÇÃO
 // =====================================================
 
+
 async function fazerLogin(){
+
 
     const email =
     document.getElementById(
         "login-email"
     ).value;
 
+
     const senha =
     document.getElementById(
         "login-senha"
     ).value;
+
+
 
     const resposta =
     await fetch(
@@ -23,10 +28,10 @@ async function fazerLogin(){
 
             headers:{
 
-                "Content-Type":
-                "application/json"
+                "Content-Type":"application/json"
 
             },
+
 
             body:JSON.stringify({
 
@@ -40,10 +45,16 @@ async function fazerLogin(){
 
     );
 
+
+
     const dados =
     await resposta.json();
 
+
+
+
     if(resposta.ok){
+
 
         localStorage.setItem(
             "usuario",
@@ -52,12 +63,13 @@ async function fazerLogin(){
             )
         );
 
+
+
         usuarioLogado =
         dados.usuario;
 
 
-        // NOVA VENDA
-        // Apenas ADMIN e VENDEDOR podem vender
+
 
         if(
             usuarioLogado.tipo === "admin" ||
@@ -74,41 +86,137 @@ async function fazerLogin(){
         }
 
 
-        // restantes menus
+
 
         mostrarHistorico(true);
 
         mostrarStock(true);
 
 
+
         carregarUsuario(
             dados.usuario
         );
+
+
+
         atualizarMenuDespesas();
 
 
-        // fecha imediatamente o modal
+
+
+        const login =
         document.getElementById(
             "login-screen"
-        ).style.display = "none";
+        );
 
 
-        // carrega dados em segundo plano
+        if(login){
+
+            login.style.display="none";
+
+        }
+
+
+
+
         carregarDashboard();
-    }
 
+
+
+    }
     else{
+
 
         alert(
             dados.detail
         );
 
+
     }
+
 
 }
 
 
+
+
+
+
+
+
+// =====================================================
+// LOGOUT
+// =====================================================
+
+
+function logout(){
+
+
+    localStorage.removeItem(
+        "usuario"
+    );
+
+
+    usuarioLogado = null;
+
+
+
+    const botaoLogin =
+    document.getElementById(
+        "login-button"
+    );
+
+
+
+    if(botaoLogin){
+
+
+        botaoLogin.style.display="flex";
+
+        botaoLogin.style.visibility="visible";
+
+        botaoLogin.style.opacity="1";
+
+
+
+        botaoLogin.innerHTML =
+        `
+        <i class="bi bi-box-arrow-in-right"></i>
+        <span>Login</span>
+        `;
+
+
+
+        botaoLogin.onclick =
+        abrirLogin;
+
+
+    }
+
+
+
+    location.reload();
+
+
+}
+
+
+
+
+
+
+
+
+
+// =====================================================
+// MENU DESPESAS
+// =====================================================
+
+
 function atualizarMenuDespesas(){
+
+
 
     const menuDespesas =
     document.getElementById(
@@ -120,37 +228,56 @@ function atualizarMenuDespesas(){
         return;
 
 
+
     const usuario =
     JSON.parse(
         localStorage.getItem("usuario")
     );
 
 
+
     if(usuario){
 
-        // qualquer utilizador logado vê despesas
-        menuDespesas.style.display = "block";
+
+        menuDespesas.style.display =
+        "block";
+
 
     }
     else{
 
-        // visitante não vê
-        menuDespesas.style.display = "none";
+
+        menuDespesas.style.display =
+        "none";
+
 
     }
 
+
 }
+
+
+
+
+
+
+
+
+
 // =====================================================
-// CARREGAR DADOS DO UTILIZADOR
+// CARREGAR USUÁRIO
 // =====================================================
+
 
 function carregarUsuario(usuario){
 
-    // Nome mostrado na Topbar
+
+
     const nome =
     document.getElementById(
         "user-name"
     );
+
 
     if(nome){
 
@@ -160,27 +287,72 @@ function carregarUsuario(usuario){
     }
 
 
+
+
+
+
+    // ==========================
+    // BOTÃO LOGIN / SAIR
+    // ==========================
+
+
     const botaoLogin =
     document.getElementById(
         "login-button"
     );
 
 
+
     if(botaoLogin){
 
-        botaoLogin.style.display = "none";
+
+
+        botaoLogin.style.display="flex";
+
+        botaoLogin.style.visibility="visible";
+
+        botaoLogin.style.opacity="1";
+
+
+
+        botaoLogin.innerHTML =
+        `
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Sair</span>
+        `;
+
+
+
+        botaoLogin.onclick =
+        function(){
+
+            logout();
+
+        };
+
 
     }
-    // Perfil da Sidebar
+
+
+
+
+
+
+
+
+
     const nomePerfil =
     document.getElementById(
         "profile-name"
     );
 
+
     const emailPerfil =
     document.getElementById(
         "profile-email"
     );
+
+
 
     if(nomePerfil){
 
@@ -189,155 +361,211 @@ function carregarUsuario(usuario){
 
     }
 
-    if(emailPerfil){
-
-        emailPerfil.innerText =
-        usuario.email;
-
-    }
 
 
-    // Link de detalhes do stock
+
+
+
+
+
     const verDetalhes =
     document.getElementById(
         "ver-detalhes-stock"
     );
 
+
     if(verDetalhes){
 
-        verDetalhes.style.display =
-        "block";
+        verDetalhes.style.display="block";
 
     }
 
 
-    // Menus
+
+
+
+
+
+
     const menuUsuarios =
     document.getElementById(
         "menu-usuarios"
     );
+
 
     const menuCategorias =
     document.getElementById(
         "menu-categorias"
     );
 
+
     const menuProdutos =
     document.getElementById(
         "menu-produtos"
     );
 
+
     const menuDespesas =
     document.getElementById(
         "menu-despesas"
     );
-    // ============================
-    // ADMIN
-    // ============================
 
-    if(usuario.tipo === "admin"){
+
+
+
+
+
+
+
+
+    if(usuario.tipo==="admin"){
+
+
 
         if(menuUsuarios)
-            menuUsuarios.style.display =
-            "flex";
+            menuUsuarios.style.display="flex";
+
 
         if(menuCategorias)
-            menuCategorias.style.display =
-            "flex";
+            menuCategorias.style.display="flex";
+
 
         if(menuProdutos)
-            menuProdutos.style.display =
-            "flex";
+            menuProdutos.style.display="flex";
 
-        if(menuDespesas)
-            menuDespesas.style.display =
-            "block";
 
     }
 
-    // ============================
-    // GERENTE
-    // ============================
 
-    else if(usuario.tipo === "gerente"){
+
+
+
+    else if(usuario.tipo==="gerente"){
+
+
 
         if(menuUsuarios)
-            menuUsuarios.style.display =
-            "none";
+            menuUsuarios.style.display="none";
+
 
         if(menuCategorias)
-            menuCategorias.style.display =
-            "flex";
+            menuCategorias.style.display="flex";
+
 
         if(menuProdutos)
-            menuProdutos.style.display =
-            "flex";
-        if(menuDespesas)
-        menuDespesas.style.display =
-        "block";
+            menuProdutos.style.display="flex";
+
 
     }
 
-    // ============================
-    // VENDEDOR
-    // ============================
+
+
+
 
     else{
 
+
         if(menuUsuarios)
-            menuUsuarios.style.display =
-            "none";
+            menuUsuarios.style.display="none";
+
 
         if(menuCategorias)
-            menuCategorias.style.display =
-            "none";
+            menuCategorias.style.display="none";
+
 
         if(menuProdutos)
-            menuProdutos.style.display =
-            "none";
+            menuProdutos.style.display="none";
 
-        if(menuDespesas)
-        menuDespesas.style.display =
-        "block";
 
     }
+
+
+
     atualizarMenuDespesas();
+
+
 
 }
 
-window.addEventListener("DOMContentLoaded", function(){
+
+
+
+
+
+
+
+
+// =====================================================
+// INICIALIZAÇÃO
+// =====================================================
+
+
+window.addEventListener(
+"DOMContentLoaded",
+function(){
+
+
 
     const usuario =
-    JSON.parse(localStorage.getItem("usuario"));
-        if(usuario){
+    JSON.parse(
+        localStorage.getItem("usuario")
+    );
 
-        carregarUsuario(usuario);
-
-    }
 
 
     const botaoLogin =
-    document.getElementById("login-button");
+    document.getElementById(
+        "login-button"
+    );
 
 
-    if(botaoLogin){
 
-        if(usuario){
+    if(usuario){
 
-            botaoLogin.style.display = "none";
 
-        }
-        else{
 
-            botaoLogin.style.display = "block";
+        carregarUsuario(usuario);
 
-            botaoLogin.onclick = abrirLogin;
 
-        }
 
     }
+    else{
+
+
+        if(botaoLogin){
+
+
+
+            botaoLogin.style.display="flex";
+
+            botaoLogin.style.visibility="visible";
+
+            botaoLogin.style.opacity="1";
+
+
+
+            botaoLogin.innerHTML =
+            `
+            <i class="bi bi-box-arrow-in-right"></i>
+            <span>Login</span>
+            `;
+
+
+
+            botaoLogin.onclick =
+            abrirLogin;
+
+
+        }
+
+
+    }
+
+
+
+
     atualizarMenuDespesas();
 
+
+
 });
-
-
