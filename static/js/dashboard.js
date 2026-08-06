@@ -1,4 +1,5 @@
 // dashboard.js
+let vendasVendedoresCache = [];
 
 async function carregarDashboard() {
 
@@ -721,13 +722,28 @@ window.carregarVendasDia = async function(){
 
         if(!resposta.ok){
 
+            console.log(
+                "STATUS ERRO VENDAS:",
+                resposta.status
+            );
+
+
+            const textoErro =
+            await resposta.text();
+
+
+            console.log(
+                "RESPOSTA SERVIDOR:",
+                textoErro
+            );
+
 
             throw new Error(
                 "Erro vendas dia"
             );
 
-
         }
+
 
 
 
@@ -784,7 +800,6 @@ window.carregarVendasDia = async function(){
 
 window.carregarDetalhesVendedores = async function(){
 
-
     try{
 
 
@@ -799,10 +814,30 @@ window.carregarDetalhesVendedores = async function(){
 
 
 
+        const usuario =
+        JSON.parse(
+            localStorage.getItem("usuario")
+        );
+
+
+
+        if(!usuario){
+
+            tabela.innerHTML =
+            "Usuário não encontrado";
+
+            return;
+
+        }
+
+
+
         const resposta =
         await fetch(
             API +
-            "/vendas/dashboard/vendas-vendedores"
+            "/vendas/dashboard/vendas-vendedores?usuario_id="
+            +
+            usuario.id
         );
 
 
@@ -810,7 +845,7 @@ window.carregarDetalhesVendedores = async function(){
         if(!resposta.ok){
 
             throw new Error(
-                "Erro ao buscar detalhes"
+                "Erro ao carregar detalhes"
             );
 
         }
@@ -821,69 +856,158 @@ window.carregarDetalhesVendedores = async function(){
         await resposta.json();
 
 
+        // guarda para filtro de data
 
-        let html = `
-
-        <table class="table table-sm table-bordered mt-3">
-
-            <thead>
-
-                <tr>
-
-                    <th>
-                    Vendedor
-                    </th>
-
-
-                    <th>
-                    Total vendido
-                    </th>
-
-
-                </tr>
-
-            </thead>
-
-
-            <tbody>
-
-        `;
+        vendasVendedoresCache = dados;
 
 
 
-        dados.forEach(v=>{
+        let html = "";
+
+
+
+        dados.forEach(vendedor=>{
 
 
             html += `
 
-            <tr>
-
-                <td>
-                    ${v.vendedor}
-                </td>
+            <div class="card mb-4">
 
 
-                <td>
-                    ${Number(v.total).toFixed(2)} MT
-                </td>
+                <div class="card-header bg-dark text-white">
+
+                    <strong>
+
+                    ${vendedor.vendedor}
+                    -
+                    ${vendedor.data}
+
+                    </strong>
 
 
-            </tr>
+                </div>
+
+
+
+                <div class="card-body">
+
+
+                    <p>
+
+                    <strong>
+                    Total vendido:
+                    </strong>
+
+                    ${Number(
+                        vendedor.total
+                    ).toFixed(2)}
+
+                    MT
+
+                    </p>
+
+
+
+                    <table class="table table-sm table-bordered">
+
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                Produto
+                                </th>
+
+
+                                <th>
+                                Quantidade
+                                </th>
+
+
+                                <th>
+                                Subtotal
+                                </th>
+
+
+                            </tr>
+
+                        </thead>
+
+
+
+                        <tbody>
+
+
+            `;
+
+
+
+            vendedor.produtos.forEach(produto=>{
+
+
+                html += `
+
+
+                    <tr>
+
+
+                        <td>
+
+                        ${produto.produto}
+
+                        </td>
+
+
+
+                        <td>
+
+                        ${produto.quantidade}
+
+                        </td>
+
+
+
+                        <td>
+
+                        ${Number(
+                            produto.subtotal
+                        ).toFixed(2)}
+
+                        MT
+
+                        </td>
+
+
+                    </tr>
+
+
+                `;
+
+
+            });
+
+
+
+            html += `
+
+
+                        </tbody>
+
+
+                    </table>
+
+
+                </div>
+
+
+            </div>
+
 
             `;
 
 
         });
-
-
-
-        html += `
-
-            </tbody>
-
-        </table>
-
-        `;
 
 
 
@@ -905,6 +1029,280 @@ window.carregarDetalhesVendedores = async function(){
 
 
 };
+
+window.filtrarVendasData = function(){
+
+
+    const campo =
+    document.getElementById(
+        "filtro-data-vendas"
+    );
+
+
+    const texto =
+    campo.value.trim();
+
+
+
+    if(texto === ""){
+
+        mostrarVendasVendedores(
+            vendasVendedoresCache
+        );
+
+        return;
+
+    }
+
+
+
+    const filtradas =
+    vendasVendedoresCache.filter(venda=>{
+
+
+        return venda.data.includes(
+            texto
+        );
+
+
+    });
+
+
+
+    mostrarVendasVendedores(
+        filtradas
+    );
+
+
+};
+
+window.mostrarVendasVendedores = function(dados){
+
+
+    const tabela =
+    document.getElementById(
+        "tabela-vendedores"
+    );
+
+
+    if(!tabela)
+        return;
+
+
+
+    // ================================
+    // AGRUPAR VENDEDOR + DATA
+    // ================================
+
+    let agrupado = {};
+
+
+
+    dados.forEach(venda=>{
+
+
+        let chave =
+        venda.vendedor +
+        "_" +
+        venda.data;
+
+
+
+        if(!agrupado[chave]){
+
+
+            agrupado[chave] = {
+
+                vendedor:
+                venda.vendedor,
+
+                data:
+                venda.data,
+
+                total:0,
+
+                produtos:[]
+
+            };
+
+
+        }
+
+
+
+        agrupado[chave].total +=
+        Number(venda.total || 0);
+
+
+
+        venda.produtos.forEach(produto=>{
+
+
+            agrupado[chave].produtos.push(
+                produto
+            );
+
+
+        });
+
+
+    });
+
+
+
+    let vendasOrganizadas =
+    Object.values(agrupado);
+
+
+
+    let html = "";
+
+
+
+    vendasOrganizadas.forEach(venda=>{
+
+
+        html += `
+
+        <div class="card mb-4">
+
+
+            <div class="card-header bg-dark text-white">
+
+
+                <strong>
+                Data: ${venda.data}
+                </strong>
+
+
+            </div>
+
+
+
+            <div class="card-body">
+
+
+                <h5>
+                Vendedor:
+                ${venda.vendedor}
+                </h5>
+
+
+
+                <p>
+
+                <strong>
+                Total vendido:
+                </strong>
+
+                ${venda.total.toFixed(2)}
+                MT
+
+                </p>
+
+
+
+                <table class="table table-sm table-bordered">
+
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                            Produto
+                            </th>
+
+                            <th>
+                            Quantidade
+                            </th>
+
+                            <th>
+                            Subtotal
+                            </th>
+
+
+                        </tr>
+
+                    </thead>
+
+
+
+                    <tbody>
+
+
+        `;
+
+
+
+        venda.produtos.forEach(produto=>{
+
+
+            html += `
+
+
+                <tr>
+
+
+                    <td>
+                    ${produto.produto}
+                    </td>
+
+
+                    <td>
+                    ${produto.quantidade}
+                    </td>
+
+
+                    <td>
+
+                    ${Number(
+                        produto.subtotal
+                    ).toFixed(2)}
+
+                    MT
+
+                    </td>
+
+
+                </tr>
+
+
+            `;
+
+
+        });
+
+
+
+        html += `
+
+
+                    </tbody>
+
+
+                </table>
+
+
+
+            </div>
+
+
+        </div>
+
+
+        `;
+
+
+    });
+
+
+
+    tabela.innerHTML = html;
+
+
+};
+
 // =====================================================
 // MODAL VENDAS POR VENDEDOR
 // =====================================================
