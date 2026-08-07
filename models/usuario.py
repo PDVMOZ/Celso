@@ -7,6 +7,7 @@ from sqlalchemy import (
 )
 
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 from database import Base
 
@@ -58,6 +59,27 @@ class Usuario(Base):
     criado_em = Column(
         DateTime(timezone=True),
         server_default=func.now()
+    )
+
+
+    # ==========================
+    # RELACIONAMENTO COM CAIXA
+    # ==========================
+
+    caixa = relationship(
+        "Caixa",
+        back_populates="usuario",
+        uselist=False
+    )
+
+
+    # ==========================
+    # MOVIMENTOS FEITOS PELO USUARIO
+    # ==========================
+
+    movimentos_caixa = relationship(
+        "MovimentoCaixa",
+        back_populates="responsavel"
     )
 
 

@@ -4,62 +4,60 @@ from datetime import datetime
 
 
 
-# Criar movimento
+class RecolherCaixa(BaseModel):
 
-class CaixaCreate(BaseModel):
-
-    usuario_id: int
-
-    tipo: str
-    # entrada ou saida
-
-
-    descricao: str
-
+    vendedor_id: int
 
     valor: Decimal
-
 
     observacao: str | None = None
 
 
 
+class RetirarCaixa(BaseModel):
 
-
-# Atualizar movimento
-
-class CaixaUpdate(BaseModel):
-
-    tipo: str | None = None
-
-    descricao: str | None = None
-
-    valor: Decimal | None = None
+    valor: Decimal
 
     observacao: str | None = None
 
 
 
+class MovimentoResponse(BaseModel):
 
-
-# Resposta
-
-class CaixaResponse(BaseModel):
-
-    id: int
-
-    usuario_id: int
+    nome: str
 
     tipo: str
 
-    descricao: str
-
     valor: Decimal
 
-    observacao: str | None
+    data: datetime
 
-    data_movimento: datetime
+    observacao: str | None = None
 
+
+    class Config:
+
+        from_attributes = True
+
+
+
+class CaixaUsuarioResponse(BaseModel):
+
+    usuario_id: int
+
+    nome: str
+
+    tipo: str
+
+    vendas: Decimal
+
+    despesas: Decimal
+
+    recolhido: Decimal
+
+    saldo: Decimal
+
+    movimentos: list[MovimentoResponse] = []
 
 
     class Config:

@@ -15,9 +15,13 @@ from database import Base
 
 
 
+# ======================================
+# CAIXA ATUAL DO USUARIO
+# ======================================
+
 class Caixa(Base):
 
-    __tablename__ = "caixa"
+    __tablename__ = "caixas"
 
 
     id = Column(
@@ -30,13 +34,62 @@ class Caixa(Base):
     usuario_id = Column(
         Integer,
         ForeignKey("usuarios.id"),
+        unique=True,
         nullable=False
     )
 
 
-    # entrada ou saida
+    saldo = Column(
+        Numeric(10,2),
+        default=0,
+        nullable=False
+    )
+
+
+    data_criacao = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+
+
+    usuario = relationship(
+        "Usuario",
+        back_populates="caixa"
+    )
+
+
+    movimentos = relationship(
+        "MovimentoCaixa",
+        back_populates="caixa"
+    )
+
+
+
+# ======================================
+# HISTORICO DA CAIXA
+# ======================================
+
+class MovimentoCaixa(Base):
+
+    __tablename__ = "movimentos_caixa"
+
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+
+    caixa_id = Column(
+        Integer,
+        ForeignKey("caixas.id"),
+        nullable=False
+    )
+
+
     tipo = Column(
-        String(20),
+        String(30),
         nullable=False
     )
 
@@ -53,6 +106,24 @@ class Caixa(Base):
     )
 
 
+    saldo_anterior = Column(
+        Numeric(10,2),
+        nullable=False
+    )
+
+
+    saldo_depois = Column(
+        Numeric(10,2),
+        nullable=False
+    )
+
+
+    responsavel_id = Column(
+        Integer,
+        ForeignKey("usuarios.id")
+    )
+
+
     observacao = Column(
         Text,
         nullable=True
@@ -65,13 +136,12 @@ class Caixa(Base):
     )
 
 
-    usuario = relationship(
-        "Usuario",
-        backref="movimentos_caixa"
+    caixa = relationship(
+        "Caixa",
+        back_populates="movimentos"
     )
 
 
-
-    def __repr__(self):
-
-        return f"<Caixa {self.tipo} - {self.valor}>"
+    responsavel = relationship(
+        "Usuario"
+    )
