@@ -2944,7 +2944,7 @@ button{
 
 
 
-    /* ==========================
+  /* ==========================
        MODAIS MOBILE
     ========================== */
 
@@ -2968,7 +2968,8 @@ button{
     .stock-modal,
     .produtos-modal,
     .categorias-modal,
-    .despesas-modal{
+    .despesas-modal,
+    .caixa-modal{
 
         overflow:auto !important;
 
@@ -2991,7 +2992,8 @@ button{
     .stock-modal .dashboard-card,
     .produtos-modal .dashboard-card,
     .categorias-modal .dashboard-card,
-    .despesas-modal .dashboard-card{
+    .despesas-modal .dashboard-card,
+    .caixa-modal{
 
 
         max-width:95vw !important;
@@ -3001,9 +3003,6 @@ button{
         overflow:auto !important;
 
     }
-
-
-
 
 
 
