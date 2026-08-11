@@ -70,7 +70,17 @@ window.mostrarCarrinho = function(){
 
 
             <td>
-                ${item.quantidade}
+                <input
+                    type="number"
+                    min="1"
+                    value="${item.quantidade}"
+                    class="form-control form-control-sm"
+                    style="width:70px;"
+                    onchange="
+                        itensVenda[${index}].quantidade = Number(this.value);
+                        mostrarCarrinho();
+                    "
+                >
             </td>
 
 
@@ -102,9 +112,9 @@ window.mostrarCarrinho = function(){
 
     document.getElementById("total-venda").innerHTML =
         total.toFixed(2) + " MT";
-
-
+    calcularTroco();
 };
+
 // =====================================================
 // CALCULAR TROCO
 // =====================================================
@@ -143,8 +153,7 @@ window.calcularTroco = function(){
         "troco"
     ).innerHTML =
         troco.toFixed(2) + " MT";
-
-};
+    };
 
 // =====================================================
 // FINALIZAR VENDA
@@ -762,50 +771,274 @@ window.baixarReciboPDF = function(){
 
     const recibo = document.getElementById("recibo");
 
+    if(!recibo){
+
+        console.error(
+            "Elemento recibo não encontrado"
+        );
+
+        return;
+    }
+
+
+    // Guardar estilos originais
+    const estiloOriginal = {
+
+        width:
+            recibo.style.width,
+
+        margin:
+            recibo.style.margin,
+
+        transform:
+            recibo.style.transform,
+
+        zoom:
+            recibo.style.zoom
+
+    };
+
+
+    // Preparar recibo
+    recibo.style.width = "190mm";
 
     recibo.style.margin = "0 auto";
 
+    recibo.style.transform = "none";
 
-    html2pdf()
+    recibo.style.zoom = "1";
 
-    .set({
+    recibo.style.display = "block";
 
-        filename:"recibo-venda.pdf",
 
-        margin:[10,10,10,10],
+    setTimeout(() => {
 
-        html2canvas:{
-            scale:2,
-            backgroundColor:"#ffffff",
-            useCORS:true
-        },
+        /*
+         * Usamos o próprio html2pdf para
+         * transformar o recibo inteiro em canvas.
+         *
+         * Assim NÃO usamos pagebreak e
+         * NÃO alteramos a altura do recibo.
+         */
 
-        jsPDF:{
-            unit:"mm",
-            format:"a4",
-            orientation:"portrait"
-        },
+        html2pdf()
 
-        pagebreak:{
-            mode:[
-                'css',
-                'legacy'
-            ]
-        }
+        .set({
 
-    })
+            html2canvas: {
 
-    .from(recibo)
+                scale: 2,
 
-    .save()
+                backgroundColor: "#ffffff",
 
-    .then(()=>{
+                useCORS: true,
 
-        recibo.style.margin = "";
+                scrollX: 0,
 
-        recibo.style.display="none";
+                scrollY: 0
 
-    });
+            }
+
+        })
+
+        .from(recibo)
+
+        .toCanvas()
+
+        .get("canvas")
+
+        .then(canvas => {
+
+            /*
+             * Criar PDF A4 diretamente.
+             */
+            const { jsPDF } = window.jspdf;
+
+            const pdf = new jsPDF({
+
+                unit: "mm",
+
+                format: "a4",
+
+                orientation: "portrait",
+
+                compress: true
+
+            });
+
+
+            /*
+             * Dimensões da página A4.
+             */
+            const paginaLargura = 210;
+
+            const paginaAltura = 297;
+
+
+            /*
+             * Margem.
+             */
+            const margem = 10;
+
+
+            const larguraDisponivel =
+                paginaLargura -
+                (margem * 2);
+
+
+            const alturaDisponivel =
+                paginaAltura -
+                (margem * 2);
+
+
+            /*
+             * Dimensões originais do canvas.
+             */
+            const larguraCanvas =
+                canvas.width;
+
+            const alturaCanvas =
+                canvas.height;
+
+
+            /*
+             * Calcular escala para que
+             * TODO o recibo caiba na A4.
+             */
+            const escalaLargura =
+                larguraDisponivel /
+                larguraCanvas;
+
+
+            const escalaAltura =
+                alturaDisponivel /
+                alturaCanvas;
+
+
+            /*
+             * Usar a menor escala.
+             *
+             * Isso garante que nenhuma parte
+             * do recibo fique fora da página.
+             */
+            const escala =
+                Math.min(
+                    escalaLargura,
+                    escalaAltura
+                );
+
+
+            /*
+             * Tamanho final da imagem.
+             */
+            const larguraFinal =
+                larguraCanvas *
+                escala;
+
+
+            const alturaFinal =
+                alturaCanvas *
+                escala;
+
+
+            /*
+             * Centralizar horizontalmente.
+             */
+            const x =
+                (paginaLargura -
+                larguraFinal) / 2;
+
+
+            /*
+             * Começar no topo da página.
+             */
+            const y = margem;
+
+
+            /*
+             * Colocar o RECIBO INTEIRO
+             * dentro da única página A4.
+             */
+            pdf.addImage(
+
+                canvas,
+
+                "JPEG",
+
+                x,
+
+                y,
+
+                larguraFinal,
+
+                alturaFinal,
+
+                undefined,
+
+                "FAST"
+
+            );
+
+
+            /*
+             * Salvar PDF.
+             */
+            pdf.save(
+                "recibo-venda.pdf"
+            );
+
+
+            /*
+             * Restaurar estilos.
+             */
+            recibo.style.width =
+                estiloOriginal.width;
+
+            recibo.style.margin =
+                estiloOriginal.margin;
+
+            recibo.style.transform =
+                estiloOriginal.transform;
+
+            recibo.style.zoom =
+                estiloOriginal.zoom;
+
+            recibo.style.display =
+                "none";
+
+        })
+
+        .catch(error => {
+
+            console.error(
+                "Erro ao gerar PDF:",
+                error
+            );
+
+            alert(
+                "Erro ao gerar recibo PDF."
+            );
+
+
+            /*
+             * Restaurar estilos
+             * mesmo em caso de erro.
+             */
+            recibo.style.width =
+                estiloOriginal.width;
+
+            recibo.style.margin =
+                estiloOriginal.margin;
+
+            recibo.style.transform =
+                estiloOriginal.transform;
+
+            recibo.style.zoom =
+                estiloOriginal.zoom;
+
+        });
+
+    }, 200);
 
 };
 // =====================================================
@@ -878,4 +1111,5 @@ window.removerCarrinho = function(index){
 
 
 };
+
 

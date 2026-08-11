@@ -1,177 +1,287 @@
-<div
-id="modal-despesas"
-class="modal"
-style="
-display:none;
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.5);
-z-index:9999;
-align-items:center;
-justify-content:center;
-">
 
+<!-- =====================================================
+     MODAL DE DESPESAS
+===================================================== -->
 
 <div
-style="
-background:white;
-padding:20px;
-width:850px;
-border-radius:10px;
-max-height:85%;
-overflow:auto;
-">
+    id="modal-despesas"
+    class="modal"
+    style="
+        display:none;
+        position:fixed;
+        top:0;
+        left:0;
+        width:100%;
+        height:100%;
+        background:rgba(0,0,0,0.5);
+        z-index:9999;
+        align-items:center;
+        justify-content:center;
+    "
+>
 
 
-<div class="d-flex justify-content-between">
+    <!-- =================================================
+         CONTEÚDO DO MODAL
+    ================================================== -->
 
-<h4>
-Gestão de Despesas
-</h4>
+    <div
+        style="
+            background:white;
+            padding:20px;
+            width:850px;
+            max-width:95%;
+            border-radius:10px;
+            max-height:85%;
+            overflow:auto;
+        "
+    >
 
 
-<button
-class="btn btn-danger"
-onclick="fecharDespesas()">
-X
-</button>
+        <!-- =================================================
+             CABEÇALHO
+        ================================================== -->
 
-</div>
+        <div class="d-flex justify-content-between align-items-center">
 
+            <h4 class="mb-0">
+                Gestão de Despesas
+            </h4>
 
-<hr>
 
+            <button
+                type="button"
+                class="btn btn-danger"
+                onclick="fecharDespesas()"
+            >
 
+                X
 
-<!-- BOTÃO NOVA DESPESA -->
+            </button>
 
-<button
-id="btn-nova-despesa"
-class="btn btn-primary mb-3"
-onclick="abrirFormularioDespesa()">
+        </div>
 
-<i class="bi bi-plus"></i>
 
-Nova despesa
+        <hr>
 
-</button>
 
+        <!-- =================================================
+             BOTÃO NOVA DESPESA
+        ================================================== -->
 
+        <button
+            id="btn-nova-despesa"
+            type="button"
+            class="btn btn-primary mb-3"
+            onclick="abrirFormularioDespesa()"
+        >
 
+            <i class="bi bi-plus"></i>
 
-<!-- FORMULÁRIO -->
+            Nova despesa
 
-<div
-id="formulario-despesa"
-style="display:none;">
+        </button>
 
 
-<div class="mb-2">
 
-<label>
-Descrição
-</label>
+        <!-- =================================================
+             FORMULÁRIO
+        ================================================== -->
 
-<input
-id="despesa-descricao"
-class="form-control"
-placeholder="Ex: Compra de gelo">
+        <div
+            id="formulario-despesa"
+            style="display:none;"
+        >
 
 
-</div>
+            <!-- DESCRIÇÃO -->
 
+            <div class="mb-2">
 
+                <label
+                    for="despesa-descricao"
+                    class="form-label"
+                >
+                    Descrição
+                </label>
 
 
-<div class="mb-2">
+                <input
+                    type="text"
+                    id="despesa-descricao"
+                    class="form-control"
+                    placeholder="Ex: Compra de gelo"
+                >
 
-<label>
-Categoria
-</label>
+            </div>
 
-<input
-id="despesa-categoria"
-class="form-control"
-placeholder="Ex: Fornecedor">
 
 
-</div>
+            <!-- CATEGORIA -->
 
+            <div class="mb-2">
 
+                <label
+                    for="despesa-categoria"
+                    class="form-label"
+                >
+                    Categoria
+                </label>
 
 
-<div class="mb-2">
+                <input
+                    type="text"
+                    id="despesa-categoria"
+                    class="form-control"
+                    placeholder="Ex: Fornecedor"
+                >
 
-<label>
-Valor proposto
-</label>
+            </div>
 
-<input
-type="number"
-step="0.01"
-id="despesa-valor"
-class="form-control"
-placeholder="0.00">
 
 
-</div>
+            <!-- VALOR -->
 
+            <div class="mb-2">
 
+                <label
+                    for="despesa-valor"
+                    class="form-label"
+                >
+                    Valor proposto
+                </label>
 
 
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    id="despesa-valor"
+                    class="form-control"
+                    placeholder="0.00"
+                >
 
-<div class="mb-2">
+            </div>
 
-<label>
-Observação
-</label>
 
-<textarea
-id="despesa-observacao"
-class="form-control"
-placeholder="Detalhes da despesa">
-</textarea>
 
+            <!-- OBSERVAÇÃO -->
 
-</div>
+            <div class="mb-2">
 
+                <label
+                    for="despesa-observacao"
+                    class="form-label"
+                >
+                    Observação
+                </label>
 
 
-<button
-class="btn btn-success"
-onclick="salvarDespesa()">
+                <textarea
+                    id="despesa-observacao"
+                    class="form-control"
+                    placeholder="Detalhes da despesa"
+                ></textarea>
 
-Enviar pedido
+            </div>
 
-</button>
 
 
-</div>
+            <!-- BOTÃO ENVIAR -->
 
+            <button
+                type="button"
+                class="btn btn-success"
+                onclick="salvarDespesa()"
+            >
 
+                <i class="bi bi-send"></i>
 
-<hr>
+                Enviar pedido
 
+            </button>
 
 
-<!-- TABELA DAS DESPESAS -->
+        </div>
 
 
-<h5>
-Lista de despesas
-</h5>
+        <hr>
 
 
-<div id="lista-despesas">
+        <!-- =================================================
+             LISTA
+        ================================================== -->
 
-</div>
+        <h5>
+            Lista de despesas
+        </h5>
 
 
 
-</div>
+        <!-- =================================================
+             FILTRO
+        ================================================== -->
 
+        <div class="mb-3">
+
+            <label
+                for="filtro-despesas"
+                class="form-label"
+            >
+
+                Filtrar despesas
+
+            </label>
+
+
+            <div class="input-group">
+
+
+                <span class="input-group-text">
+
+                    <i class="bi bi-search"></i>
+
+                </span>
+
+
+
+                <input
+                    type="text"
+                    id="filtro-despesas"
+                    class="form-control"
+                    placeholder="Nome, descrição, categoria, valor, estado ou data..."
+                    autocomplete="off"
+                >
+
+
+
+                <button
+                    type="button"
+                    id="limpar-filtro-despesas"
+                    class="btn btn-outline-secondary"
+                    title="Limpar filtro"
+                >
+
+                    <i class="bi bi-x-lg"></i>
+
+                </button>
+
+
+            </div>
+
+        </div>
+
+
+
+        <!-- =================================================
+             TABELA
+        ================================================== -->
+
+        <div id="lista-despesas">
+
+        </div>
+
+
+    </div>
 
 </div>

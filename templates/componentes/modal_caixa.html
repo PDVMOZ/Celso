@@ -6,418 +6,301 @@
      class="caixa-overlay"
      style="display:none;">
 
+    <div class="dashboard-card usuarios-box caixa-modal">
 
+        <!-- CABEÇALHO -->
 
-<div class="dashboard-card usuarios-box caixa-modal">
+        <div class="card-header d-flex justify-content-between align-items-center">
 
+            <h4>
+                <i class="bi bi-cash-stack"></i>
+                Movimentações da Caixa
+            </h4>
 
+            <button
+                class="btn btn-danger"
+                onclick="fecharCaixa()">
 
+                <i class="bi bi-x-lg"></i>
 
+            </button>
 
-<!-- CABEÇALHO -->
+        </div>
 
-<div class="card-header d-flex justify-content-between align-items-center">
 
+        <!-- =====================================
+             RESUMO DAS CAIXAS
+        ====================================== -->
 
-<h4>
+        <div class="p-3">
 
-<i class="bi bi-cash-stack"></i>
+            <h5>
+                <i class="bi bi-wallet2"></i>
+                Resumo das caixas
+            </h5>
 
-Movimentações da Caixa
+            <hr>
 
-</h4>
+            <div id="lista-caixas">
+            </div>
 
+        </div>
 
 
+        <!-- =====================================
+             HISTÓRICO
+        ====================================== -->
 
-<button
-class="btn btn-danger"
-onclick="fecharCaixa()">
+        <div class="p-3">
 
-<i class="bi bi-x-lg"></i>
+            <hr>
 
-</button>
+            <h5>
+                <i class="bi bi-clock-history"></i>
+                Histórico de movimentos
+            </h5>
 
 
+            <!-- CAMPO DE PESQUISA -->
 
-</div>
+            <input
+                type="text"
+                id="filtro-historico"
+                class="form-control mb-3"
+                placeholder="Pesquisar por data, hora, nome, tipo, valor ou observação..."
+                oninput="filtrarHistorico()">
 
 
+            <div class="table-responsive">
 
+                <table class="table table-hover">
 
+                    <thead>
 
+                        <tr>
 
+                            <th>
+                                Nome
+                            </th>
 
+                            <th>
+                                Tipo
+                            </th>
 
+                            <th>
+                                Valor
+                            </th>
 
-<!-- =====================================
-     RESUMO DAS CAIXAS
-====================================== -->
+                            <th>
+                                Data
+                            </th>
 
+                            <th>
+                                Observação
+                            </th>
 
-<div class="p-3">
+                        </tr>
 
+                    </thead>
 
-<h5>
 
-<i class="bi bi-wallet2"></i>
+                    <tbody id="lista-movimentos-caixa">
 
-Resumo das caixas
+                    </tbody>
 
-</h5>
+                </table>
 
+            </div>
 
-<hr>
+        </div>
 
+    </div>
 
 
+    <!-- =====================================
+         POPUP RECOLHER
+    ====================================== -->
 
-<div id="lista-caixas">
+    <div id="area-recolha-caixa"
+         style="display:none;">
 
+        <div class="card p-3 operacao-caixa">
 
-</div>
+            <div class="d-flex justify-content-between">
 
+                <h5>
 
+                    <i class="bi bi-arrow-down-circle"></i>
 
-</div>
+                    Recolher dinheiro
 
+                </h5>
 
 
+                <button
+                    class="btn btn-sm btn-danger"
+                    onclick="fecharOperacaoCaixa()">
 
+                    X
 
+                </button>
 
+            </div>
 
 
+            <hr>
 
-<!-- =====================================
-     HISTÓRICO
-====================================== -->
 
-<div class="p-3">
+            <input
+                type="hidden"
+                id="vendedor-recolha-id">
 
-    <hr>
 
-    <h5>
-        <i class="bi bi-clock-history"></i>
-        Histórico de movimentos
-    </h5>
+            <p>
 
-    <!-- CAMPO DE PESQUISA -->
-    <input
-        type="text"
-        id="filtro-historico"
-        class="form-control mb-3"
-        placeholder="Pesquisar por data, hora, nome, tipo, valor ou observação..."
-        oninput="filtrarHistorico()">
+                Usuário:
 
-    <div class="table-responsive">
+                <strong id="nome-vendedor-recolha">
+                </strong>
 
-        <table class="table table-hover">
+            </p>
 
-            <thead>
 
-                <tr>
+            <!-- VALOR DA RECOLHA -->
 
-                    <th>Nome</th>
-                    <th>Tipo</th>
-                    <th>Valor</th>
-                    <th>Data</th>
-                    <th>Observação</th>
+            <label>
+                Valor
+            </label>
 
-                </tr>
 
-            </thead>
+            <input
+                id="caixa-valor-recolha"
+                type="number"
+                min="0"
+                step="0.01"
+                class="form-control mb-3"
+                placeholder="Valor a recolher"
+                onkeydown="return event.key !== '-' && event.key !== 'e'">
 
-            <tbody id="lista-movimentos-caixa">
 
-            </tbody>
+            <!-- OBSERVAÇÃO -->
 
-        </table>
+            <label>
+                Observação
+            </label>
+
+
+            <textarea
+                id="caixa-observacao"
+                class="form-control mb-3"
+                placeholder="Motivo da recolha"></textarea>
+
+
+            <!-- BOTÃO -->
+
+            <button
+                class="btn btn-danger w-100"
+                onclick="recolherDinheiro()">
+
+                Confirmar recolha
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================
+         POPUP RETIRAR
+    ====================================== -->
+
+    <div id="area-retirada-caixa"
+         style="display:none;">
+
+        <div class="card p-3 operacao-caixa">
+
+            <div class="d-flex justify-content-between">
+
+                <h5>
+
+                    <i class="bi bi-cash-coin"></i>
+
+                    Retirar da minha caixa
+
+                </h5>
+
+
+                <button
+                    class="btn btn-sm btn-danger"
+                    onclick="fecharOperacaoCaixa()">
+
+                    X
+
+                </button>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- VALOR DA RETIRADA -->
+
+            <label>
+                Valor
+            </label>
+
+
+            <input
+                id="caixa-valor-retirada"
+                type="number"
+                min="0"
+                step="0.01"
+                class="form-control mb-3"
+                placeholder="Valor a retirar"
+                onkeydown="return event.key !== '-' && event.key !== 'e'">
+
+
+            <!-- OBSERVAÇÃO -->
+
+            <label>
+                Observação
+            </label>
+
+
+            <textarea
+                id="caixa-observacao-retirada"
+                class="form-control mb-3"
+                placeholder="Motivo da retirada"></textarea>
+
+
+            <!-- BOTÃO -->
+
+            <button
+                class="btn btn-warning w-100"
+                onclick="retirarCaixa()">
+
+                Confirmar retirada
+
+            </button>
+
+        </div>
 
     </div>
 
 </div>
 
 
-
-</div>
-
-
-
-
-
-
-
-
-
-<!-- =====================================
-     POPUP RECOLHER
-====================================== -->
-
-
-<div id="area-recolha-caixa"
-     style="display:none;">
-
-<div class="card p-3 operacao-caixa">
-
-
-<div class="d-flex justify-content-between">
-
-
-<h5>
-
-<i class="bi bi-arrow-down-circle"></i>
-
-Recolher dinheiro
-
-</h5>
-
-
-
-<button
-class="btn btn-sm btn-danger"
-onclick="fecharOperacaoCaixa()">
-
-X
-
-</button>
-
-
-
-</div>
-
-
-<hr>
-
-
-
-<input
-type="hidden"
-id="vendedor-recolha-id">
-
-
-
-
-
-<p>
-
-Usuário:
-
-<strong id="nome-vendedor-recolha">
-
-</strong>
-
-
-</p>
-
-
-
-
-
-
-<label>
-
-Valor
-
-</label>
-
-
-
-<input
-
-id="caixa-valor-recolha"
-
-type="number"
-
-class="form-control mb-3"
-
-placeholder="Valor a recolher">
-
-
-
-
-
-
-<label>
-
-Observação
-
-</label>
-
-
-
-<textarea
-
-id="caixa-observacao"
-
-class="form-control mb-3"
-
-placeholder="Motivo da recolha">
-
-</textarea>
-
-
-
-
-
-
-
-<button
-
-class="btn btn-danger w-100"
-
-onclick="recolherDinheiro()">
-
-
-Confirmar recolha
-
-
-</button>
-
-
-
-</div>
-
-</div>
-
-
-
-
-
-
-
-
-
-<!-- =====================================
-     POPUP RETIRAR
-====================================== -->
-
-
-<div id="area-retirada-caixa"
-     style="display:none;">
-
-
-
-<div class="card p-3 operacao-caixa">
-
-
-
-<div class="d-flex justify-content-between">
-
-
-
-<h5>
-
-<i class="bi bi-cash-coin"></i>
-
-Retirar da minha caixa
-
-</h5>
-
-
-
-<button
-class="btn btn-sm btn-danger"
-onclick="fecharOperacaoCaixa()">
-
-X
-
-</button>
-
-
-
-</div>
-
-
-<hr>
-
-
-
-
-
-<label>
-
-Valor
-
-</label>
-
-
-
-
-<input
-
-id="caixa-valor-retirada"
-
-type="number"
-
-class="form-control mb-3"
-
-placeholder="Valor a retirar">
-
-
-
-
-
-<label>
-
-Observação
-
-</label>
-
-
-
-<textarea
-
-id="caixa-observacao-retirada"
-
-class="form-control mb-3"
-
-placeholder="Motivo da retirada">
-
-</textarea>
-
-
-
-
-
-
-
-<button
-
-class="btn btn-warning w-100"
-
-onclick="retirarCaixa()">
-
-
-Confirmar retirada
-
-
-</button>
-
-
-
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-
-
-
 <!-- =====================================
      CSS
 ====================================== -->
 
-
 <style>
 
-/* FUNDO DO MODAL PRINCIPAL */
+/* =====================================
+   FUNDO DO MODAL PRINCIPAL
+====================================== */
 
 .caixa-overlay{
 
@@ -444,8 +327,9 @@ Confirmar retirada
 }
 
 
-
-/* POPUP PRINCIPAL DA CAIXA */
+/* =====================================
+   POPUP PRINCIPAL DA CAIXA
+====================================== */
 
 .caixa-modal{
 
@@ -469,8 +353,9 @@ Confirmar retirada
 }
 
 
-
-/* TABELA GRANDE NO CELULAR */
+/* =====================================
+   TABELA GRANDE NO CELULAR
+====================================== */
 
 .caixa-modal table{
 
@@ -479,8 +364,9 @@ Confirmar retirada
 }
 
 
-
-
+/* =====================================
+   CABEÇALHO
+====================================== */
 
 .caixa-modal .card-header{
 
@@ -493,10 +379,9 @@ Confirmar retirada
 }
 
 
-
-
-
-/* LISTA DAS CAIXAS */
+/* =====================================
+   LISTA DAS CAIXAS
+====================================== */
 
 #lista-caixas{
 
@@ -510,9 +395,6 @@ Confirmar retirada
 }
 
 
-
-
-
 #lista-caixas .card{
 
     border-radius:12px;
@@ -522,10 +404,9 @@ Confirmar retirada
 }
 
 
-
-
-
-/* POPUPS INTERNOS */
+/* =====================================
+   POPUPS INTERNOS
+====================================== */
 
 #area-recolha-caixa,
 #area-retirada-caixa{
@@ -553,8 +434,9 @@ Confirmar retirada
 }
 
 
-
-
+/* =====================================
+   FORMULÁRIO DE OPERAÇÃO
+====================================== */
 
 .operacao-caixa{
 
@@ -574,18 +456,12 @@ Confirmar retirada
 }
 
 
-
-
-
 .operacao-caixa input,
 .operacao-caixa textarea{
 
     border-radius:8px;
 
 }
-
-
-
 
 
 .operacao-caixa textarea{
@@ -597,8 +473,9 @@ Confirmar retirada
 }
 
 
-
-/* MOBILE */
+/* =====================================
+   MOBILE
+====================================== */
 
 @media(max-width:768px){
 
@@ -622,8 +499,5 @@ Confirmar retirada
     }
 
 }
-
-</style>
-
 
 </style>
