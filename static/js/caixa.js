@@ -697,11 +697,27 @@ async function retirarCaixa(){
 // HISTÓRICO
 // =====================================
 
+f// =====================================
+// HISTÓRICO
+// =====================================
+
 function montarHistoricoCaixa(lista){
 
-    const tabela = document.getElementById(
-        "lista-movimentos-caixa"
-    );
+    const tabela =
+        document.getElementById(
+            "lista-movimentos-caixa"
+        );
+
+
+    if(!tabela){
+
+        console.error(
+            "Elemento lista-movimentos-caixa não encontrado."
+        );
+
+        return;
+
+    }
 
 
     tabela.innerHTML = "";
@@ -714,62 +730,211 @@ function montarHistoricoCaixa(lista){
 
         tabela.innerHTML = `
 
-        <tr>
-            <td colspan="5">
-                Nenhum movimento
-            </td>
-        </tr>
+            <tr>
+
+                <td
+                    colspan="5"
+                    class="text-center text-muted"
+                >
+
+                    Nenhum movimento
+
+                </td>
+
+            </tr>
 
         `;
 
         return;
-    }
 
+    }
 
 
     lista.forEach(item => {
 
 
+        // =====================================
+        // TIPO DO MOVIMENTO
+        // =====================================
+
+        const tipoMovimento =
+            String(
+                item.tipo ?? ""
+            )
+            .trim()
+            .toLowerCase();
+
+
+        // =====================================
+        // NOME
+        // =====================================
+
+        let nomeExibicao;
+
+
+        // =====================================
+        // DESPESA
+        //
+        // Mostrar o nome de quem criou
+        // a despesa.
+        // =====================================
+
+        if(
+            tipoMovimento === "despesa"
+        ){
+
+            const nomeCriador =
+                item.solicitante_nome ??
+                item.usuario_nome ??
+                item.nome_usuario ??
+                item.criado_por_nome ??
+                item.nome ??
+                "Não informado";
+
+
+            const idDespesa =
+                item.despesa_id ??
+                item.id_despesa ??
+                item.despesaId ??
+                item.id;
+
+
+            nomeExibicao = `
+
+                ${escaparHtml(nomeCriador)}
+
+                ${
+                    idDespesa !== null &&
+                    idDespesa !== undefined &&
+                    idDespesa !== ""
+                    ?
+
+                    `
+                        <br>
+
+                        <small class="text-muted">
+
+                            ID da despesa:
+                            ${escaparHtml(idDespesa)}
+
+                        </small>
+                    `
+
+                    :
+
+                    ""
+                }
+
+            `;
+
+        }
+
+
+        // =====================================
+        // OUTROS MOVIMENTOS
+        // =====================================
+
+        else{
+
+            nomeExibicao =
+                escaparHtml(
+                    item.nome ?? "-"
+                );
+
+        }
+
+
+        // =====================================
+        // TIPO
+        // =====================================
+
+        const tipoExibicao =
+            escaparHtml(
+                item.tipo ?? "-"
+            );
+
+
+        // =====================================
+        // VALOR
+        // =====================================
+
+        const valor =
+            item.valor ?? 0;
+
+
+        // =====================================
+        // DATA
+        // =====================================
+
+        const data =
+            item.data
+
+            ?
+
+            new Date(
+                item.data
+            ).toLocaleString()
+
+            :
+
+            "-";
+
+
+        // =====================================
+        // OBSERVAÇÃO
+        // =====================================
+
+        const observacao =
+            escaparHtml(
+                item.observacao ?? ""
+            );
+
+
+        // =====================================
+        // MOSTRAR LINHA
+        // =====================================
+
         tabela.innerHTML += `
 
-        <tr>
+            <tr>
 
-            <td>
-                ${item.nome ?? "-"}
-            </td>
+                <td>
 
+                    ${nomeExibicao}
 
-            <td>
-                ${item.tipo ?? "-"}
-            </td>
+                </td>
 
 
-            <td>
-                ${item.valor ?? 0} MT
-            </td>
+                <td>
+
+                    ${tipoExibicao}
+
+                </td>
 
 
-            <td>
-                ${
-                    item.data
-                    ?
-                    new Date(item.data)
-                    .toLocaleString()
-                    :
-                    "-"
-                }
-            </td>
+                <td>
+
+                    ${valor} MT
+
+                </td>
 
 
-            <td>
-                ${item.observacao ?? ""}
-            </td>
+                <td>
+
+                    ${data}
+
+                </td>
 
 
-        </tr>
+                <td>
+
+                    ${observacao}
+
+                </td>
+
+            </tr>
 
         `;
-
 
     });
 

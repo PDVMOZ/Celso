@@ -700,7 +700,16 @@ async def historico_geral(
 
     resultado = await db.execute(
 
-        select(Despesa)
+
+        select(
+            Despesa,
+            Usuario.nome
+        )
+
+        .join(
+            Usuario,
+            Despesa.usuario_id == Usuario.id
+        )
 
         .where(
             Despesa.estado == "aprovado"
@@ -710,36 +719,35 @@ async def historico_geral(
             Despesa.data_despesa.desc()
         )
 
+
     )
 
+    despesas = resultado.all()
 
-    despesas = resultado.scalars().all()
-
-
-    for despesa in despesas:
+    for despesa, nome_usuario in despesas:
 
 
-        historico.append({
+            historico.append({
 
-            "nome":
-                despesa.usuario_id,
+                "nome":
+                    nome_usuario,
 
-            "tipo":
-                "DESPESA",
+                "tipo":
+                    "DESPESA",
 
-            "valor":
-                float(
-                    despesa.valor_aprovado
-                    or 0
-                ),
+                "valor":
+                    float(
+                        despesa.valor_aprovado
+                        or 0
+                    ),
 
-            "data":
-                despesa.data_despesa,
+                "data":
+                    despesa.data_despesa,
 
-            "observacao":
-                despesa.descricao
+                "observacao":
+                    despesa.descricao
 
-        })
+            })
 
 
     # ordenar tudo por data
@@ -749,5 +757,5 @@ async def historico_geral(
         reverse=True
     )
 
-
     return historico
+
