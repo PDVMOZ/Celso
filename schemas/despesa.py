@@ -3,7 +3,6 @@ from decimal import Decimal
 from datetime import datetime
 
 
-
 # =====================================================
 # CRIAR SOLICITAÇÃO / DESPESA
 # =====================================================
@@ -20,9 +19,6 @@ class DespesaCreate(BaseModel):
     valor_proposto: Decimal | None = None
 
     observacao: str | None = None
-
-
-
 
 
 # =====================================================
@@ -44,9 +40,6 @@ class DespesaUpdate(BaseModel):
     observacao: str | None = None
 
 
-
-
-
 # =====================================================
 # APROVAR DESPESA
 # =====================================================
@@ -60,9 +53,6 @@ class DespesaAprovar(BaseModel):
     observacao: str | None = None
 
 
-
-
-
 # =====================================================
 # RESPOSTA
 # =====================================================
@@ -73,25 +63,25 @@ class DespesaResponse(BaseModel):
 
     usuario_id: int
 
+    # =================================================
+    # NOME DE QUEM SOLICITOU / CRIOU
+    # =================================================
+
+    solicitante_nome: str | None = None
+
     descricao: str
 
     categoria: str | None = None
-
 
     valor_proposto: Decimal | None = None
 
     valor_aprovado: Decimal | None = None
 
-
     estado: str
-
 
     observacao: str | None = None
 
-
     data_despesa: datetime
-
-
 
     model_config = ConfigDict(
         from_attributes=True

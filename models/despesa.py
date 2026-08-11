@@ -14,11 +14,9 @@ from sqlalchemy.sql import func
 from database import Base
 
 
-
 class Despesa(Base):
 
     __tablename__ = "despesas"
-
 
 
     id = Column(
@@ -28,9 +26,9 @@ class Despesa(Base):
     )
 
 
-
-    # Usuário que criou a solicitação
-    # ou responsável pela despesa
+    # =================================================
+    # USUÁRIO QUE CRIOU / SOLICITOU
+    # =================================================
 
     usuario_id = Column(
         Integer,
@@ -39,12 +37,10 @@ class Despesa(Base):
     )
 
 
-
     descricao = Column(
         String(150),
         nullable=False
     )
-
 
 
     categoria = Column(
@@ -53,23 +49,24 @@ class Despesa(Base):
     )
 
 
-
-    # Valor sugerido pelo vendedor
+    # =================================================
+    # VALOR PROPOSTO
+    # =================================================
 
     valor_proposto = Column(
-        Numeric(10,2),
+        Numeric(10, 2),
         nullable=True
     )
 
 
-
-    # Valor definido pelo gerente/admin
+    # =================================================
+    # VALOR APROVADO
+    # =================================================
 
     valor_aprovado = Column(
-        Numeric(10,2),
+        Numeric(10, 2),
         nullable=True
     )
-
 
 
     observacao = Column(
@@ -78,13 +75,9 @@ class Despesa(Base):
     )
 
 
-
-    # Estados possíveis:
-    #
-    # pendente  -> vendedor solicitou
-    # aprovado  -> gerente/admin autorizou
-    # recusado  -> pedido negado
-    #
+    # =================================================
+    # ESTADO
+    # =================================================
 
     estado = Column(
         String(30),
@@ -93,6 +86,9 @@ class Despesa(Base):
     )
 
 
+    # =================================================
+    # DATA
+    # =================================================
 
     data_despesa = Column(
         DateTime(timezone=True),
@@ -100,12 +96,14 @@ class Despesa(Base):
     )
 
 
+    # =================================================
+    # RELACIONAMENTO COM USUÁRIO
+    # =================================================
 
     usuario = relationship(
         "Usuario",
         backref="despesas"
     )
-
 
 
     def __repr__(self):
