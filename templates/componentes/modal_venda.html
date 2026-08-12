@@ -1,95 +1,1496 @@
-<!-- MODAL NOVA VENDA -->
-<div id="venda-panel" class="usuarios-modal" style="display:none;">
-    <div class="dashboard-card usuarios-box" style="width:1000px;">
+
+<!-- =====================================================
+     MODAL NOVA VENDA
+===================================================== -->
+
+<div
+    id="venda-panel"
+    class="usuarios-modal"
+    style="display:none;"
+>
+
+    <div class="dashboard-card usuarios-box">
+
+
+        <!-- =================================================
+             CABEÇALHO
+        ================================================== -->
+
         <div class="card-header">
+
             <h4>
                 Nova Venda
             </h4>
-            <button
-                class="btn btn-danger"
-                onclick="fecharVenda()">
-                <i class="bi bi-x-lg"></i>
-            </button>
-        </div>
-        <div class="row">
 
-            <!-- PRODUTOS -->
-            <div class="col-md-7">
+
+            <button
+                type="button"
+                class="btn btn-danger"
+                onclick="fecharVenda()"
+            >
+
+                <i class="bi bi-x-lg"></i>
+
+            </button>
+
+        </div>
+
+
+
+        <!-- =================================================
+             CONTEÚDO PRINCIPAL
+        ================================================== -->
+
+        <div class="row venda-conteudo">
+
+
+            <!-- =================================================
+                 PRODUTOS
+            ================================================== -->
+
+            <div class="col-md-7 produtos-area">
+
+
+                <!-- =================================================
+                     PESQUISA
+                ================================================== -->
+
                 <input
                     id="pesquisa-produto"
-                    class="form-control mb-3"
+                    type="text"
+                    class="form-control"
                     placeholder="Pesquisar produto..."
-                    oninput="filtrarProdutos()">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>
-                                Produto
-                            </th>
-                            <th>
-                                Preço
-                            </th>
-                            <th>
-                                Stock
-                            </th>
-                            <th>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="lista-produtos-venda">
-                    </tbody>
-                </table>
+                    autocomplete="off"
+                    oninput="filtrarProdutos()"
+                >
+
+
+
+                <!-- =================================================
+                     LISTA DE PRODUTOS
+                ================================================== -->
+
+                <div class="produtos-tabela-container">
+
+                    <table class="table table-hover">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Produto
+                                </th>
+
+                                <th>
+                                    Preço
+                                </th>
+
+                                <th>
+                                    Stock
+                                </th>
+
+                                <th>
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="lista-produtos-venda">
+
+                            <!--
+                                Os produtos serão inseridos
+                                pelo JavaScript.
+                            -->
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
             </div>
 
-            <!-- CARRINHO -->
-            <div class="col-md-5">
-                <h5>
-                    Carrinho
-                </h5>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>
-                                Produto
-                            </th>
-                            <th>
-                                Qtd
-                            </th>
-                            <th>
-                                Total
-                            </th>
-                            <th>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="lista-carrinho">
-                    </tbody>
-                </table>
-                <hr>
-                <h4>
-                    Total:
-                    <span id="total-venda">
-                        0 MT
+
+
+            <!-- =================================================
+                 CARRINHO
+            ================================================== -->
+
+            <div class="col-md-5 carrinho-area">
+
+
+                <!-- =================================================
+                     TÍTULO
+                ================================================== -->
+
+                <div class="titulo-carrinho">
+
+                    <i class="bi bi-cart3"></i>
+
+                    <span>
+                        Carrinho
                     </span>
-                </h4>
-                <input
-                    id="valor-entregue"
-                    type="number"
-                    class="form-control mt-3"
-                    placeholder="Valor entregue"
-                    oninput="calcularTroco()">
-                <h5 class="mt-3">
-                    Troco:
-                    <span id="troco">
-                        0 MT
-                    </span>
-                </h5>
-                <button
-                    class="btn btn-success w-100 mt-3"
-                    onclick="finalizarVenda()">
-                    Finalizar Venda
-                </button>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     ÁREA DOS ITENS DO CARRINHO
+
+                     SOMENTE ESTA ÁREA POSSUI SCROLL
+                ================================================== -->
+
+                <div
+                    id="carrinho-scroll"
+                    class="carrinho-scroll"
+                >
+
+                    <table class="table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Produto
+                                </th>
+
+                                <th>
+                                    Qtd
+                                </th>
+
+                                <th>
+                                    Total
+                                </th>
+
+                                <th>
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="lista-carrinho">
+
+                            <!--
+                                Os itens serão inseridos
+                                pelo JavaScript.
+
+                                Exemplo gerado:
+
+                                <tr
+                                    data-produto-id="5"
+                                    class="item-carrinho"
+                                >
+                            -->
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     PARTE FIXA DO CARRINHO
+
+                     ESTA PARTE NUNCA ROLA
+                ================================================== -->
+
+                <div class="carrinho-fixo">
+
+
+                    <!-- =================================================
+                         SEPARADOR
+                    ================================================== -->
+
+                    <hr>
+
+
+
+                    <!-- =================================================
+                         TOTAL
+                    ================================================== -->
+
+                    <div class="total-container">
+
+                        <span class="total-label">
+                            Total:
+                        </span>
+
+
+                        <span
+                            id="total-venda"
+                            class="total-valor"
+                        >
+                            0 MT
+                        </span>
+
+                    </div>
+
+
+
+                    <!-- =================================================
+                         VALOR ENTREGUE
+                    ================================================== -->
+
+                    <input
+                        id="valor-entregue"
+                        type="number"
+                        class="form-control"
+                        min="0"
+                        step="0.01"
+                        placeholder="Valor entregue"
+                        oninput="calcularTroco()"
+                    >
+
+
+
+                    <!-- =================================================
+                         TROCO
+                    ================================================== -->
+
+                    <div class="troco-container">
+
+                        <span>
+                            Troco:
+                        </span>
+
+
+                        <span id="troco">
+                            0 MT
+                        </span>
+
+                    </div>
+
+
+
+                    <!-- =================================================
+                         BOTÃO FINALIZAR
+                    ================================================== -->
+
+                    <button
+                        type="button"
+                        class="btn btn-success btn-finalizar-venda"
+                        onclick="finalizarVenda()"
+                    >
+
+                        <i class="bi bi-check-circle"></i>
+
+                        <span>
+                            Finalizar Venda
+                        </span>
+
+                    </button>
+
+
+                </div>
+
             </div>
+
         </div>
+
     </div>
+
 </div>
+
+
+
+<!-- =====================================================
+     CSS DA ÁREA DE VENDA
+===================================================== -->
+
+<style>
+
+
+/* =====================================================
+   MODAL
+===================================================== */
+
+#venda-panel {
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 10px;
+
+}
+
+
+
+/* =====================================================
+   CAIXA PRINCIPAL
+===================================================== */
+
+#venda-panel .usuarios-box {
+
+    width: 1000px;
+
+    max-width: 95vw;
+
+    height: 90vh;
+
+    max-height: 90vh;
+
+    padding: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+    overflow: hidden;
+
+}
+
+
+
+/* =====================================================
+   CABEÇALHO
+===================================================== */
+
+#venda-panel .card-header {
+
+    flex-shrink: 0;
+
+    height: 60px;
+
+    min-height: 60px;
+
+    padding: 10px 20px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    background: #ffffff;
+
+    border-bottom: 1px solid #dddddd;
+
+    z-index: 100;
+
+}
+
+
+#venda-panel .card-header h4 {
+
+    margin: 0;
+
+    font-size: 20px;
+
+    font-weight: 600;
+
+}
+
+
+#venda-panel .card-header button {
+
+    width: 38px;
+
+    height: 38px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+}
+
+
+
+/* =====================================================
+   CONTEÚDO
+===================================================== */
+
+#venda-panel .venda-conteudo {
+
+    display: flex;
+
+    flex: 1;
+
+    min-height: 0;
+
+    margin: 0;
+
+    overflow: hidden;
+
+}
+
+
+
+/* =====================================================
+   PRODUTOS
+===================================================== */
+
+#venda-panel .produtos-area {
+
+    width: 58.333333%;
+
+    height: 100%;
+
+    min-height: 0;
+
+    padding: 20px;
+
+    overflow-y: auto;
+
+    overflow-x: hidden;
+
+    background: #f8f9fa;
+
+}
+
+
+
+/* =====================================================
+   CAMPO DE PESQUISA
+===================================================== */
+
+#venda-panel #pesquisa-produto {
+
+    width: 100%;
+
+    height: 44px;
+
+    margin-bottom: 12px;
+
+    background: #ffffff;
+
+}
+
+
+
+/* =====================================================
+   CONTAINER PRODUTOS
+===================================================== */
+
+#venda-panel .produtos-tabela-container {
+
+    width: 100%;
+
+}
+
+
+
+/* =====================================================
+   TABELA PRODUTOS
+===================================================== */
+
+#venda-panel .produtos-tabela-container table {
+
+    width: 100%;
+
+    margin: 0;
+
+    background: #ffffff;
+
+}
+
+
+
+/* =====================================================
+   CABEÇALHO PRODUTOS
+===================================================== */
+
+#venda-panel .produtos-tabela-container thead {
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 10;
+
+}
+
+
+#venda-panel .produtos-tabela-container thead th {
+
+    background: #ffffff;
+
+}
+
+
+
+/* =====================================================
+   CÉLULAS PRODUTOS
+===================================================== */
+
+#venda-panel .produtos-tabela-container th,
+#venda-panel .produtos-tabela-container td {
+
+    vertical-align: middle;
+
+}
+
+
+
+/* =====================================================
+   CARRINHO
+===================================================== */
+
+#venda-panel .carrinho-area {
+
+    width: 41.666667%;
+
+    height: 100%;
+
+    min-height: 0;
+
+    padding: 15px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    overflow: hidden;
+
+    background: #ffffff;
+
+    border-left: 1px solid #dddddd;
+
+    box-shadow:
+        -3px 0 10px
+        rgba(0, 0, 0, 0.06);
+
+}
+
+
+
+/* =====================================================
+   TÍTULO CARRINHO
+===================================================== */
+
+#venda-panel .titulo-carrinho {
+
+    flex-shrink: 0;
+
+    height: 32px;
+
+    min-height: 32px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    margin-bottom: 8px;
+
+    font-size: 17px;
+
+    font-weight: 600;
+
+}
+
+
+
+/* =====================================================
+   SCROLL DOS ITENS
+===================================================== */
+
+#venda-panel #carrinho-scroll {
+
+    flex: 1 1 auto;
+
+    width: 100%;
+
+    min-height: 0;
+
+    overflow-y: auto;
+
+    overflow-x: auto;
+
+    scroll-behavior: smooth;
+
+    overscroll-behavior: contain;
+
+}
+
+
+
+/* =====================================================
+   TABELA CARRINHO
+===================================================== */
+
+#venda-panel #carrinho-scroll table {
+
+    width: 100%;
+
+    margin: 0;
+
+}
+
+
+
+/* =====================================================
+   CABEÇALHO CARRINHO
+===================================================== */
+
+#venda-panel #carrinho-scroll thead {
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 20;
+
+}
+
+
+#venda-panel #carrinho-scroll thead th {
+
+    background: #ffffff;
+
+}
+
+
+
+/* =====================================================
+   CÉLULAS CARRINHO
+===================================================== */
+
+#venda-panel #carrinho-scroll th,
+#venda-panel #carrinho-scroll td {
+
+    padding: 7px 5px;
+
+    vertical-align: middle;
+
+}
+
+
+
+/* =====================================================
+   LINHA DO CARRINHO
+===================================================== */
+
+#venda-panel .item-carrinho {
+
+    transition:
+        background-color 0.3s ease;
+
+}
+
+
+
+/* =====================================================
+   DESTAQUE DO ITEM ADICIONADO
+===================================================== */
+
+#venda-panel .item-adicionado-destaque {
+
+    background-color: #d1e7dd !important;
+
+}
+
+
+
+/* =====================================================
+   PARTE FIXA
+===================================================== */
+
+#venda-panel .carrinho-fixo {
+
+    flex-shrink: 0;
+
+    width: 100%;
+
+    background: #ffffff;
+
+}
+
+
+
+/* =====================================================
+   HR
+===================================================== */
+
+#venda-panel .carrinho-fixo hr {
+
+    margin: 8px 0;
+
+}
+
+
+
+/* =====================================================
+   TOTAL
+===================================================== */
+
+#venda-panel .total-container {
+
+    width: 100%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-bottom: 8px;
+
+}
+
+
+#venda-panel .total-label {
+
+    font-size: 18px;
+
+    font-weight: 600;
+
+}
+
+
+#venda-panel .total-valor {
+
+    font-size: 18px;
+
+    font-weight: 700;
+
+    color: #198754;
+
+}
+
+
+
+/* =====================================================
+   VALOR ENTREGUE
+===================================================== */
+
+#venda-panel #valor-entregue {
+
+    width: 100%;
+
+    height: 42px;
+
+    margin-bottom: 8px;
+
+}
+
+
+
+/* =====================================================
+   TROCO
+===================================================== */
+
+#venda-panel .troco-container {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 8px;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+}
+
+
+#venda-panel #troco {
+
+    color: #0d6efd;
+
+}
+
+
+
+/* =====================================================
+   BOTÃO FINALIZAR
+===================================================== */
+
+#venda-panel .btn-finalizar-venda {
+
+    width: 100%;
+
+    height: 48px;
+
+    min-height: 48px;
+
+    margin: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 7px;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+}
+
+
+
+/* =====================================================
+   SCROLLBARS
+===================================================== */
+
+#venda-panel .produtos-area::-webkit-scrollbar,
+#venda-panel #carrinho-scroll::-webkit-scrollbar {
+
+    width: 7px;
+
+    height: 7px;
+
+}
+
+
+#venda-panel .produtos-area::-webkit-scrollbar-thumb,
+#venda-panel #carrinho-scroll::-webkit-scrollbar-thumb {
+
+    background: #aaaaaa;
+
+    border-radius: 10px;
+
+}
+
+
+#venda-panel .produtos-area::-webkit-scrollbar-track,
+#venda-panel #carrinho-scroll::-webkit-scrollbar-track {
+
+    background: #eeeeee;
+
+}
+
+
+
+/* =====================================================
+   =====================================================
+   TELEFONE
+   =====================================================
+===================================================== */
+
+@media (max-width: 767px) {
+
+
+    /* =================================================
+       MODAL
+    ================================================= */
+
+    #venda-panel {
+
+        align-items: flex-start;
+
+        justify-content: center;
+
+        padding: 0;
+
+    }
+
+
+
+    /* =================================================
+       CAIXA
+    ================================================= */
+
+    #venda-panel .usuarios-box {
+
+        width: 100% !important;
+
+        max-width: 100%;
+
+        height: 100vh;
+
+        max-height: 100vh;
+
+        border-radius: 0;
+
+    }
+
+
+
+    /* =================================================
+       CABEÇALHO
+    ================================================= */
+
+    #venda-panel .card-header {
+
+        height: 55px;
+
+        min-height: 55px;
+
+        padding: 8px 12px;
+
+    }
+
+
+    #venda-panel .card-header h4 {
+
+        font-size: 18px;
+
+    }
+
+
+    #venda-panel .card-header button {
+
+        width: 36px;
+
+        height: 36px;
+
+    }
+
+
+
+    /* =================================================
+       CONTEÚDO
+    ================================================= */
+
+    #venda-panel .venda-conteudo {
+
+        height: calc(100vh - 55px);
+
+        display: flex;
+
+        flex-direction: column;
+
+        min-height: 0;
+
+        overflow: hidden;
+
+    }
+
+
+
+    /* =================================================
+       CARRINHO NO TOPO
+    ================================================= */
+
+    #venda-panel .carrinho-area {
+
+        order: 1;
+
+        width: 100%;
+
+        height: 44% !important;
+
+        max-height: 44% !important;
+
+        min-height: 0 !important;
+
+        flex: 0 0 44%;
+
+        padding: 8px 10px;
+
+        border-left: none;
+
+        border-bottom: 2px solid #dddddd;
+
+        box-shadow:
+            0 3px 10px
+            rgba(0, 0, 0, 0.12);
+
+        overflow: hidden !important;
+
+    }
+
+
+
+    /* =================================================
+       PRODUTOS ABAIXO
+    ================================================= */
+
+    #venda-panel .produtos-area {
+
+        order: 2;
+
+        width: 100%;
+
+        height: 56% !important;
+
+        max-height: 56%;
+
+        min-height: 0 !important;
+
+        flex: 1 1 56%;
+
+        padding: 10px;
+
+        overflow-y: auto;
+
+        overflow-x: hidden;
+
+        background: #f8f9fa;
+
+    }
+
+
+
+    /* =================================================
+       TÍTULO CARRINHO
+    ================================================= */
+
+    #venda-panel .titulo-carrinho {
+
+        height: 24px;
+
+        min-height: 24px;
+
+        margin-bottom: 4px;
+
+        font-size: 15px;
+
+    }
+
+
+
+    /* =================================================
+       SCROLL CARRINHO
+    ================================================= */
+
+    #venda-panel #carrinho-scroll {
+
+        flex: 1 1 auto;
+
+        min-height: 0;
+
+        overflow-y: auto;
+
+        overflow-x: auto;
+
+        scroll-behavior: smooth;
+
+        overscroll-behavior: contain;
+
+        -webkit-overflow-scrolling: touch;
+
+    }
+
+
+
+    /* =================================================
+       TABELA CARRINHO
+    ================================================= */
+
+    #venda-panel #carrinho-scroll table {
+
+        width: 100%;
+
+        font-size: 10px;
+
+    }
+
+
+    #venda-panel #carrinho-scroll th,
+    #venda-panel #carrinho-scroll td {
+
+        padding: 3px 2px;
+
+        vertical-align: middle;
+
+    }
+
+
+
+    /* =================================================
+       INPUT QUANTIDADE
+    ================================================= */
+
+    #venda-panel #carrinho-scroll input[type="number"] {
+
+        width: 52px !important;
+
+        height: 27px;
+
+        padding: 2px;
+
+        font-size: 11px;
+
+    }
+
+
+
+    /* =================================================
+       BOTÃO REMOVER
+    ================================================= */
+
+    #venda-panel #carrinho-scroll .btn {
+
+        padding: 3px 6px;
+
+        font-size: 10px;
+
+    }
+
+
+
+    /* =================================================
+       ÁREA FIXA
+    ================================================= */
+
+    #venda-panel .carrinho-fixo {
+
+        flex-shrink: 0;
+
+        width: 100%;
+
+        padding-top: 2px;
+
+    }
+
+
+
+    /* =================================================
+       HR
+    ================================================= */
+
+    #venda-panel .carrinho-fixo hr {
+
+        margin: 3px 0;
+
+    }
+
+
+
+    /* =================================================
+       TOTAL
+    ================================================= */
+
+    #venda-panel .total-container {
+
+        height: 21px;
+
+        margin-bottom: 3px;
+
+    }
+
+
+    #venda-panel .total-label,
+    #venda-panel .total-valor {
+
+        font-size: 14px;
+
+    }
+
+
+
+    /* =================================================
+       VALOR ENTREGUE
+    ================================================= */
+
+    #venda-panel #valor-entregue {
+
+        height: 32px;
+
+        margin-bottom: 3px;
+
+        font-size: 12px;
+
+    }
+
+
+
+    /* =================================================
+       TROCO
+    ================================================= */
+
+    #venda-panel .troco-container {
+
+        height: 19px;
+
+        margin-bottom: 3px;
+
+        font-size: 13px;
+
+    }
+
+
+
+    /* =================================================
+       BOTÃO FINALIZAR
+    ================================================= */
+
+    #venda-panel .btn-finalizar-venda {
+
+        height: 36px;
+
+        min-height: 36px;
+
+        font-size: 12px;
+
+    }
+
+
+
+    /* =================================================
+       PESQUISA PRODUTOS
+    ================================================= */
+
+    #venda-panel #pesquisa-produto {
+
+        position: sticky;
+
+        top: 0;
+
+        z-index: 30;
+
+        width: 100%;
+
+        height: 38px;
+
+        margin-bottom: 8px;
+
+        font-size: 13px;
+
+        background: #ffffff;
+
+    }
+
+
+
+    /* =================================================
+       TABELA PRODUTOS
+    ================================================= */
+
+    #venda-panel .produtos-tabela-container {
+
+        width: 100%;
+
+    }
+
+
+    #venda-panel .produtos-tabela-container table {
+
+        width: 100%;
+
+        margin: 0;
+
+        font-size: 12px;
+
+    }
+
+
+    #venda-panel .produtos-tabela-container th,
+    #venda-panel .produtos-tabela-container td {
+
+        padding: 6px 3px;
+
+        vertical-align: middle;
+
+    }
+
+
+
+    /* =================================================
+       CABEÇALHO PRODUTOS
+    ================================================= */
+
+    #venda-panel .produtos-tabela-container thead {
+
+        position: sticky;
+
+        top: 46px;
+
+        z-index: 20;
+
+    }
+
+
+    #venda-panel .produtos-tabela-container thead th {
+
+        background: #ffffff;
+
+    }
+
+}
+
+
+
+/* =====================================================
+   =====================================================
+   TELEFONES PEQUENOS
+   =====================================================
+===================================================== */
+
+@media (max-width: 480px) {
+
+
+    /* =================================================
+       CARRINHO
+    ================================================= */
+
+    #venda-panel .carrinho-area {
+
+        height: 45% !important;
+
+        max-height: 45% !important;
+
+        flex: 0 0 45%;
+
+    }
+
+
+
+    /* =================================================
+       PRODUTOS
+    ================================================= */
+
+    #venda-panel .produtos-area {
+
+        height: 55% !important;
+
+        max-height: 55%;
+
+        flex: 1 1 55%;
+
+    }
+
+
+
+    /* =================================================
+       CARRINHO
+    ================================================= */
+
+    #venda-panel .titulo-carrinho {
+
+        font-size: 14px;
+
+    }
+
+
+    #venda-panel #carrinho-scroll table {
+
+        font-size: 9px;
+
+    }
+
+
+    #venda-panel #carrinho-scroll th,
+    #venda-panel #carrinho-scroll td {
+
+        padding: 2px;
+
+    }
+
+
+
+    /* =================================================
+       QUANTIDADE
+    ================================================= */
+
+    #venda-panel #carrinho-scroll input[type="number"] {
+
+        width: 48px !important;
+
+        height: 25px;
+
+        font-size: 10px;
+
+    }
+
+
+
+    /* =================================================
+       TOTAL
+    ================================================= */
+
+    #venda-panel .total-container {
+
+        height: 19px;
+
+    }
+
+
+    #venda-panel .total-label,
+    #venda-panel .total-valor {
+
+        font-size: 13px;
+
+    }
+
+
+
+    /* =================================================
+       PAGAMENTO
+    ================================================= */
+
+    #venda-panel #valor-entregue {
+
+        height: 30px;
+
+        font-size: 11px;
+
+    }
+
+
+
+    /* =================================================
+       TROCO
+    ================================================= */
+
+    #venda-panel .troco-container {
+
+        height: 17px;
+
+        font-size: 12px;
+
+    }
+
+
+
+    /* =================================================
+       BOTÃO
+    ================================================= */
+
+    #venda-panel .btn-finalizar-venda {
+
+        height: 34px;
+
+        min-height: 34px;
+
+        font-size: 11px;
+
+    }
+
+
+
+    /* =================================================
+       PESQUISA
+    ================================================= */
+
+    #venda-panel #pesquisa-produto {
+
+        height: 35px;
+
+        font-size: 12px;
+
+    }
+
+
+
+    /* =================================================
+       PRODUTOS
+    ================================================= */
+
+    #venda-panel .produtos-tabela-container table {
+
+        font-size: 11px;
+
+    }
+
+
+    #venda-panel .produtos-tabela-container th,
+    #venda-panel .produtos-tabela-container td {
+
+        padding: 5px 2px;
+
+    }
+
+}
+
+</style>

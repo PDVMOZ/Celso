@@ -55,6 +55,9 @@ async function fazerLogin(){
 
     if(resposta.ok){
 
+        // =====================================
+        // SALVAR USUÁRIO
+        // =====================================
 
         localStorage.setItem(
             "usuario",
@@ -64,12 +67,19 @@ async function fazerLogin(){
         );
 
 
-
         usuarioLogado =
         dados.usuario;
 
 
+        console.log(
+            "LOGIN REALIZADO:",
+            usuarioLogado
+        );
 
+
+        // =====================================
+        // CONFIGURAÇÕES DO USUÁRIO
+        // =====================================
 
         if(
             usuarioLogado.tipo === "admin" ||
@@ -86,12 +96,9 @@ async function fazerLogin(){
         }
 
 
-
-
         mostrarHistorico(true);
 
         mostrarStock(true);
-
 
 
         carregarUsuario(
@@ -99,11 +106,12 @@ async function fazerLogin(){
         );
 
 
-
         atualizarMenuDespesas();
 
 
-
+        // =====================================
+        // FECHAR LOGIN
+        // =====================================
 
         const login =
         document.getElementById(
@@ -113,37 +121,36 @@ async function fazerLogin(){
 
         if(login){
 
-            login.style.display="none";
+            login.style.display = "none";
 
         }
 
 
+        // =====================================
+        // RECARREGAR A PÁGINA UMA VEZ
+        // =====================================
+
+        console.log(
+            "LOGIN CONCLUÍDO. RECARREGANDO PÁGINA..."
+        );
 
 
-        carregarDashboard();
+        setTimeout(() => {
 
+            location.reload();
+
+        }, 300);
 
 
     }
     else{
 
-
         alert(
             dados.detail
         );
 
-
     }
-
-
 }
-
-
-
-
-
-
-
 
 // =====================================================
 // LOGOUT
@@ -261,6 +268,40 @@ function atualizarMenuDespesas(){
 
 
 
+function atualizarVisibilidadeDetalhesVendas(){
+
+    const verDetalhes =
+        document.getElementById(
+            "ver-detalhes-vendas"
+        );
+
+    if(!verDetalhes){
+        return;
+    }
+
+    const usuario =
+        JSON.parse(
+            localStorage.getItem("usuario")
+        );
+
+    if(
+        usuario &&
+        (
+            usuario.tipo === "admin" ||
+            usuario.tipo === "gerente"
+        )
+    ){
+
+        verDetalhes.style.display = "block";
+
+    }
+    else{
+
+        verDetalhes.style.display = "none";
+
+    }
+
+}
 
 
 
@@ -456,6 +497,8 @@ function carregarUsuario(usuario){
 
 
     atualizarMenuDespesas();
+    atualizarVisibilidadeDetalhesVendas();
+
 
 
 

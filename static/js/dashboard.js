@@ -1,845 +1,822 @@
-// dashboard.js
+// =====================================================
+// DASHBOARD.JS
+// =====================================================
+
+console.log("DASHBOARD.JS FOI CARREGADO");
+
 let vendasVendedoresCache = [];
 
-async function carregarDashboard() {
 
-    try {
+// =====================================================
+// FUNÇÃO AUXILIAR
+// OBTER USUÁRIO
+// =====================================================
 
-        let urlDashboard = API + "/dashboard/";
+function obterUsuarioDashboard(){
 
-        if(usuarioLogado && usuarioLogado.tipo === "vendedor"){
+    try{
 
-            urlDashboard += "?usuario_id=" + usuarioLogado.id;
+        const storage =
+            localStorage.getItem("usuario");
 
-        }
+        if(!storage)
+            return null;
 
-
-        const resposta = await fetch(urlDashboard);
-
-
-        if (!resposta.ok) {
-
-            throw new Error(
-                "Erro ao carregar dashboard"
-            );
-
-        }
-
-
-        const dados = await resposta.json();
-
-
-        console.log("STATUS:", resposta.status);
-        console.log("DADOS:", dados);
-
-
-
-        // ============================
-        // BOTÃO LOGIN
-        // ============================
-
-        const botaoLogin =
-        document.getElementById(
-            "login-button"
-        );
-
-
-        if(botaoLogin){
-
-            if(usuarioLogado){
-
-                // usuário logado: esconder botão
-
-                botaoLogin.style.display = "none";
-
-            }
-            else{
-
-                // sem usuário: mostrar login
-
-                botaoLogin.style.display = "block";
-
-                botaoLogin.onclick =
-                abrirLogin;
-
-            }
-
-        }
-        // ============================
-        // VENDAS DO DIA
-        // ============================
-
-
-
-
-
-
-
-        // ============================
-        // STOCK
-        // ============================
-
-
-        const stock =
-        dados.stock || {};
-
-
-
-        const totalStock =
-        document.getElementById(
-            "total-stock"
-        );
-
-
-        if(totalStock){
-
-            totalStock.innerText =
-            stock.total ?? 0;
-
-        }
-
-
-
-        const produtosNovos =
-        document.getElementById(
-            "produtos-novos"
-        );
-
-
-        if(produtosNovos){
-
-            produtosNovos.innerText =
-            stock.produtos_novos ?? 0;
-
-        }
-
-
-
-        const baixoStock =
-        document.getElementById(
-            "baixo-stock"
-        );
-
-
-        if(baixoStock){
-
-            baixoStock.innerText =
-            stock.baixo_stock_total ?? 0;
-
-        }
-
-
-
-
-        // ============================
-        // LUCRO
-        // ============================
-
-
-        const lucroHoje =
-        document.getElementById(
-            "lucro-hoje"
-        );
-
-
-        if(lucroHoje){
-
-            lucroHoje.innerText =
-            `${Number(
-                dados.lucro_hoje || 0
-            ).toFixed(2)} MT`;
-
-        }
-
-
-
-
-        // ============================
-        // DESPESAS
-        // ============================
-
-
-        const despesasHoje =
-        document.getElementById(
-            "despesas-hoje"
-        );
-
-
-        if(despesasHoje){
-
-            despesasHoje.innerText =
-            `${Number(
-                dados.despesas_hoje || 0
-            ).toFixed(2)} MT`;
-
-        }
-
-
-
-
-        // ============================
-        // ALERTAS STOCK
-        // ============================
-
-
-        const lista =
-        document.getElementById(
-            "baixo-stock-list"
-        );
-
-
-
-        if(lista){
-
-
-            lista.innerHTML = "";
-
-
-
-            if(
-                Array.isArray(stock.baixo_stock)
-                &&
-                stock.baixo_stock.length > 0
-            ){
-
-
-
-                stock.baixo_stock.forEach(produto=>{
-
-
-                    lista.innerHTML += `
-
-                    <div class="alert-item">
-
-
-                        <div>
-
-                            <strong>
-                            ${produto.nome}
-                            </strong>
-
-                            <br>
-
-                            <small>
-
-                            ${produto.quantidade}
-                            /
-                            mínimo
-                            ${produto.stock_minimo}
-
-                            </small>
-
-
-                        </div>
-
-
-
-                        <span class="badge bg-danger">
-
-                            Baixo Stock
-
-                        </span>
-
-
-                    </div>
-
-
-                    `;
-
-
-                });
-
-
-
-            }
-            else{
-
-
-                lista.innerHTML = `
-
-                <div class="alert alert-success mb-0">
-
-                    Nenhum produto com baixo stock.
-
-                </div>
-
-                `;
-
-
-            }
-
-
-        }
-
-
+        return JSON.parse(storage);
 
     }
     catch(error){
 
-
         console.error(
-            "ERRO DASHBOARD:",
+            "ERRO AO LER USUÁRIO:",
             error
         );
 
+        return null;
 
     }
 
-
 }
-
-
-
 
 
 // =====================================================
 // CARREGAR DASHBOARD
 // =====================================================
 
-
 window.carregarDashboard = async function(){
-
 
     try{
 
+        console.log("=====================================");
+        console.log(" CARREGANDO DASHBOARD");
+        console.log("=====================================");
+
+
+        const usuario =
+            obterUsuarioDashboard();
+
 
         let urlDashboard =
-        API + "/dashboard/";
+            API + "/dashboard/";
 
+
+        // =============================================
+        // VENDEDOR
+        // =============================================
 
         if(
-            usuarioLogado &&
-            usuarioLogado.tipo === "vendedor"
+            usuario &&
+            usuario.tipo === "vendedor"
         ){
 
             urlDashboard +=
-            "?usuario_id=" + usuarioLogado.id;
+                "?usuario_id=" +
+                encodeURIComponent(usuario.id);
 
         }
 
 
+        console.log(
+            "URL DASHBOARD:",
+            urlDashboard
+        );
+
+
+        // =============================================
+        // BUSCAR DASHBOARD
+        // =============================================
 
         const resposta =
-        await fetch(urlDashboard);
+            await fetch(
+                urlDashboard,
+                {
+                    cache: "no-store"
+                }
+            );
 
+
+        console.log(
+            "STATUS DASHBOARD:",
+            resposta.status
+        );
 
 
         if(!resposta.ok){
 
+            const erroTexto =
+                await resposta.text();
+
+            console.error(
+                "ERRO DASHBOARD:",
+                erroTexto
+            );
+
             throw new Error(
-                "Erro ao carregar dashboard"
+                "Erro HTTP " +
+                resposta.status
             );
 
         }
 
 
-
         const dados =
-        await resposta.json();
-
+            await resposta.json();
 
 
         console.log(
-            "DADOS DASHBOARD:",
+            "========== DASHBOARD =========="
+        );
+
+        console.log(
+            "DADOS COMPLETOS:",
             dados
         );
 
-        // =====================================
-        // MOSTRAR VER DETALHES DAS VENDAS
-        // ADMIN E GERENTE
-        // =====================================
+        console.log(
+            "STOCK RECEBIDO:",
+            dados.stock
+        );
+
+        console.log(
+            "BAIXO STOCK RECEBIDO:",
+            dados.stock?.baixo_stock
+        );
+
+        console.log(
+            "TOTAL BAIXO STOCK:",
+            dados.stock?.baixo_stock_total
+        );
+
+
+        // =============================================
+        // DETALHES DAS VENDAS
+        // =============================================
 
         const verDetalhesVendas =
-        document.getElementById(
-            "ver-detalhes-vendas"
-        );
+            document.getElementById(
+                "ver-detalhes-vendas"
+            );
 
 
         if(verDetalhesVendas){
 
-
             if(
-                usuarioLogado &&
+                usuario &&
                 (
-                    usuarioLogado.tipo === "admin" ||
-                    usuarioLogado.tipo === "gerente"
+                    usuario.tipo === "admin" ||
+                    usuario.tipo === "gerente"
                 )
             ){
 
-                verDetalhesVendas.style.display = "block";
+                verDetalhesVendas.style.display =
+                    "block";
 
             }
             else{
 
-                verDetalhesVendas.style.display = "none";
+                verDetalhesVendas.style.display =
+                    "none";
 
             }
 
         }
 
 
-
-        // ============================
+        // =============================================
         // BOTÃO LOGIN
-        // ============================
-
+        // =============================================
 
         const botaoLogin =
-        document.getElementById(
-            "login-button"
-        );
-
+            document.getElementById(
+                "login-button"
+            );
 
 
         if(botaoLogin){
 
-
-            if(usuarioLogado){
+            if(usuario){
 
                 botaoLogin.style.display =
-                "none";
+                    "none";
 
             }
             else{
 
                 botaoLogin.style.display =
-                "block";
+                    "block";
 
-                botaoLogin.onclick =
-                abrirLogin;
+                if(
+                    typeof abrirLogin ===
+                    "function"
+                ){
+
+                    botaoLogin.onclick =
+                        abrirLogin;
+
+                }
 
             }
 
         }
 
 
-
-
-
-        // ============================
+        // =============================================
         // STOCK
-        // ============================
+        // =============================================
+
+        let stock =
+            dados.stock || {};
 
 
-        const stock =
-        dados.stock || {};
+        // =============================================
+        // SE O DASHBOARD NÃO TROUXER STOCK,
+        // BUSCAR DIRETAMENTE /stock/
+        // =============================================
+
+        let produtosStock =
+            Array.isArray(stock.produtos)
+                ? stock.produtos
+                : null;
 
 
+        if(!produtosStock){
 
-        const totalStock =
-        document.getElementById(
-            "total-stock"
-        );
+            try{
+
+                console.log(
+                    "Dashboard não trouxe lista de stock."
+                );
+
+                console.log(
+                    "Buscando diretamente:",
+                    API + "/stock/"
+                );
 
 
-        if(totalStock){
+                const respostaStock =
+                    await fetch(
+                        API + "/stock/",
+                        {
+                            cache: "no-store"
+                        }
+                    );
 
-            totalStock.innerText =
-            stock.total ?? 0;
+
+                if(respostaStock.ok){
+
+                    produtosStock =
+                        await respostaStock.json();
+
+
+                    console.log(
+                        "STOCK DIRETO RECEBIDO:",
+                        produtosStock
+                    );
+
+                }
+
+            }
+            catch(error){
+
+                console.error(
+                    "ERRO AO BUSCAR STOCK DIRETO:",
+                    error
+                );
+
+            }
 
         }
 
 
+        // =============================================
+        // CALCULAR BAIXO STOCK DIRETAMENTE
+        // CASO O DASHBOARD NÃO ENVIE A LISTA
+        // =============================================
+
+        let baixoStockProdutos =
+            Array.isArray(stock.baixo_stock)
+                ? stock.baixo_stock
+                : [];
+
+
+        if(
+            baixoStockProdutos.length === 0 &&
+            Array.isArray(produtosStock)
+        ){
+
+            baixoStockProdutos =
+                produtosStock.filter(
+                    produto => {
+
+                        const quantidade =
+                            Number(
+                                produto.quantidade ?? 0
+                            );
+
+
+                        const minimo =
+                            Number(
+                                produto.stock_minimo ?? 0
+                            );
+
+
+                        return (
+                            quantidade <= minimo
+                        );
+
+                    }
+                );
+
+        }
+
+
+        // =============================================
+        // TOTAL STOCK
+        // =============================================
+
+        const totalStock =
+            document.getElementById(
+                "total-stock"
+            );
+
+
+        if(totalStock){
+
+            let total =
+                stock.total;
+
+
+            // Se backend não enviar total,
+            // calcula diretamente
+
+            if(
+                total === undefined &&
+                Array.isArray(produtosStock)
+            ){
+
+                total =
+                    produtosStock.reduce(
+                        (
+                            soma,
+                            produto
+                        ) => {
+
+                            return soma +
+                                Number(
+                                    produto.quantidade ?? 0
+                                );
+
+                        },
+                        0
+                    );
+
+            }
+
+
+            totalStock.innerText =
+                total ?? 0;
+
+        }
+
+
+        // =============================================
+        // PRODUTOS NOVOS
+        // =============================================
 
         const produtosNovos =
-        document.getElementById(
-            "produtos-novos"
-        );
+            document.getElementById(
+                "produtos-novos"
+            );
 
 
         if(produtosNovos){
 
             produtosNovos.innerText =
-            stock.produtos_novos ?? 0;
+                stock.produtos_novos ?? 0;
 
         }
 
 
+        // =============================================
+        // TOTAL BAIXO STOCK
+        // =============================================
 
         const baixoStock =
-        document.getElementById(
-            "baixo-stock"
-        );
+            document.getElementById(
+                "baixo-stock"
+            );
 
 
         if(baixoStock){
 
             baixoStock.innerText =
-            stock.baixo_stock_total ?? 0;
+                baixoStockProdutos.length;
 
         }
 
 
-
-
-
-        // ============================
+        // =============================================
         // LUCRO
-        // ============================
-
+        // =============================================
 
         const lucro =
-        document.getElementById(
-            "lucro-hoje"
-        );
+            document.getElementById(
+                "lucro-hoje"
+            );
 
 
         if(lucro){
 
             lucro.innerText =
-            Number(
-                dados.lucro_hoje || 0
-            ).toFixed(2)
-            + " MT";
+                Number(
+                    dados.lucro_hoje || 0
+                ).toFixed(2)
+                + " MT";
 
         }
 
 
-
-
-
-        // ============================
+        // =============================================
         // DESPESAS
-        // ============================
-
+        // =============================================
 
         const despesas =
-        document.getElementById(
-            "despesas-hoje"
-        );
+            document.getElementById(
+                "despesas-hoje"
+            );
 
 
         if(despesas){
 
             despesas.innerText =
-            Number(
-                dados.despesas_hoje || 0
-            ).toFixed(2)
-            + " MT";
+                Number(
+                    dados.despesas_hoje || 0
+                ).toFixed(2)
+                + " MT";
 
         }
 
 
-
-
-
-        // ============================
-        // ALERTAS STOCK
-        // ============================
-
+        // =============================================
+        // LISTA DE PRODUTOS COM BAIXO STOCK
+        // =============================================
 
         const lista =
-        document.getElementById(
-            "baixo-stock-list"
-        );
+            document.getElementById(
+                "baixo-stock-list"
+            );
 
 
         if(lista){
 
-
             lista.innerHTML = "";
 
 
+            // =========================================
+            // EXISTEM PRODUTOS COM BAIXO STOCK
+            // =========================================
 
             if(
-                Array.isArray(stock.baixo_stock)
+                Array.isArray(
+                    baixoStockProdutos
+                )
                 &&
-                stock.baixo_stock.length > 0
+                baixoStockProdutos.length > 0
             ){
 
+                baixoStockProdutos.forEach(
+                    produto => {
 
-                stock.baixo_stock.forEach(produto=>{
+                        const nome =
+                            produto.nome ??
+                            produto.produto ??
+                            "Produto";
 
 
-                    lista.innerHTML += `
+                        const quantidade =
+                            Number(
+                                produto.quantidade ?? 0
+                            );
 
-                    <div class="alert-item">
 
-                        <div>
+                        const minimo =
+                            Number(
+                                produto.stock_minimo ?? 0
+                            );
 
-                            <strong>
-                            ${produto.nome}
-                            </strong>
 
-                            <br>
+                        lista.innerHTML += `
 
-                            <small>
-                            ${produto.quantidade}
-                            /
-                            mínimo
-                            ${produto.stock_minimo}
-                            </small>
+                        <div class="alert-item">
+
+                            <div>
+
+                                <strong>
+                                    ${nome}
+                                </strong>
+
+                                <br>
+
+                                <small>
+
+                                    Stock:
+                                    ${quantidade}
+
+                                    /
+                                    mínimo:
+                                    ${minimo}
+
+                                </small>
+
+                            </div>
+
+                            <span
+                                class="badge bg-danger"
+                            >
+                                Baixo Stock
+                            </span>
 
                         </div>
 
+                        `;
 
-                        <span class="badge bg-danger">
-                            Baixo Stock
-                        </span>
-
-
-                    </div>
-
-                    `;
-
-
-                });
-
+                    }
+                );
 
             }
-            else{
 
+            // =========================================
+            // NENHUM PRODUTO
+            // =========================================
+
+            else{
 
                 lista.innerHTML = `
 
-                <div class="alert alert-success mb-0">
+                    <div
+                        class="alert alert-success mb-0"
+                    >
 
-                    Nenhum produto com baixo stock.
+                        Nenhum produto com baixo stock.
 
-                </div>
+                    </div>
 
                 `;
 
             }
 
+        }
+
+
+        // =============================================
+        // VENDAS DO DIA
+        // =============================================
+
+        if(
+            typeof carregarVendasDia ===
+            "function"
+        ){
+
+            await carregarVendasDia();
 
         }
 
 
-
-
-
-        // IMPORTANTE:
-        // depois do dashboard carregar,
-        // carregar vendas filtradas
-
-        await carregarVendasDia();
-
-
+        console.log(
+            "DASHBOARD CARREGADO COM SUCESSO"
+        );
 
     }
     catch(error){
-
 
         console.error(
             "ERRO DASHBOARD:",
             error
         );
 
-
     }
-
 
 };
 
 
-
-
-
-
-
 // =====================================================
-// VENDAS DO DIA DO USUARIO LOGADO
+// VENDAS DE HOJE
 // =====================================================
-
 
 window.carregarVendasDia = async function(){
 
+    console.log(
+        "====================================="
+    );
 
-    try{
+    console.log(
+        " CARREGANDO VENDAS DE HOJE"
+    );
+
+    console.log(
+        "====================================="
+    );
 
 
-        const elemento =
+    const elemento =
         document.getElementById(
             "vendas-dia"
         );
 
 
+    if(!elemento){
 
-        const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
+        console.error(
+            "ERRO: #vendas-dia não existe"
         );
 
+        return;
+
+    }
 
 
-        if(!usuario){
+    const usuario =
+        obterUsuarioDashboard();
 
 
-            if(elemento){
+    if(!usuario){
 
-                elemento.innerText =
-                "0.00 MT";
+        console.log(
+            "Usuário ainda não está disponível."
+        );
 
-            }
+        elemento.innerText =
+            "0.00 MT";
 
+        return;
 
-            return;
-
-        }
-
-
-
+    }
 
 
-        let url =
+    // =============================================
+    // URL
+    // =============================================
+
+    let url =
         API +
         "/vendas/dashboard/vendas-dia";
 
 
+    if(
+        usuario.tipo ===
+        "vendedor"
+    ){
+
+        url +=
+            "?usuario_id=" +
+            encodeURIComponent(
+                usuario.id
+            );
+
+    }
 
 
+    // =============================================
+    // CACHE
+    // =============================================
 
-        // somente vendedor filtra pelo próprio id
+    if(url.includes("?")){
 
-        if(usuario.tipo === "vendedor"){
+        url +=
+            "&_=" +
+            Date.now();
+
+    }
+    else{
+
+        url +=
+            "?_=" +
+            Date.now();
+
+    }
 
 
-            url += "?usuario_id=" + usuario.id;
+    console.log(
+        "URL VENDAS:",
+        url
+    );
 
 
-        }
+    try{
 
-
-
+        const resposta =
+            await fetch(
+                url,
+                {
+                    cache: "no-store"
+                }
+            );
 
 
         console.log(
-            "URL VENDAS FINAL:",
-            url
+            "STATUS VENDAS:",
+            resposta.status
         );
-
-
-
-
-
-        const resposta =
-        await fetch(url);
-
-
-
 
 
         if(!resposta.ok){
 
-            console.log(
-                "STATUS ERRO VENDAS:",
-                resposta.status
+            const erroTexto =
+                await resposta.text();
+
+            console.error(
+                "ERRO SERVIDOR VENDAS:",
+                erroTexto
             );
-
-
-            const textoErro =
-            await resposta.text();
-
-
-            console.log(
-                "RESPOSTA SERVIDOR:",
-                textoErro
-            );
-
 
             throw new Error(
-                "Erro vendas dia"
+                "Erro HTTP " +
+                resposta.status
             );
 
         }
 
 
-
-
-
-
         const dados =
-        await resposta.json();
-
-
-
+            await resposta.json();
 
 
         console.log(
-            "VENDAS FILTRADAS:",
+            "VENDAS RECEBIDAS:",
             dados
         );
 
 
-
-
-
-        if(elemento){
-
-
-            elemento.innerText =
+        const vendasHoje =
             Number(
-                dados.vendas_dia || 0
-            )
-            .toFixed(2)
-            +
+                dados.vendas_dia ?? 0
+            );
+
+
+        elemento.innerText =
+            vendasHoje.toFixed(2) +
             " MT";
-
-
-        }
-
-
 
     }
     catch(error){
 
-
         console.error(
-            "ERRO VENDAS:",
+            "ERRO AO CARREGAR VENDAS:",
             error
         );
 
 
-    }
+        elemento.innerText =
+            "0.00 MT";
 
+    }
 
 };
 
 
+// =====================================================
+// DETALHES DOS VENDEDORES
+// =====================================================
 
 window.carregarDetalhesVendedores = async function(){
 
     try{
 
-
         const tabela =
-        document.getElementById(
-            "tabela-vendedores"
-        );
+            document.getElementById(
+                "tabela-vendedores"
+            );
 
 
         if(!tabela)
             return;
 
 
-
         const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
-
+            obterUsuarioDashboard();
 
 
         if(!usuario){
 
             tabela.innerHTML =
-            "Usuário não encontrado";
+                "Usuário não encontrado";
 
             return;
 
         }
 
 
-
         const resposta =
-        await fetch(
-            API +
-            "/vendas/dashboard/vendas-vendedores?usuario_id="
-            +
-            usuario.id
-        );
-
+            await fetch(
+                API +
+                "/vendas/dashboard/vendas-vendedores?usuario_id=" +
+                encodeURIComponent(
+                    usuario.id
+                ),
+                {
+                    cache: "no-store"
+                }
+            );
 
 
         if(!resposta.ok){
@@ -851,197 +828,280 @@ window.carregarDetalhesVendedores = async function(){
         }
 
 
-
         const dados =
-        await resposta.json();
+            await resposta.json();
 
 
-        // guarda para filtro de data
+        vendasVendedoresCache =
+            dados;
 
-        vendasVendedoresCache = dados;
 
-
-
-        let html = "";
-
-
-
-        dados.forEach(vendedor=>{
-
-
-            html += `
-
-            <div class="card mb-4">
-
-
-                <div class="card-header bg-dark text-white">
-
-                    <strong>
-
-                    ${vendedor.vendedor}
-                    -
-                    ${vendedor.data}
-
-                    </strong>
-
-
-                </div>
-
-
-
-                <div class="card-body">
-
-
-                    <p>
-
-                    <strong>
-                    Total vendido:
-                    </strong>
-
-                    ${Number(
-                        vendedor.total
-                    ).toFixed(2)}
-
-                    MT
-
-                    </p>
-
-
-
-                    <table class="table table-sm table-bordered">
-
-
-                        <thead>
-
-                            <tr>
-
-                                <th>
-                                Produto
-                                </th>
-
-
-                                <th>
-                                Quantidade
-                                </th>
-
-
-                                <th>
-                                Subtotal
-                                </th>
-
-
-                            </tr>
-
-                        </thead>
-
-
-
-                        <tbody>
-
-
-            `;
-
-
-
-            vendedor.produtos.forEach(produto=>{
-
-
-                html += `
-
-
-                    <tr>
-
-
-                        <td>
-
-                        ${produto.produto}
-
-                        </td>
-
-
-
-                        <td>
-
-                        ${produto.quantidade}
-
-                        </td>
-
-
-
-                        <td>
-
-                        ${Number(
-                            produto.subtotal
-                        ).toFixed(2)}
-
-                        MT
-
-                        </td>
-
-
-                    </tr>
-
-
-                `;
-
-
-            });
-
-
-
-            html += `
-
-
-                        </tbody>
-
-
-                    </table>
-
-
-                </div>
-
-
-            </div>
-
-
-            `;
-
-
-        });
-
-
-
-        tabela.innerHTML = html;
-
-
+        mostrarVendasVendedores(
+            dados
+        );
 
     }
     catch(error){
-
 
         console.error(
             "ERRO DETALHES:",
             error
         );
 
+    }
+
+};
+
+
+// =====================================================
+// MOSTRAR VENDAS DOS VENDEDORES
+// =====================================================
+
+window.mostrarVendasVendedores = function(
+    dados
+){
+
+    const tabela =
+        document.getElementById(
+            "tabela-vendedores"
+        );
+
+
+    if(!tabela)
+        return;
+
+
+    if(
+        !Array.isArray(dados) ||
+        dados.length === 0
+    ){
+
+        tabela.innerHTML = `
+
+            <div class="alert alert-info">
+
+                Nenhuma venda encontrada.
+
+            </div>
+
+        `;
+
+        return;
 
     }
 
 
-};
-
-window.filtrarVendasData = function(){
+    let agrupado = {};
 
 
-    const campo =
-    document.getElementById(
-        "filtro-data-vendas"
+    dados.forEach(
+        venda => {
+
+            const chave =
+                venda.vendedor +
+                "_" +
+                venda.data;
+
+
+            if(!agrupado[chave]){
+
+                agrupado[chave] = {
+
+                    vendedor:
+                        venda.vendedor,
+
+                    data:
+                        venda.data,
+
+                    total: 0,
+
+                    produtos: []
+
+                };
+
+            }
+
+
+            agrupado[chave].total +=
+                Number(
+                    venda.total || 0
+                );
+
+
+            if(
+                Array.isArray(
+                    venda.produtos
+                )
+            ){
+
+                venda.produtos.forEach(
+                    produto => {
+
+                        agrupado[
+                            chave
+                        ].produtos.push(
+                            produto
+                        );
+
+                    }
+                );
+
+            }
+
+        }
     );
 
 
-    const texto =
-    campo.value.trim();
+    const vendasOrganizadas =
+        Object.values(
+            agrupado
+        );
 
+
+    let html = "";
+
+
+    vendasOrganizadas.forEach(
+        venda => {
+
+            html += `
+
+            <div class="card mb-4">
+
+                <div
+                    class="card-header bg-dark text-white"
+                >
+
+                    <strong>
+                        Data: ${venda.data}
+                    </strong>
+
+                </div>
+
+
+                <div class="card-body">
+
+                    <h5>
+                        Vendedor:
+                        ${venda.vendedor}
+                    </h5>
+
+
+                    <p>
+
+                        <strong>
+                            Total vendido:
+                        </strong>
+
+                        ${venda.total.toFixed(2)}
+                        MT
+
+                    </p>
+
+
+                    <table
+                        class="table table-sm table-bordered"
+                    >
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Produto
+                                </th>
+
+                                <th>
+                                    Quantidade
+                                </th>
+
+                                <th>
+                                    Subtotal
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+            `;
+
+
+            venda.produtos.forEach(
+                produto => {
+
+                    html += `
+
+                        <tr>
+
+                            <td>
+                                ${produto.produto}
+                            </td>
+
+                            <td>
+                                ${produto.quantidade}
+                            </td>
+
+                            <td>
+
+                                ${Number(
+                                    produto.subtotal || 0
+                                ).toFixed(2)}
+
+                                MT
+
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                }
+            );
+
+
+            html += `
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+            `;
+
+        }
+    );
+
+
+    tabela.innerHTML =
+        html;
+
+};
+
+
+// =====================================================
+// FILTRAR VENDAS POR DATA
+// =====================================================
+
+window.filtrarVendasData = function(){
+
+    const campo =
+        document.getElementById(
+            "filtro-data-vendas"
+        );
+
+
+    if(!campo)
+        return;
+
+
+    const texto =
+        campo.value.trim();
 
 
     if(texto === ""){
@@ -1055,270 +1115,39 @@ window.filtrarVendasData = function(){
     }
 
 
-
     const filtradas =
-    vendasVendedoresCache.filter(venda=>{
-
-
-        return venda.data.includes(
-            texto
+        vendasVendedoresCache.filter(
+            venda =>
+                String(
+                    venda.data ?? ""
+                ).includes(texto)
         );
-
-
-    });
-
 
 
     mostrarVendasVendedores(
         filtradas
     );
 
-
 };
 
-window.mostrarVendasVendedores = function(dados){
-
-
-    const tabela =
-    document.getElementById(
-        "tabela-vendedores"
-    );
-
-
-    if(!tabela)
-        return;
-
-
-
-    // ================================
-    // AGRUPAR VENDEDOR + DATA
-    // ================================
-
-    let agrupado = {};
-
-
-
-    dados.forEach(venda=>{
-
-
-        let chave =
-        venda.vendedor +
-        "_" +
-        venda.data;
-
-
-
-        if(!agrupado[chave]){
-
-
-            agrupado[chave] = {
-
-                vendedor:
-                venda.vendedor,
-
-                data:
-                venda.data,
-
-                total:0,
-
-                produtos:[]
-
-            };
-
-
-        }
-
-
-
-        agrupado[chave].total +=
-        Number(venda.total || 0);
-
-
-
-        venda.produtos.forEach(produto=>{
-
-
-            agrupado[chave].produtos.push(
-                produto
-            );
-
-
-        });
-
-
-    });
-
-
-
-    let vendasOrganizadas =
-    Object.values(agrupado);
-
-
-
-    let html = "";
-
-
-
-    vendasOrganizadas.forEach(venda=>{
-
-
-        html += `
-
-        <div class="card mb-4">
-
-
-            <div class="card-header bg-dark text-white">
-
-
-                <strong>
-                Data: ${venda.data}
-                </strong>
-
-
-            </div>
-
-
-
-            <div class="card-body">
-
-
-                <h5>
-                Vendedor:
-                ${venda.vendedor}
-                </h5>
-
-
-
-                <p>
-
-                <strong>
-                Total vendido:
-                </strong>
-
-                ${venda.total.toFixed(2)}
-                MT
-
-                </p>
-
-
-
-                <table class="table table-sm table-bordered">
-
-
-                    <thead>
-
-                        <tr>
-
-                            <th>
-                            Produto
-                            </th>
-
-                            <th>
-                            Quantidade
-                            </th>
-
-                            <th>
-                            Subtotal
-                            </th>
-
-
-                        </tr>
-
-                    </thead>
-
-
-
-                    <tbody>
-
-
-        `;
-
-
-
-        venda.produtos.forEach(produto=>{
-
-
-            html += `
-
-
-                <tr>
-
-
-                    <td>
-                    ${produto.produto}
-                    </td>
-
-
-                    <td>
-                    ${produto.quantidade}
-                    </td>
-
-
-                    <td>
-
-                    ${Number(
-                        produto.subtotal
-                    ).toFixed(2)}
-
-                    MT
-
-                    </td>
-
-
-                </tr>
-
-
-            `;
-
-
-        });
-
-
-
-        html += `
-
-
-                    </tbody>
-
-
-                </table>
-
-
-
-            </div>
-
-
-        </div>
-
-
-        `;
-
-
-    });
-
-
-
-    tabela.innerHTML = html;
-
-
-};
 
 // =====================================================
-// MODAL VENDAS POR VENDEDOR
+// MODAL VENDEDORES
 // =====================================================
-
 
 window.abrirModalVendedores = function(){
 
     const modal =
-    document.getElementById(
-        "modal-vendedores"
-    );
+        document.getElementById(
+            "modal-vendedores"
+        );
 
 
     if(modal){
 
-        modal.style.display = "flex";
+        modal.style.display =
+            "flex";
+
 
         carregarDetalhesVendedores();
 
@@ -1327,44 +1156,102 @@ window.abrirModalVendedores = function(){
 };
 
 
-
 window.fecharModalVendedores = function(){
 
     const modal =
-    document.getElementById(
-        "modal-vendedores"
-    );
+        document.getElementById(
+            "modal-vendedores"
+        );
 
 
     if(modal){
 
-        modal.style.display = "none";
+        modal.style.display =
+            "none";
 
     }
 
 };
+
+
 // =====================================================
 // INICIALIZAÇÃO
 // =====================================================
 
+document.addEventListener(
+    "DOMContentLoaded",
+    function(){
 
-window.addEventListener(
-"DOMContentLoaded",
-async function(){
+        console.log(
+            "====================================="
+        );
+
+        console.log(
+            " DASHBOARD PRONTO"
+        );
+
+        console.log(
+            "====================================="
+        );
 
 
-    const usuario =
-    localStorage.getItem("usuario");
+        if(
+            typeof atualizarVisibilidadeDetalhesVendas ===
+            "function"
+        ){
+
+            atualizarVisibilidadeDetalhesVendas();
+
+        }
 
 
-    if(usuario){
+        setTimeout(
+            async function(){
 
-        usuarioLogado =
-        JSON.parse(usuario);
+                const usuario =
+                    obterUsuarioDashboard();
 
-        await carregarDashboard();
+
+                console.log(
+                    "USUÁRIO NO DASHBOARD:",
+                    usuario
+                );
+
+
+                if(!usuario){
+
+                    console.log(
+                        "Nenhum usuário logado."
+                    );
+
+                    return;
+
+                }
+
+
+                // =====================================
+                // SALDO
+                // =====================================
+
+                if(
+                    typeof atualizarSaldoCaixaDashboard ===
+                    "function"
+                ){
+
+                    await atualizarSaldoCaixaDashboard();
+
+                }
+
+
+                // =====================================
+                // DASHBOARD
+                // =====================================
+
+                await carregarDashboard();
+
+            },
+            500
+        );
 
     }
-
-
-});
+);

@@ -13,7 +13,107 @@ let modoTabelaDespesas = false;
 
 
 // =====================================================
-// ABRIR ÁREA DE DESPESAS
+// OBTER USUÁRIO LOGADO
+// =====================================================
+
+function obterUsuarioLogado(){
+
+    try{
+
+        const usuario =
+            JSON.parse(
+                localStorage.getItem("usuario")
+            );
+
+        return usuario || null;
+
+    }
+    catch(error){
+
+        console.error(
+            "Erro ao ler usuário:",
+            error
+        );
+
+        return null;
+
+    }
+
+}
+
+
+// =====================================================
+// NORMALIZAR TIPO DO USUÁRIO
+// =====================================================
+
+function obterTipoUsuario(){
+
+    const usuario =
+        obterUsuarioLogado();
+
+
+    if(!usuario){
+
+        return "";
+
+    }
+
+
+    return String(
+        usuario.tipo || ""
+    )
+    .trim()
+    .toLowerCase();
+
+}
+
+
+// =====================================================
+// VERIFICAR ADMIN
+// =====================================================
+
+function usuarioEhAdmin(){
+
+    const tipo =
+        obterTipoUsuario();
+
+
+    return (
+        tipo === "admin" ||
+        tipo === "administrador"
+    );
+
+}
+
+
+// =====================================================
+// VERIFICAR GERENTE
+// =====================================================
+
+function usuarioEhGerente(){
+
+    return (
+        obterTipoUsuario() === "gerente"
+    );
+
+}
+
+
+// =====================================================
+// VERIFICAR VENDEDOR
+// =====================================================
+
+function usuarioEhVendedor(){
+
+    return (
+        obterTipoUsuario() === "vendedor"
+    );
+
+}
+
+
+// =====================================================
+// ABRIR DESPESAS
 // =====================================================
 
 window.abrirDespesas = function(){
@@ -68,17 +168,19 @@ window.fecharDespesas = function(){
 // CONFIGURAR PERMISSÕES
 // =====================================================
 
-function configurarPermissaoDespesas(){
+async function configurarPermissaoDespesas(){
 
     const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
+        obterUsuarioLogado();
 
 
     if(!usuario){
 
         console.error(
+            "Usuário não encontrado."
+        );
+
+        mostrarErroLista(
             "Usuário não encontrado."
         );
 
@@ -88,11 +190,7 @@ function configurarPermissaoDespesas(){
 
 
     const tipoUsuario =
-        String(
-            usuario.tipo || ""
-        )
-        .trim()
-        .toLowerCase();
+        obterTipoUsuario();
 
 
     const formulario =
@@ -108,6 +206,18 @@ function configurarPermissaoDespesas(){
 
 
     // =================================================
+    // ESCONDER FORMULÁRIO
+    // =================================================
+
+    if(formulario){
+
+        formulario.style.display =
+            "none";
+
+    }
+
+
+    // =================================================
     // ADMIN
     // =================================================
 
@@ -116,18 +226,10 @@ function configurarPermissaoDespesas(){
         tipoUsuario === "administrador"
     ){
 
-        console.log(
-            "ADMIN: pode criar despesas diretamente."
-        );
-
-
         if(botao){
 
             botao.style.display =
                 "inline-block";
-
-            botao.style.visibility =
-                "visible";
 
             botao.disabled =
                 false;
@@ -140,16 +242,26 @@ function configurarPermissaoDespesas(){
         }
 
 
-        if(formulario){
+        /*
+         * ATENÇÃO:
+         *
+         * O backend NÃO possui:
+         *
+         * GET /despesas/
+         *
+         * nem:
+         *
+         * GET /despesas/admin
+         *
+         *
+         * A única rota GET disponível
+         * para consultar despesas sem
+         * informar usuário é:
+         *
+         * GET /despesas/pendentes
+         */
 
-            formulario.style.display =
-                "none";
-
-        }
-
-
-        carregarTodasDespesasAdmin();
-
+        await carregarDespesasPendentes();
 
         return;
 
@@ -164,11 +276,6 @@ function configurarPermissaoDespesas(){
         tipoUsuario === "gerente"
     ){
 
-        console.log(
-            "GERENTE: somente aprovação."
-        );
-
-
         if(botao){
 
             botao.style.display =
@@ -180,16 +287,7 @@ function configurarPermissaoDespesas(){
         }
 
 
-        if(formulario){
-
-            formulario.style.display =
-                "none";
-
-        }
-
-
-        carregarSolicitacoesDespesas();
-
+        await carregarDespesasPendentes();
 
         return;
 
@@ -204,18 +302,10 @@ function configurarPermissaoDespesas(){
         tipoUsuario === "vendedor"
     ){
 
-        console.log(
-            "VENDEDOR: pode solicitar despesas."
-        );
-
-
         if(botao){
 
             botao.style.display =
                 "inline-block";
-
-            botao.style.visibility =
-                "visible";
 
             botao.disabled =
                 false;
@@ -228,16 +318,7 @@ function configurarPermissaoDespesas(){
         }
 
 
-        if(formulario){
-
-            formulario.style.display =
-                "none";
-
-        }
-
-
-        carregarMinhasDespesas();
-
+        await carregarMinhasDespesas();
 
         return;
 
@@ -248,12 +329,6 @@ function configurarPermissaoDespesas(){
     // TIPO DESCONHECIDO
     // =================================================
 
-    console.error(
-        "Tipo de usuário sem permissão:",
-        usuario.tipo
-    );
-
-
     if(botao){
 
         botao.style.display =
@@ -262,28 +337,21 @@ function configurarPermissaoDespesas(){
     }
 
 
-    if(formulario){
-
-        formulario.style.display =
-            "none";
-
-    }
+    mostrarErroLista(
+        "Tipo de usuário sem permissão para despesas."
+    );
 
 }
 
 
 // =====================================================
 // ABRIR FORMULÁRIO
-// ADMIN E VENDEDOR
-// GERENTE NÃO PODE
 // =====================================================
 
 window.abrirFormularioDespesa = function(){
 
     const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
+        obterUsuarioLogado();
 
 
     if(!usuario){
@@ -298,15 +366,11 @@ window.abrirFormularioDespesa = function(){
 
 
     const tipoUsuario =
-        String(
-            usuario.tipo || ""
-        )
-        .trim()
-        .toLowerCase();
+        obterTipoUsuario();
 
 
     // =================================================
-    // GERENTE NÃO PODE
+    // GERENTE
     // =================================================
 
     if(
@@ -323,7 +387,7 @@ window.abrirFormularioDespesa = function(){
 
 
     // =================================================
-    // SOMENTE ADMIN OU VENDEDOR
+    // PERMISSÃO
     // =================================================
 
     if(
@@ -374,15 +438,61 @@ window.abrirFormularioDespesa = function(){
 
 
 // =====================================================
+// LIMPAR FORMULÁRIO
+// =====================================================
+
+function limparFormularioDespesa(){
+
+    const descricao =
+        document.getElementById(
+            "despesa-descricao"
+        );
+
+
+    const categoria =
+        document.getElementById(
+            "despesa-categoria"
+        );
+
+
+    const valor =
+        document.getElementById(
+            "despesa-valor"
+        );
+
+
+    const observacao =
+        document.getElementById(
+            "despesa-observacao"
+        );
+
+
+    if(descricao)
+        descricao.value = "";
+
+
+    if(categoria)
+        categoria.value = "";
+
+
+    if(valor)
+        valor.value = "";
+
+
+    if(observacao)
+        observacao.value = "";
+
+}
+
+
+// =====================================================
 // SALVAR DESPESA
 // =====================================================
 
 window.salvarDespesa = async function(){
 
     const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
+        obterUsuarioLogado();
 
 
     if(!usuario){
@@ -397,15 +507,11 @@ window.salvarDespesa = async function(){
 
 
     const tipoUsuario =
-        String(
-            usuario.tipo || ""
-        )
-        .trim()
-        .toLowerCase();
+        obterTipoUsuario();
 
 
     // =================================================
-    // GERENTE NÃO PODE CRIAR
+    // PERMISSÃO
     // =================================================
 
     if(
@@ -420,10 +526,6 @@ window.salvarDespesa = async function(){
 
     }
 
-
-    // =================================================
-    // VALIDAR TIPO
-    // =================================================
 
     if(
         tipoUsuario !== "admin" &&
@@ -474,10 +576,6 @@ window.salvarDespesa = async function(){
         !campoValor ||
         !campoObservacao
     ){
-
-        console.error(
-            "Campos da despesa não encontrados."
-        );
 
         alert(
             "Formulário de despesa incompleto."
@@ -541,7 +639,7 @@ window.salvarDespesa = async function(){
 
 
     if(
-        !valor ||
+        !Number.isFinite(valor) ||
         valor <= 0
     ){
 
@@ -580,46 +678,44 @@ window.salvarDespesa = async function(){
     };
 
 
+    // =================================================
+    // ENDPOINT
+    // =================================================
+
+    let endpoint;
+
+
+    /*
+     * ADMIN:
+     *
+     * POST /despesas/
+     *
+     *
+     * VENDEDOR:
+     *
+     * POST /despesas/solicitar
+     */
+
+    if(
+        tipoUsuario === "admin" ||
+        tipoUsuario === "administrador"
+    ){
+
+        endpoint =
+            API +
+            "/despesas/";
+
+    }
+    else{
+
+        endpoint =
+            API +
+            "/despesas/solicitar";
+
+    }
+
+
     try{
-
-        let endpoint;
-
-
-        // =================================================
-        // ADMIN
-        // =================================================
-
-        if(
-            tipoUsuario === "admin" ||
-            tipoUsuario === "administrador"
-        ){
-
-            endpoint =
-                API +
-                "/despesas/";
-
-        }
-
-
-        // =================================================
-        // VENDEDOR
-        // =================================================
-
-        else{
-
-            endpoint =
-                API +
-                "/despesas/solicitar";
-
-        }
-
-
-        console.log(
-            "Criando despesa:",
-            endpoint,
-            dados
-        );
-
 
         const resposta =
             await fetch(
@@ -648,7 +744,9 @@ window.salvarDespesa = async function(){
 
 
         const resultado =
-            await resposta.json();
+            await lerRespostaJson(
+                resposta
+            );
 
 
         if(!resposta.ok){
@@ -660,38 +758,23 @@ window.salvarDespesa = async function(){
 
 
             alert(
-                resultado.detail ||
-                "Erro ao criar despesa."
+                obterMensagemErro(
+                    resultado,
+                    "Erro ao criar despesa."
+                )
             );
-
 
             return;
 
         }
 
 
-        console.log(
-            "Despesa criada:",
-            resultado
-        );
-
-
         // =================================================
-        // LIMPAR FORMULÁRIO
+        // LIMPAR
         // =================================================
 
-        campoDescricao.value = "";
+        limparFormularioDespesa();
 
-        campoCategoria.value = "";
-
-        campoValor.value = "";
-
-        campoObservacao.value = "";
-
-
-        // =================================================
-        // FECHAR FORMULÁRIO
-        // =================================================
 
         const formulario =
             document.getElementById(
@@ -716,31 +799,16 @@ window.salvarDespesa = async function(){
             tipoUsuario === "administrador"
         ){
 
-            await carregarTodasDespesasAdmin();
+            await carregarDespesasPendentes();
+
+            alert(
+                "Despesa criada com sucesso."
+            );
 
         }
         else{
 
             await carregarMinhasDespesas();
-
-        }
-
-
-        // =================================================
-        // MENSAGEM
-        // =================================================
-
-        if(
-            tipoUsuario === "admin" ||
-            tipoUsuario === "administrador"
-        ){
-
-            alert(
-                "Despesa criada e aprovada com sucesso."
-            );
-
-        }
-        else{
 
             alert(
                 "Solicitação de despesa enviada com sucesso."
@@ -767,6 +835,88 @@ window.salvarDespesa = async function(){
 
 
 // =====================================================
+// LER JSON COM SEGURANÇA
+// =====================================================
+
+async function lerRespostaJson(resposta){
+
+    try{
+
+        return await resposta.json();
+
+    }
+    catch(error){
+
+        return {};
+
+    }
+
+}
+
+
+// =====================================================
+// OBTER MENSAGEM DE ERRO
+// =====================================================
+
+function obterMensagemErro(
+    dados,
+    mensagemPadrao
+){
+
+    if(!dados){
+
+        return mensagemPadrao;
+
+    }
+
+
+    if(
+        typeof dados === "string"
+    ){
+
+        return dados;
+
+    }
+
+
+    if(
+        dados.detail
+    ){
+
+        if(
+            typeof dados.detail === "string"
+        ){
+
+            return dados.detail;
+
+        }
+
+
+        if(
+            Array.isArray(
+                dados.detail
+            )
+        ){
+
+            return dados.detail
+                .map(
+                    erro =>
+                        erro.msg ||
+                        "Erro de validação."
+                )
+                .join("\n");
+
+        }
+
+    }
+
+
+    return mensagemPadrao;
+
+}
+
+
+// =====================================================
 // CARREGAR MINHAS DESPESAS
 // VENDEDOR
 // =====================================================
@@ -774,9 +924,7 @@ window.salvarDespesa = async function(){
 async function carregarMinhasDespesas(){
 
     const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
+        obterUsuarioLogado();
 
 
     if(!usuario)
@@ -790,13 +938,17 @@ async function carregarMinhasDespesas(){
 
                 API +
                 "/despesas/usuario/" +
-                usuario.id
+                encodeURIComponent(
+                    usuario.id
+                )
 
             );
 
 
         const dados =
-            await resposta.json();
+            await lerRespostaJson(
+                resposta
+            );
 
 
         if(!resposta.ok){
@@ -807,39 +959,17 @@ async function carregarMinhasDespesas(){
             );
 
 
-            const lista =
-                document.getElementById(
-                    "lista-despesas"
-                );
-
-
-            if(lista){
-
-                lista.innerHTML = `
-                    <div class="alert alert-danger">
-                        ${
-                            dados.detail ||
-                            "Erro ao carregar despesas."
-                        }
-                    </div>
-                `;
-
-            }
+            mostrarErroLista(
+                obterMensagemErro(
+                    dados,
+                    "Erro ao carregar despesas."
+                )
+            );
 
             return;
 
         }
 
-
-        console.log(
-            "Despesas do vendedor:",
-            dados
-        );
-
-
-        // =================================================
-        // GUARDAR DADOS PARA FILTRO
-        // =================================================
 
         despesasAtuais =
             Array.isArray(dados)
@@ -867,84 +997,189 @@ async function carregarMinhasDespesas(){
             error
         );
 
+
+        mostrarErroLista(
+            "Erro de comunicação com o servidor."
+        );
+
     }
 
 }
 
 
 // =====================================================
-// CARREGAR DESPESAS ADMIN
-// ADMIN VÊ TODAS
+// CARREGAR DESPESAS PENDENTES
+//
+// ESTA É A ROTA CORRETA DO BACKEND:
+//
+// GET /despesas/pendentes
 // =====================================================
 
-async function carregarTodasDespesasAdmin(){
+// =====================================================
+// CARREGAR DESPESAS PENDENTES
+// GERENTE
+// =====================================================
 
-    const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
+async function carregarDespesasPendentes(){
+
+    const usuario = obterUsuarioLogado();
+
+    if(!usuario){
+
+        console.error(
+            "Usuário não encontrado."
         );
 
+        mostrarErroLista(
+            "Usuário não encontrado."
+        );
 
-    if(!usuario)
         return;
+    }
+
+
+    if(!usuario.id){
+
+        console.error(
+            "ID do usuário não encontrado:",
+            usuario
+        );
+
+        mostrarErroLista(
+            "ID do usuário não encontrado."
+        );
+
+        return;
+    }
 
 
     try{
 
-        const resposta =
-            await fetch(
+        // =================================================
+        // O BACKEND EXIGE usuario_id
+        // =================================================
 
-                API +
-                "/despesas/usuario/" +
+        const url =
+            API +
+            "/despesas/pendentes?usuario_id=" +
+            encodeURIComponent(
                 usuario.id
-
             );
 
 
-        const dados =
-            await resposta.json();
+        console.log(
+            "Carregando despesas pendentes:",
+            url
+        );
 
+
+        const resposta =
+            await fetch(
+                url,
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                }
+            );
+
+
+        // =================================================
+        // LER RESPOSTA
+        // =================================================
+
+        let dados = null;
+
+        try{
+
+            dados =
+                await resposta.json();
+
+        }
+        catch(error){
+
+            console.error(
+                "Resposta não é JSON:",
+                error
+            );
+
+        }
+
+
+        // =================================================
+        // ERRO HTTP
+        // =================================================
 
         if(!resposta.ok){
 
             console.error(
-                "Erro ao carregar despesas do admin:",
-                dados
+                "Erro ao carregar despesas pendentes:",
+                {
+                    status: resposta.status,
+                    statusText: resposta.statusText,
+                    dados: dados
+                }
             );
 
 
-            const lista =
-                document.getElementById(
-                    "lista-despesas"
-                );
+            let mensagem =
+                "Erro ao carregar despesas pendentes.";
 
 
-            if(lista){
+            if(
+                dados &&
+                dados.detail
+            ){
 
-                lista.innerHTML = `
-                    <div class="alert alert-danger">
-                        ${
-                            dados.detail ||
-                            "Erro ao carregar despesas."
-                        }
-                    </div>
-                `;
+                if(
+                    Array.isArray(
+                        dados.detail
+                    )
+                ){
+
+                    mensagem =
+                        dados.detail
+                            .map(function(item){
+
+                                if(
+                                    item &&
+                                    item.msg
+                                ){
+
+                                    return item.msg;
+
+                                }
+
+                                return String(item);
+
+                            })
+                            .join(", ");
+
+                }
+                else{
+
+                    mensagem =
+                        String(
+                            dados.detail
+                        );
+
+                }
 
             }
+
+
+            mostrarErroLista(
+                mensagem
+            );
 
             return;
 
         }
 
 
-        console.log(
-            "Despesas do ADMIN:",
-            dados
-        );
-
-
         // =================================================
-        // GUARDAR DADOS PARA FILTRO
+        // NORMALIZAR DADOS
         // =================================================
 
         despesasAtuais =
@@ -957,115 +1192,91 @@ async function carregarTodasDespesasAdmin(){
             true;
 
 
+        // =================================================
+        // MOSTRAR TABELA
+        // =================================================
+
         mostrarTabelaDespesas(
             despesasAtuais,
             true
         );
 
 
+        // =================================================
+        // CONFIGURAR FILTRO
+        // =================================================
+
         configurarFiltroDespesas();
+
 
     }
     catch(error){
 
         console.error(
-            "Erro ao carregar despesas do admin:",
+            "Erro de comunicação ao carregar despesas pendentes:",
             error
+        );
+
+
+        mostrarErroLista(
+            "Erro de comunicação com o servidor."
         );
 
     }
 
 }
 
+async function carregarTodasDespesasAdmin(){
+
+    await carregarDespesasPendentes();
+
+}
+
 
 // =====================================================
-// CARREGAR SOLICITAÇÕES
-// ADMIN / GERENTE
+// COMPATIBILIDADE GERENTE
 // =====================================================
 
 async function carregarSolicitacoesDespesas(){
 
-    const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
-
-
-    if(!usuario)
-        return;
-
-
-    try{
-
-        const resposta =
-            await fetch(
-
-                API +
-                "/despesas/pendentes?usuario_id=" +
-                usuario.id
-
-            );
-
-
-        const dados =
-            await resposta.json();
-
-
-        if(!resposta.ok){
-
-            console.error(
-                "Erro ao carregar solicitações:",
-                dados
-            );
-
-            return;
-
-        }
-
-
-        console.log(
-            "Solicitações recebidas:",
-            dados
-        );
-
-
-        // =================================================
-        // GUARDAR DADOS PARA FILTRO
-        // =================================================
-
-        despesasAtuais =
-            Array.isArray(dados)
-                ? dados
-                : [];
-
-
-        modoTabelaDespesas =
-            true;
-
-
-        mostrarTabelaDespesas(
-            despesasAtuais,
-            true
-        );
-
-
-        configurarFiltroDespesas();
-
-    }
-    catch(error){
-
-        console.error(
-            "Erro ao carregar solicitações:",
-            error
-        );
-
-    }
+    await carregarDespesasPendentes();
 
 }
 
 
 // =====================================================
-// NORMALIZAR TEXTO PARA FILTRO
+// MOSTRAR ERRO
+// =====================================================
+
+function mostrarErroLista(mensagem){
+
+    const lista =
+        document.getElementById(
+            "lista-despesas"
+        );
+
+
+    if(!lista)
+        return;
+
+
+    lista.innerHTML = `
+
+        <div class="alert alert-danger">
+
+            ${escaparHtml(
+                mensagem
+            )}
+
+        </div>
+
+    `;
+
+}
+
+
+// =====================================================
+// NORMALIZAR TEXTO
 // =====================================================
 
 function normalizarTexto(valor){
@@ -1093,7 +1304,7 @@ function normalizarTexto(valor){
 
 
 // =====================================================
-// NORMALIZAR VALOR MONETÁRIO
+// NORMALIZAR VALOR
 // =====================================================
 
 function normalizarValor(valor){
@@ -1135,12 +1346,89 @@ function normalizarValor(valor){
 
 
 // =====================================================
-// OBTER DATA PARA PESQUISA
+// FORMATAR VALOR
+// =====================================================
+
+function formatarValor(valor){
+
+    const numero =
+        Number(valor || 0);
+
+
+    if(
+        Number.isNaN(numero)
+    ){
+
+        return "0,00 MT";
+
+    }
+
+
+    return numero
+        .toFixed(2)
+        .replace(
+            ".",
+            ","
+        ) +
+        " MT";
+
+}
+
+
+// =====================================================
+// FORMATAR DATA
+// =====================================================
+
+function formatarData(data){
+
+    if(!data){
+
+        return "-";
+
+    }
+
+
+    try{
+
+        const objetoData =
+            new Date(data);
+
+
+        if(
+            Number.isNaN(
+                objetoData.getTime()
+            )
+        ){
+
+            return "-";
+
+        }
+
+
+        return objetoData.toLocaleDateString(
+            "pt-PT"
+        );
+
+    }
+    catch(error){
+
+        return "-";
+
+    }
+
+}
+
+
+// =====================================================
+// DATA PARA FILTRO
 // =====================================================
 
 function obterDataDespesa(d){
 
-    if(!d || !d.data_despesa){
+    if(
+        !d ||
+        !d.data_despesa
+    ){
 
         return "";
 
@@ -1153,9 +1441,6 @@ function obterDataDespesa(d){
         );
 
 
-    // Exemplo:
-    // 2026-08-11T14:16:13.126997Z
-
     const dataISO =
         data.substring(
             0,
@@ -1163,39 +1448,19 @@ function obterDataDespesa(d){
         );
 
 
-    let dataFormatada =
-        "";
-
-
-    try{
-
-        dataFormatada =
-            new Date(
-                d.data_despesa
-            ).toLocaleDateString(
-                "pt-PT"
-            );
-
-    }
-    catch(error){
-
-        dataFormatada =
-            "";
-
-    }
-
-
     return (
         dataISO +
         " " +
-        dataFormatada
+        formatarData(
+            d.data_despesa
+        )
     );
 
 }
 
 
 // =====================================================
-// CONFIGURAR FILTRO DE DESPESAS
+// CONFIGURAR FILTRO
 // =====================================================
 
 function configurarFiltroDespesas(){
@@ -1206,52 +1471,32 @@ function configurarFiltroDespesas(){
         );
 
 
-    const campoData =
+    if(!campoTexto)
+        return;
+
+
+    campoTexto.removeEventListener(
+        "input",
+        executarFiltroDespesas
+    );
+
+
+    campoTexto.addEventListener(
+        "input",
+        executarFiltroDespesas
+    );
+
+
+    const botaoLimpar =
         document.getElementById(
-            "filtro-data-despesas"
+            "limpar-filtro-despesas"
         );
 
 
-    if(campoTexto){
+    if(botaoLimpar){
 
-        campoTexto.removeEventListener(
-            "input",
-            executarFiltroDespesas
-        );
-
-
-        campoTexto.addEventListener(
-            "input",
-            executarFiltroDespesas
-        );
-
-    }
-
-
-    if(campoData){
-
-        campoData.removeEventListener(
-            "input",
-            executarFiltroDespesas
-        );
-
-
-        campoData.removeEventListener(
-            "change",
-            executarFiltroDespesas
-        );
-
-
-        campoData.addEventListener(
-            "input",
-            executarFiltroDespesas
-        );
-
-
-        campoData.addEventListener(
-            "change",
-            executarFiltroDespesas
-        );
+        botaoLimpar.onclick =
+            limparFiltroDespesas;
 
     }
 
@@ -1260,16 +1505,6 @@ function configurarFiltroDespesas(){
 
 // =====================================================
 // EXECUTAR FILTRO
-//
-// PESQUISA POR:
-//
-// Nome
-// Descrição
-// Categoria
-// Estado
-// Data
-// Valor proposto
-// Valor aprovado
 // =====================================================
 
 function executarFiltroDespesas(){
@@ -1277,12 +1512,6 @@ function executarFiltroDespesas(){
     const campoTexto =
         document.getElementById(
             "filtro-despesas"
-        );
-
-
-    const campoData =
-        document.getElementById(
-            "filtro-data-despesas"
         );
 
 
@@ -1294,213 +1523,127 @@ function executarFiltroDespesas(){
             : "";
 
 
-    const dataFiltro =
-        campoData
-            ? campoData.value.trim()
-            : "";
+    if(!texto){
+
+        mostrarTabelaDespesas(
+            despesasAtuais,
+            modoTabelaDespesas
+        );
+
+        return;
+
+    }
 
 
-    let dadosFiltrados =
-        [...despesasAtuais];
+    const dadosFiltrados =
+        despesasAtuais.filter(
+            function(d){
+
+                const nome =
+                    normalizarTexto(
+                        d.solicitante_nome ||
+                        d.usuario_nome ||
+                        d.nome ||
+                        ""
+                    );
 
 
-    // =================================================
-    // FILTRO POR TEXTO
-    // =================================================
-
-    if(texto){
-
-        dadosFiltrados =
-            dadosFiltrados.filter(
-                function(d){
-
-                    // ---------------------------------
-                    // NOME
-                    // ---------------------------------
-
-                    const nome =
-                        normalizarTexto(
-                            d.solicitante_nome
-                        );
+                const descricao =
+                    normalizarTexto(
+                        d.descricao
+                    );
 
 
-                    // ---------------------------------
-                    // DESCRIÇÃO
-                    // ---------------------------------
-
-                    const descricao =
-                        normalizarTexto(
-                            d.descricao
-                        );
+                const categoria =
+                    normalizarTexto(
+                        d.categoria
+                    );
 
 
-                    // ---------------------------------
-                    // CATEGORIA
-                    // ---------------------------------
-
-                    const categoria =
-                        normalizarTexto(
-                            d.categoria
-                        );
+                const estado =
+                    normalizarTexto(
+                        d.estado
+                    );
 
 
-                    // ---------------------------------
-                    // ESTADO
-                    // ---------------------------------
-
-                    const estado =
-                        normalizarTexto(
-                            d.estado
-                        );
+                const observacao =
+                    normalizarTexto(
+                        d.observacao
+                    );
 
 
-                    // ---------------------------------
-                    // VALOR PROPOSTO
-                    // ---------------------------------
-
-                    const valorPropostoNumero =
-                        d.valor_proposto !== null &&
-                        d.valor_proposto !== undefined
-                            ? Number(
-                                d.valor_proposto
-                            )
-                            : 0;
+                const data =
+                    normalizarTexto(
+                        obterDataDespesa(d)
+                    );
 
 
-                    const valorProposto =
-                        normalizarValor(
-                            d.valor_proposto
-                        );
+                const valorPropostoNumero =
+                    Number(
+                        d.valor_proposto || 0
+                    );
 
 
-                    const valorPropostoPonto =
-                        String(
-                            valorPropostoNumero
-                        );
-
-
-                    const valorPropostoInteiro =
-                        String(
-                            valorPropostoNumero
-                        )
-                        .replace(
-                            ".00",
-                            ""
-                        );
-
-
-                    // ---------------------------------
-                    // VALOR APROVADO
-                    // ---------------------------------
-
-                    const valorAprovado =
-                        normalizarValor(
+                const valorAprovadoNumero =
+                    d.valor_aprovado !== null &&
+                    d.valor_aprovado !== undefined
+                        ? Number(
                             d.valor_aprovado
-                        );
-
-
-                    const valorAprovadoNumero =
-                        d.valor_aprovado !== null &&
-                        d.valor_aprovado !== undefined
-                            ? Number(
-                                d.valor_aprovado
-                            )
-                            : null;
-
-
-                    const valorAprovadoPonto =
-                        valorAprovadoNumero !== null
-                            ? String(
-                                valorAprovadoNumero
-                            )
-                            : "";
-
-
-                    // ---------------------------------
-                    // DATA
-                    // ---------------------------------
-
-                    const data =
-                        normalizarTexto(
-                            obterDataDespesa(d)
-                        );
-
-
-                    // ---------------------------------
-                    // VERIFICAR TODOS OS CAMPOS
-                    // ---------------------------------
-
-                    return (
-
-                        nome.includes(texto) ||
-
-                        descricao.includes(texto) ||
-
-                        categoria.includes(texto) ||
-
-                        estado.includes(texto) ||
-
-                        data.includes(texto) ||
-
-                        valorProposto.includes(texto) ||
-
-                        valorPropostoPonto.includes(texto) ||
-
-                        valorPropostoInteiro.includes(texto) ||
-
-                        valorAprovado.includes(texto) ||
-
-                        valorAprovadoPonto.includes(texto)
-
-                    );
-
-                }
-            );
-
-    }
-
-
-    // =================================================
-    // FILTRO EXATO POR DATA
-    // =================================================
-
-    if(dataFiltro){
-
-        dadosFiltrados =
-            dadosFiltrados.filter(
-                function(d){
-
-                    if(!d.data_despesa){
-
-                        return false;
-
-                    }
-
-
-                    const dataDespesa =
-                        String(
-                            d.data_despesa
                         )
-                        .substring(
-                            0,
-                            10
-                        );
+                        : 0;
 
 
-                    return (
-                        dataDespesa ===
-                        dataFiltro
+                const valorProposto =
+                    normalizarValor(
+                        d.valor_proposto
                     );
 
-                }
-            );
 
-    }
+                const valorAprovado =
+                    normalizarValor(
+                        d.valor_aprovado
+                    );
 
 
-    // =================================================
-    // MOSTRAR RESULTADO
-    // =================================================
+                const valorPropostoPonto =
+                    String(
+                        valorPropostoNumero
+                    );
+
+
+                const valorAprovadoPonto =
+                    String(
+                        valorAprovadoNumero
+                    );
+
+
+                return (
+
+                    nome.includes(texto) ||
+
+                    descricao.includes(texto) ||
+
+                    categoria.includes(texto) ||
+
+                    estado.includes(texto) ||
+
+                    observacao.includes(texto) ||
+
+                    data.includes(texto) ||
+
+                    valorProposto.includes(texto) ||
+
+                    valorAprovado.includes(texto) ||
+
+                    valorPropostoPonto.includes(texto) ||
+
+                    valorAprovadoPonto.includes(texto)
+
+                );
+
+            }
+        );
+
 
     mostrarTabelaDespesas(
         dadosFiltrados,
@@ -1511,7 +1654,7 @@ function executarFiltroDespesas(){
 
 
 // =====================================================
-// LIMPAR FILTROS
+// LIMPAR FILTRO
 // =====================================================
 
 window.limparFiltroDespesas = function(){
@@ -1522,22 +1665,9 @@ window.limparFiltroDespesas = function(){
         );
 
 
-    const campoData =
-        document.getElementById(
-            "filtro-data-despesas"
-        );
-
-
     if(campoTexto){
 
         campoTexto.value = "";
-
-    }
-
-
-    if(campoData){
-
-        campoData.value = "";
 
     }
 
@@ -1597,7 +1727,7 @@ function escaparHtml(valor){
 
 function mostrarTabelaDespesas(
     dados,
-    admin
+    adminOuGerente
 ){
 
     const lista =
@@ -1619,75 +1749,49 @@ function mostrarTabelaDespesas(
 
     if(!Array.isArray(dados)){
 
-        lista.innerHTML = `
-            <div class="alert alert-danger">
-                Erro ao carregar despesas.
-            </div>
-        `;
+        mostrarErroLista(
+            "Dados de despesas inválidos."
+        );
 
         return;
 
     }
 
 
-    // =================================================
-    // CABEÇALHO
-    // =================================================
-
     let html = `
 
-    <div class="table-responsive">
+        <div class="table-responsive">
 
-        <table class="table table-bordered table-hover">
+            <table class="table table-bordered table-hover">
 
-            <thead>
+                <thead>
 
-                <tr>
+                    <tr>
 
-                    <th>
-                        Nome
-                    </th>
+                        <th>Nome</th>
 
-                    <th>
-                        Descrição
-                    </th>
+                        <th>Descrição</th>
 
-                    <th>
-                        Categoria
-                    </th>
+                        <th>Categoria</th>
 
-                    <th>
-                        Valor Proposto
-                    </th>
+                        <th>Valor Proposto</th>
 
-                    <th>
-                        Valor Aprovado
-                    </th>
+                        <th>Valor Aprovado</th>
 
-                    <th>
-                        Estado
-                    </th>
+                        <th>Estado</th>
 
-                    <th>
-                        Data
-                    </th>
+                        <th>Data</th>
 
-                    <th>
-                        Ação
-                    </th>
+                        <th>Ação</th>
 
-                </tr>
+                    </tr>
 
-            </thead>
+                </thead>
 
-            <tbody>
+                <tbody>
 
     `;
 
-
-    // =================================================
-    // NENHUMA DESPESA
-    // =================================================
 
     if(dados.length === 0){
 
@@ -1711,120 +1815,120 @@ function mostrarTabelaDespesas(
     }
 
 
-    // =================================================
-    // DESPESAS
-    // =================================================
-
     dados.forEach(
         function(d){
 
             const estado =
-                String(
-                    d.estado || ""
-                )
-                .trim()
-                .toLowerCase();
+                normalizarTexto(
+                    d.estado
+                );
 
 
             const nomeSolicitante =
                 d.solicitante_nome ||
+                d.usuario_nome ||
+                d.nome ||
                 "Não informado";
+
+
+            const descricao =
+                d.descricao ||
+                "";
+
+
+            const categoria =
+                d.categoria ||
+                "";
+
+
+            const valorProposto =
+                d.valor_proposto;
+
+
+            const valorAprovado =
+                d.valor_aprovado;
 
 
             html += `
 
-            <tr data-id="${d.id}">
+                <tr data-id="${Number(d.id)}">
 
-                <td class="nome-solicitante">
+                    <td class="nome-solicitante">
 
-                    ${escaparHtml(
-                        nomeSolicitante
-                    )}
+                        ${escaparHtml(
+                            nomeSolicitante
+                        )}
 
-                </td>
-
-
-                <td class="descricao">
-
-                    ${escaparHtml(
-                        d.descricao
-                    )}
-
-                </td>
+                    </td>
 
 
-                <td class="categoria">
+                    <td class="descricao">
 
-                    ${escaparHtml(
-                        d.categoria
-                    )}
+                        ${escaparHtml(
+                            descricao
+                        )}
 
-                </td>
-
-
-                <td class="valor">
-
-                    ${
-                        Number(
-                            d.valor_proposto || 0
-                        ).toFixed(2)
-                    }
-
-                    MT
-
-                </td>
+                    </td>
 
 
-                <td class="valor-aprovado">
+                    <td class="categoria">
 
-                    ${
-                        d.valor_aprovado == null
+                        ${escaparHtml(
+                            categoria
+                        )}
 
-                        ?
-
-                        "-"
-
-                        :
-
-                        Number(
-                            d.valor_aprovado
-                        ).toFixed(2)
-                        + " MT"
-
-                    }
-
-                </td>
+                    </td>
 
 
-                <td class="estado">
+                    <td class="valor">
 
-                    ${escaparHtml(
-                        d.estado
-                    )}
+                        ${formatarValor(
+                            valorProposto
+                        )}
 
-                </td>
+                    </td>
 
 
-                <td>
+                    <td class="valor-aprovado">
 
-                    ${
-                        d.data_despesa
+                        ${
+                            valorAprovado !== null &&
+                            valorAprovado !== undefined
 
-                        ?
+                            ?
 
-                        new Date(
+                            formatarValor(
+                                valorAprovado
+                            )
+
+                            :
+
+                            "-"
+                        }
+
+                    </td>
+
+
+                    <td class="estado">
+
+                        ${escaparHtml(
+                            d.estado ||
+                            "-"
+                        )}
+
+                    </td>
+
+
+                    <td>
+
+                        ${formatarData(
                             d.data_despesa
-                        ).toLocaleDateString(
-                            "pt-PT"
-                        )
+                        )}
 
-                        :
+                    </td>
 
-                        "-"
-                    }
 
-                </td>
-
+                    <td>
             `;
 
 
@@ -1832,7 +1936,9 @@ function mostrarTabelaDespesas(
             // ADMIN / GERENTE
             // =================================================
 
-            if(admin){
+            if(
+                adminOuGerente
+            ){
 
                 if(
                     estado === "pendente"
@@ -1840,21 +1946,34 @@ function mostrarTabelaDespesas(
 
                     html += `
 
-                        <td>
+                        <button
+                            type="button"
+                            class="btn btn-success btn-sm"
+                            onclick="aprovarDespesa(${Number(d.id)})"
+                        >
 
-                            <button
-                                type="button"
-                                class="btn btn-success btn-sm"
-                                onclick="aprovarDespesa(${d.id})"
-                            >
+                            <i class="bi bi-check-circle"></i>
 
-                                <i class="bi bi-check-circle"></i>
+                            Aprovar
 
-                                Aprovar
+                        </button>
 
-                            </button>
+                    `;
 
-                        </td>
+                }
+                else if(
+                    estado === "aprovado"
+                ){
+
+                    html += `
+
+                        <span class="text-success">
+
+                            <i class="bi bi-check-circle"></i>
+
+                            Aprovada
+
+                        </span>
 
                     `;
 
@@ -1863,17 +1982,13 @@ function mostrarTabelaDespesas(
 
                     html += `
 
-                        <td>
+                        <span class="text-muted">
 
-                            <span class="text-success">
+                            ${escaparHtml(
+                                d.estado || "-"
+                            )}
 
-                                <i class="bi bi-check-circle"></i>
-
-                                Aprovada
-
-                            </span>
-
-                        </td>
+                        </span>
 
                     `;
 
@@ -1894,34 +2009,30 @@ function mostrarTabelaDespesas(
 
                     html += `
 
-                        <td>
+                        <button
+                            type="button"
+                            class="btn btn-warning btn-sm me-1"
+                            onclick="editarDespesa(${Number(d.id)})"
+                        >
 
-                            <button
-                                type="button"
-                                class="btn btn-warning btn-sm me-1"
-                                onclick="editarDespesa(${d.id})"
-                            >
+                            <i class="bi bi-pencil"></i>
 
-                                <i class="bi bi-pencil"></i>
+                            Editar
 
-                                Editar
-
-                            </button>
+                        </button>
 
 
-                            <button
-                                type="button"
-                                class="btn btn-danger btn-sm"
-                                onclick="apagarDespesa(${d.id})"
-                            >
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm"
+                            onclick="apagarDespesa(${Number(d.id)})"
+                        >
 
-                                <i class="bi bi-trash"></i>
+                            <i class="bi bi-trash"></i>
 
-                                Apagar
+                            Apagar
 
-                            </button>
-
-                        </td>
+                        </button>
 
                     `;
 
@@ -1930,15 +2041,11 @@ function mostrarTabelaDespesas(
 
                     html += `
 
-                        <td>
+                        <span class="text-muted">
 
-                            <span class="text-muted">
+                            Bloqueada
 
-                                Bloqueada
-
-                            </span>
-
-                        </td>
+                        </span>
 
                     `;
 
@@ -1949,7 +2056,9 @@ function mostrarTabelaDespesas(
 
             html += `
 
-            </tr>
+                    </td>
+
+                </tr>
 
             `;
 
@@ -1959,11 +2068,11 @@ function mostrarTabelaDespesas(
 
     html += `
 
-            </tbody>
+                </tbody>
 
-        </table>
+            </table>
 
-    </div>
+        </div>
 
     `;
 
@@ -1977,32 +2086,11 @@ function mostrarTabelaDespesas(
 // =====================================================
 // EDITAR DESPESA
 // SOMENTE VENDEDOR
-// SOMENTE PENDENTE
 // =====================================================
 
 window.editarDespesa = function(id){
 
-    const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
-
-
-    if(!usuario)
-        return;
-
-
-    const tipoUsuario =
-        String(
-            usuario.tipo || ""
-        )
-        .trim()
-        .toLowerCase();
-
-
-    if(
-        tipoUsuario !== "vendedor"
-    ){
+    if(!usuarioEhVendedor()){
 
         alert(
             "Somente o vendedor pode editar a sua solicitação."
@@ -2024,11 +2112,11 @@ window.editarDespesa = function(id){
 
 
     const estado =
-        linha
-        .querySelector(".estado")
-        ?.innerText
-        .trim()
-        .toLowerCase();
+        normalizarTexto(
+            linha
+                .querySelector(".estado")
+                ?.innerText
+        );
 
 
     if(
@@ -2046,34 +2134,46 @@ window.editarDespesa = function(id){
 
     const nome =
         linha
-        .querySelector(".nome-solicitante")
-        ?.innerText
-        .trim();
+            .querySelector(".nome-solicitante")
+            ?.innerText
+            .trim() ||
+        "";
 
 
     const descricao =
         linha
-        .querySelector(".descricao")
-        .innerText
-        .trim();
+            .querySelector(".descricao")
+            ?.innerText
+            .trim() ||
+        "";
 
 
     const categoria =
         linha
-        .querySelector(".categoria")
-        .innerText
-        .trim();
+            .querySelector(".categoria")
+            ?.innerText
+            .trim() ||
+        "";
+
+
+    const valorTexto =
+        linha
+            .querySelector(".valor")
+            ?.innerText
+            .replace(
+                "MT",
+                ""
+            )
+            .trim() ||
+        "0";
 
 
     const valor =
-        linha
-        .querySelector(".valor")
-        .innerText
-        .replace(
-            " MT",
-            ""
-        )
-        .trim();
+        Number(
+            valorTexto
+                .replace(/\./g, "")
+                .replace(",", ".")
+        );
 
 
     linha.innerHTML = `
@@ -2117,35 +2217,28 @@ window.editarDespesa = function(id){
                 step="0.01"
                 class="form-control"
                 id="edit-val-${id}"
-                value="${Number(
-                    valor.replace(
-                        ",",
-                        "."
-                    )
-                )}"
+                value="${
+                    Number.isFinite(valor)
+                        ? valor
+                        : ""
+                }"
             >
 
         </td>
 
 
         <td>
-
             -
-
         </td>
 
 
         <td class="estado">
-
             pendente
-
         </td>
 
 
         <td>
-
             -
-
         </td>
 
 
@@ -2185,32 +2278,20 @@ window.editarDespesa = function(id){
 
 // =====================================================
 // GUARDAR EDIÇÃO
-// SOMENTE VENDEDOR
+// PUT /despesas/{id}
 // =====================================================
 
 window.salvarEdicaoDespesa = async function(id){
 
     const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
+        obterUsuarioLogado();
 
 
     if(!usuario)
         return;
 
 
-    const tipoUsuario =
-        String(
-            usuario.tipo || ""
-        )
-        .trim()
-        .toLowerCase();
-
-
-    if(
-        tipoUsuario !== "vendedor"
-    ){
+    if(!usuarioEhVendedor()){
 
         alert(
             "Somente o vendedor pode editar despesas."
@@ -2245,6 +2326,10 @@ window.salvarEdicaoDespesa = async function(id){
         !campoValor
     ){
 
+        alert(
+            "Campos de edição não encontrados."
+        );
+
         return;
 
     }
@@ -2270,8 +2355,6 @@ window.salvarEdicaoDespesa = async function(id){
             "Informe a descrição."
         );
 
-        campoDescricao.focus();
-
         return;
 
     }
@@ -2283,23 +2366,19 @@ window.salvarEdicaoDespesa = async function(id){
             "Informe a categoria."
         );
 
-        campoCategoria.focus();
-
         return;
 
     }
 
 
     if(
-        !valor ||
+        !Number.isFinite(valor) ||
         valor <= 0
     ){
 
         alert(
             "Informe um valor válido."
         );
-
-        campoValor.focus();
 
         return;
 
@@ -2329,7 +2408,9 @@ window.salvarEdicaoDespesa = async function(id){
                 "/despesas/" +
                 id +
                 "?usuario_id=" +
-                usuario.id,
+                encodeURIComponent(
+                    usuario.id
+                ),
 
                 {
 
@@ -2353,20 +2434,24 @@ window.salvarEdicaoDespesa = async function(id){
 
 
         const resultado =
-            await resposta.json();
+            await lerRespostaJson(
+                resposta
+            );
 
 
         if(!resposta.ok){
 
             console.error(
-                "Erro ao editar:",
+                "Erro ao editar despesa:",
                 resultado
             );
 
 
             alert(
-                resultado.detail ||
-                "Erro ao editar despesa."
+                obterMensagemErro(
+                    resultado,
+                    "Erro ao editar despesa."
+                )
             );
 
             return;
@@ -2400,34 +2485,15 @@ window.salvarEdicaoDespesa = async function(id){
 
 
 // =====================================================
-// APROVAR DESPESA
+// ABRIR APROVAÇÃO
 // ADMIN / GERENTE
 // =====================================================
 
 window.aprovarDespesa = function(id){
 
-    const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
-
-
-    if(!usuario)
-        return;
-
-
-    const tipoUsuario =
-        String(
-            usuario.tipo || ""
-        )
-        .trim()
-        .toLowerCase();
-
-
     if(
-        tipoUsuario !== "admin" &&
-        tipoUsuario !== "administrador" &&
-        tipoUsuario !== "gerente"
+        !usuarioEhAdmin() &&
+        !usuarioEhGerente()
     ){
 
         alert(
@@ -2450,7 +2516,9 @@ window.aprovarDespesa = function(id){
 
 
     const campoValor =
-        linha.querySelector(".valor");
+        linha.querySelector(
+            ".valor"
+        );
 
 
     const colunaValorAprovado =
@@ -2480,10 +2548,6 @@ window.aprovarDespesa = function(id){
     }
 
 
-    // =================================================
-    // EVITAR ABRIR NOVAMENTE
-    // =================================================
-
     if(
         document.getElementById(
             "valor-aprovado-" + id
@@ -2495,34 +2559,30 @@ window.aprovarDespesa = function(id){
     }
 
 
-    // =================================================
-    // VALOR PROPOSTO
-    // =================================================
-
     const valorProposto =
         campoValor.innerText
-        .replace(
-            " MT",
-            ""
-        )
-        .trim();
+            .replace(
+                "MT",
+                ""
+            )
+            .trim();
 
 
-    // =================================================
-    // GUARDAR ESTADO ORIGINAL
-    // =================================================
+    const valorNumero =
+        Number(
+            valorProposto
+                .replace(/\./g, "")
+                .replace(",", ".")
+        );
 
-    colunaValorAprovado.dataset.valorOriginal =
+
+    colunaValorAprovado.dataset.original =
         colunaValorAprovado.innerHTML;
 
 
-    colunaAcao.dataset.acaoOriginal =
+    colunaAcao.dataset.original =
         colunaAcao.innerHTML;
 
-
-    // =================================================
-    // CAMPO VALOR APROVADO
-    // =================================================
 
     colunaValorAprovado.innerHTML = `
 
@@ -2532,22 +2592,15 @@ window.aprovarDespesa = function(id){
             step="0.01"
             class="form-control"
             id="valor-aprovado-${id}"
-            value="${Number(
-                valorProposto
-                .replace(
-                    ",",
-                    "."
-                )
-            )}"
+            value="${
+                Number.isFinite(valorNumero)
+                    ? valorNumero
+                    : ""
+            }"
         >
 
     `;
 
-
-    // =================================================
-    // BOTÕES
-    // GUARDAR + CANCELAR
-    // =================================================
 
     colunaAcao.innerHTML = `
 
@@ -2579,10 +2632,6 @@ window.aprovarDespesa = function(id){
     `;
 
 
-    // =================================================
-    // FOCAR NO CAMPO
-    // =================================================
-
     const campo =
         document.getElementById(
             "valor-aprovado-" + id
@@ -2602,9 +2651,6 @@ window.aprovarDespesa = function(id){
 
 // =====================================================
 // CANCELAR APROVAÇÃO
-//
-// NÃO ENVIA NADA AO BACKEND.
-// APENAS RESTAURA A INTERFACE.
 // =====================================================
 
 window.cancelarAprovacaoDespesa = function(id){
@@ -2615,15 +2661,8 @@ window.cancelarAprovacaoDespesa = function(id){
         );
 
 
-    if(!linha){
-
-        console.error(
-            "Linha da despesa não encontrada."
-        );
-
+    if(!linha)
         return;
-
-    }
 
 
     const colunaValorAprovado =
@@ -2643,25 +2682,18 @@ window.cancelarAprovacaoDespesa = function(id){
         !colunaAcao
     ){
 
-        console.error(
-            "Colunas da aprovação não encontradas."
-        );
-
         return;
 
     }
 
 
-    // =================================================
-    // RESTAURAR VALOR APROVADO
-    // =================================================
-
     if(
-        colunaValorAprovado.dataset.valorOriginal !== undefined
+        colunaValorAprovado.dataset.original
+        !== undefined
     ){
 
         colunaValorAprovado.innerHTML =
-            colunaValorAprovado.dataset.valorOriginal;
+            colunaValorAprovado.dataset.original;
 
     }
     else{
@@ -2672,16 +2704,13 @@ window.cancelarAprovacaoDespesa = function(id){
     }
 
 
-    // =================================================
-    // RESTAURAR BOTÃO APROVAR
-    // =================================================
-
     if(
-        colunaAcao.dataset.acaoOriginal !== undefined
+        colunaAcao.dataset.original
+        !== undefined
     ){
 
         colunaAcao.innerHTML =
-            colunaAcao.dataset.acaoOriginal;
+            colunaAcao.dataset.original;
 
     }
     else{
@@ -2705,52 +2734,31 @@ window.cancelarAprovacaoDespesa = function(id){
     }
 
 
-    // =================================================
-    // LIMPAR DADOS TEMPORÁRIOS
-    // =================================================
+    delete colunaValorAprovado.dataset.original;
 
-    delete colunaValorAprovado.dataset.valorOriginal;
-
-    delete colunaAcao.dataset.acaoOriginal;
-
-
-    console.log(
-        "Aprovação cancelada para a despesa:",
-        id
-    );
+    delete colunaAcao.dataset.original;
 
 };
 
 
 // =====================================================
 // GUARDAR APROVAÇÃO
-// ADMIN / GERENTE
+// PUT /despesas/{id}/aprovar
 // =====================================================
 
 window.guardarAprovacaoDespesa = async function(id){
 
     const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
+        obterUsuarioLogado();
 
 
     if(!usuario)
         return;
 
 
-    const tipoUsuario =
-        String(
-            usuario.tipo || ""
-        )
-        .trim()
-        .toLowerCase();
-
-
     if(
-        tipoUsuario !== "admin" &&
-        tipoUsuario !== "administrador" &&
-        tipoUsuario !== "gerente"
+        !usuarioEhAdmin() &&
+        !usuarioEhGerente()
     ){
 
         alert(
@@ -2770,7 +2778,7 @@ window.guardarAprovacaoDespesa = async function(id){
 
     if(!campo){
 
-        console.error(
+        alert(
             "Campo de valor aprovado não encontrado."
         );
 
@@ -2786,7 +2794,7 @@ window.guardarAprovacaoDespesa = async function(id){
 
 
     if(
-        !valor ||
+        !Number.isFinite(valor) ||
         valor <= 0
     ){
 
@@ -2810,7 +2818,9 @@ window.guardarAprovacaoDespesa = async function(id){
                 "/despesas/" +
                 id +
                 "/aprovar?usuario_id=" +
-                usuario.id,
+                encodeURIComponent(
+                    usuario.id
+                ),
 
                 {
 
@@ -2837,7 +2847,9 @@ window.guardarAprovacaoDespesa = async function(id){
 
 
         const dados =
-            await resposta.json();
+            await lerRespostaJson(
+                resposta
+            );
 
 
         if(!resposta.ok){
@@ -2849,8 +2861,10 @@ window.guardarAprovacaoDespesa = async function(id){
 
 
             alert(
-                dados.detail ||
-                "Erro ao aprovar despesa."
+                obterMensagemErro(
+                    dados,
+                    "Erro ao aprovar despesa."
+                )
             );
 
             return;
@@ -2858,34 +2872,17 @@ window.guardarAprovacaoDespesa = async function(id){
         }
 
 
-        console.log(
-            "Despesa aprovada:",
-            dados
-        );
-
-
         alert(
             "Despesa aprovada com sucesso."
         );
 
 
-        // =================================================
-        // ATUALIZAR LISTA CORRETAMENTE
-        // =================================================
+        /*
+         * Depois da aprovação, recarregamos
+         * as pendentes.
+         */
 
-        if(
-            tipoUsuario === "admin" ||
-            tipoUsuario === "administrador"
-        ){
-
-            await carregarTodasDespesasAdmin();
-
-        }
-        else{
-
-            await carregarSolicitacoesDespesas();
-
-        }
+        await carregarDespesasPendentes();
 
     }
     catch(error){
@@ -2907,33 +2904,20 @@ window.guardarAprovacaoDespesa = async function(id){
 
 // =====================================================
 // APAGAR DESPESA
-// SOMENTE VENDEDOR
-// SOMENTE PENDENTE
+// DELETE /despesas/{id}
 // =====================================================
 
 window.apagarDespesa = async function(id){
 
     const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
-        );
+        obterUsuarioLogado();
 
 
     if(!usuario)
         return;
 
 
-    const tipoUsuario =
-        String(
-            usuario.tipo || ""
-        )
-        .trim()
-        .toLowerCase();
-
-
-    if(
-        tipoUsuario !== "vendedor"
-    ){
+    if(!usuarioEhVendedor()){
 
         alert(
             "Somente o vendedor pode apagar a sua solicitação."
@@ -2963,7 +2947,9 @@ window.apagarDespesa = async function(id){
                 "/despesas/" +
                 id +
                 "?usuario_id=" +
-                usuario.id,
+                encodeURIComponent(
+                    usuario.id
+                ),
 
                 {
 
@@ -2975,7 +2961,9 @@ window.apagarDespesa = async function(id){
 
 
         const dados =
-            await resposta.json();
+            await lerRespostaJson(
+                resposta
+            );
 
 
         if(!resposta.ok){
@@ -2987,19 +2975,15 @@ window.apagarDespesa = async function(id){
 
 
             alert(
-                dados.detail ||
-                "Não foi possível apagar a despesa."
+                obterMensagemErro(
+                    dados,
+                    "Não foi possível apagar a despesa."
+                )
             );
 
             return;
 
         }
-
-
-        console.log(
-            "Despesa removida:",
-            dados
-        );
 
 
         alert(

@@ -1,6 +1,7 @@
 // =====================================
 // ABRIR MODAL CAIXA
 // =====================================
+console.log("CAIXA.JS FOI CARREGADO");
 let historicoCompleto = [];
 
 // =====================================
@@ -78,182 +79,186 @@ function fecharCaixa(){
 async function carregarTodasCaixas(){
 
     const usuario =
-    JSON.parse(
-        localStorage.getItem("usuario")
-    );
+        JSON.parse(
+            localStorage.getItem("usuario")
+        );
 
-
+    if(!usuario){
+        return;
+    }
 
     const resposta =
-    await fetch(
-        `/caixa/todas?usuario_id=${usuario.id}`
-    );
+        await fetch(
+            `/caixa/todas?usuario_id=${usuario.id}`
+        );
 
+    if(!resposta.ok){
 
+        console.error(
+            "Erro ao carregar caixas:",
+            resposta.status
+        );
+
+        return;
+    }
 
     const caixas =
-    await resposta.json();
-
+        await resposta.json();
 
 
     const area =
-    document.getElementById(
-        "lista-caixas"
-    );
+        document.getElementById(
+            "lista-caixas"
+        );
+
+    if(!area){
+        return;
+    }
 
 
-
-    area.innerHTML="";
-
+    area.innerHTML = "";
 
 
-    caixas.forEach(c=>{
-        if (c.tipo === "gerente") {
-            return;
+    caixas.forEach(c => {
+
+        // =====================================
+        // GERENTE
+        // =====================================
+        // Gerente só pode ver vendedores
+        // =====================================
+
+        if(usuario.tipo === "gerente"){
+
+            if(c.tipo !== "vendedor"){
+                return;
+            }
+
         }
 
-        let botao="";
 
-
-
-        // ADMIN NA SUA PRÓPRIA CAIXA
+        // =====================================
+        // ADMIN
+        // =====================================
+        // Admin não precisa mostrar caixa
+        // de gerente no resumo
+        // =====================================
 
         if(
-            c.usuario_id == usuario.id
-            &&
-            usuario.tipo=="admin"
+            usuario.tipo === "admin" &&
+            c.tipo === "gerente"
         ){
 
-            botao=`
+            return;
 
-            <button
-
-            class="btn btn-warning w-100 mt-2"
-
-            onclick="abrirRetirada()">
+        }
 
 
-            Retirar
+        let botao = "";
 
 
-            </button>
+        // =====================================
+        // ADMIN NA PRÓPRIA CAIXA
+        // =====================================
+
+        if(
+            usuario.tipo === "admin" &&
+            c.usuario_id == usuario.id
+        ){
+
+            botao = `
+
+                <button
+                    class="btn btn-warning w-100 mt-2"
+                    onclick="abrirRetirada()"
+                >
+                    Retirar
+                </button>
 
             `;
 
         }
 
 
-
-        // OUTROS USUÁRIOS
+        // =====================================
+        // ADMIN OU GERENTE RECOLHENDO
+        // SOMENTE VENDEDORES
+        // =====================================
 
         else if(
-            usuario.tipo=="admin"
-            ||
-            usuario.tipo=="gerente"
+            (
+                usuario.tipo === "admin" ||
+                usuario.tipo === "gerente"
+            )
+            &&
+            c.tipo === "vendedor"
         ){
 
-            botao=`
+            botao = `
 
-            <button
-
-            class="btn btn-danger w-100 mt-2"
-
-            onclick="abrirRecolha(
-                ${c.usuario_id},
-                '${c.nome}'
-            )">
-
-
-            Recolher
-
-
-            </button>
+                <button
+                    class="btn btn-danger w-100 mt-2"
+                    onclick="abrirRecolha(
+                        ${c.usuario_id},
+                        '${c.nome}'
+                    )"
+                >
+                    Recolher
+                </button>
 
             `;
 
         }
 
 
-
+        // =====================================
+        // MOSTRAR CAIXA
+        // =====================================
 
         area.innerHTML += `
 
+            <div class="caixa-item">
 
-        <div class="caixa-item">
+                <h5>
+                    ${c.nome}
+                </h5>
 
+                Tipo:
+                ${c.tipo}
 
-        <h5>
-        ${c.nome}
-        </h5>
+                <br><br>
 
+                Vendas:
+                ${c.vendas ?? 0} MT
 
-        Tipo:
+                <br>
 
-        ${c.tipo}
+                Despesas:
+                ${c.despesas ?? 0} MT
 
+                <br>
 
+                Retirado:
+                ${c.retirado ?? 0} MT
 
-        <br><br>
+                <br><br>
 
+                <b>
+                    Saldo:
+                    ${c.saldo ?? 0} MT
+                </b>
 
+                ${botao}
 
-        Vendas:
-
-        ${c.vendas ?? 0} MT
-
-
-
-        <br>
-
-
-
-        Despesas:
-
-        ${c.despesas ?? 0} MT
-
-
-
-        <br>
-
-
-
-        Retirado:
-
-        ${c.retirado ?? 0} MT
-
-
-
-        <br><br>
-
-
-
-        <b>
-
-        Saldo:
-
-        ${c.saldo ?? 0} MT
-
-        </b>
-
-
-
-        ${botao}
-
-
-        </div>
-
+            </div>
 
         `;
 
-
     });
+
+
     await carregarHistoricoGeral();
 
-
 }
-
-
-
 
 
 // =====================================
@@ -697,10 +702,6 @@ async function retirarCaixa(){
 // HISTÓRICO
 // =====================================
 
-f// =====================================
-// HISTÓRICO
-// =====================================
-
 function montarHistoricoCaixa(lista){
 
     const tabela =
@@ -970,3 +971,379 @@ async function carregarHistoricoGeral(){
 
     montarHistoricoCaixa(historicoCompleto);
 }
+
+
+// =====================================
+// DEBUG + SALDO DO CAIXA NO DASHBOARD
+// =====================================
+
+// =====================================
+// SALDO DO CAIXA NO DASHBOARD
+// =====================================
+
+window.atualizarSaldoCaixaDashboard = async function(){
+
+    console.log("=====================================");
+    console.log(" INICIANDO SALDO DO CAIXA");
+    console.log("=====================================");
+
+    // =====================================
+    // 1. USUARIO
+    // =====================================
+
+    const usuarioStorage =
+        localStorage.getItem("usuario");
+
+    if(!usuarioStorage){
+
+        console.error(
+            "ERRO: usuario não existe no localStorage"
+        );
+
+        return;
+    }
+
+    let usuario;
+
+    try{
+
+        usuario =
+            JSON.parse(usuarioStorage);
+
+    }
+    catch(erro){
+
+        console.error(
+            "ERRO AO LER USUARIO:",
+            erro
+        );
+
+        return;
+    }
+
+    console.log("USUARIO:", usuario);
+    console.log("ID:", usuario.id);
+    console.log("TIPO:", usuario.tipo);
+
+
+    // =====================================
+    // 2. ELEMENTOS
+    // =====================================
+
+    const saldoElemento =
+        document.getElementById(
+            "saldo-caixa"
+        );
+
+    if(!saldoElemento){
+
+        console.error(
+            "ERRO: #saldo-caixa não existe"
+        );
+
+        return;
+    }
+
+    const detalhesElemento =
+        document.getElementById(
+            "ver-detalhes-caixa"
+        );
+
+
+    try{
+
+        // =====================================
+        // VENDEDOR
+        // =====================================
+
+        if(
+            usuario.tipo !== "admin" &&
+            usuario.tipo !== "gerente"
+        ){
+
+            console.log(
+                "====================================="
+            );
+
+            console.log(
+                " MODO VENDEDOR"
+            );
+
+            console.log(
+                "=====================================");
+
+
+            const url =
+                API +
+                "/caixa/minha/" +
+                usuario.id;
+
+
+            console.log(
+                "URL MINHA CAIXA:",
+                url
+            );
+
+
+            const resposta =
+                await fetch(url);
+
+
+            console.log(
+                "STATUS:",
+                resposta.status
+            );
+
+
+            if(!resposta.ok){
+
+                const erroTexto =
+                    await resposta.text();
+
+                console.error(
+                    "ERRO BACKEND:",
+                    erroTexto
+                );
+
+                throw new Error(
+                    "Erro HTTP " +
+                    resposta.status
+                );
+            }
+
+
+            const dados =
+                await resposta.json();
+
+
+            console.log(
+                "DADOS DA MINHA CAIXA:",
+                dados
+            );
+
+
+            // =====================================
+            // MOSTRAR TODOS OS CAMPOS RECEBIDOS
+            // =====================================
+
+            console.log(
+                "VENDAS:",
+                dados.vendas
+            );
+
+            console.log(
+                "DESPESAS:",
+                dados.despesas
+            );
+
+            console.log(
+                "RETIRADO:",
+                dados.retirado
+            );
+
+            console.log(
+                "SALDO_ATUAL:",
+                dados.saldo_atual
+            );
+
+
+            // =====================================
+            // SALDO DO VENDEDOR
+            // =====================================
+
+            const saldo =
+                Number(
+                    dados.saldo_atual ?? 0
+                );
+
+
+            console.log(
+                "SALDO FINAL DO VENDEDOR:",
+                saldo
+            );
+
+
+            saldoElemento.innerText =
+                saldo.toFixed(2) +
+                " MT";
+
+
+            // =====================================
+            // VENDEDOR NÃO VÊ DETALHES GERAIS
+            // =====================================
+
+            if(detalhesElemento){
+
+                detalhesElemento.style.display =
+                    "none";
+            }
+
+
+            console.log(
+                "SALDO DO VENDEDOR ATUALIZADO:",
+                saldoElemento.innerText
+            );
+
+
+            return;
+        }
+
+
+        // =====================================
+        // ADMIN / GERENTE
+        // =====================================
+
+        console.log(
+            "====================================="
+        );
+
+        console.log(
+            " MODO ADMIN / GERENTE"
+        );
+
+        console.log(
+            "====================================="
+        );
+
+
+        const url =
+            API +
+            "/caixa/todas?usuario_id=" +
+            usuario.id;
+
+
+        console.log(
+            "URL TODAS AS CAIXAS:",
+            url
+        );
+
+
+        const resposta =
+            await fetch(url);
+
+
+        console.log(
+            "STATUS:",
+            resposta.status
+        );
+
+
+        if(!resposta.ok){
+
+            const erroTexto =
+                await resposta.text();
+
+            console.error(
+                "ERRO BACKEND:",
+                erroTexto
+            );
+
+            throw new Error(
+                "Erro HTTP " +
+                resposta.status
+            );
+        }
+
+
+        const caixas =
+            await resposta.json();
+
+
+        console.log(
+            "CAIXAS RECEBIDAS:",
+            caixas
+        );
+
+
+        let saldoTotal = 0;
+
+
+        caixas.forEach(
+            (caixa, index) => {
+
+                console.log(
+                    "CAIXA #" + index,
+                    caixa
+                );
+
+
+                // =====================================
+                // NÃO SOMAR CAIXA DO GERENTE
+                // =====================================
+
+                if(
+                    caixa.tipo === "gerente"
+                ){
+
+                    console.log(
+                        "CAIXA DO GERENTE IGNORADA"
+                    );
+
+                    return;
+                }
+
+
+                const saldoCaixa =
+                    Number(
+                        caixa.saldo ?? 0
+                    );
+
+
+                saldoTotal +=
+                    saldoCaixa;
+
+            }
+        );
+
+
+        console.log(
+            "SALDO TOTAL ADMIN/GERENTE:",
+            saldoTotal
+        );
+
+
+        saldoElemento.innerText =
+            saldoTotal.toFixed(2) +
+            " MT";
+
+
+        // =====================================
+        // ADMIN / GERENTE PODE VER DETALHES
+        // =====================================
+
+        if(detalhesElemento){
+
+            detalhesElemento.style.display =
+                "block";
+        }
+
+
+        console.log(
+            "SALDO ADMIN/GERENTE ATUALIZADO:",
+            saldoElemento.innerText
+        );
+
+
+    }
+    catch(erro){
+
+        console.error(
+            "====================================="
+        );
+
+        console.error(
+            "ERRO SALDO CAIXA:"
+        );
+
+        console.error(erro);
+
+        console.error(
+            "====================================="
+        );
+
+
+        saldoElemento.innerText =
+            "0.00 MT";
+    }
+
+};

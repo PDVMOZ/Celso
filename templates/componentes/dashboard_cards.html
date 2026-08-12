@@ -11,6 +11,7 @@
         </div>
 
         <div class="card-content">
+            <span>VENDAS DE HOJE</span>
 
             <h3 id="vendas-dia">
                 0 MT
@@ -37,15 +38,18 @@
 
         <div class="card-content">
 
-            <span>SALDO DO CAIXA</span>
+            <span>SALDO DA CAIXA</span>
 
             <h3 id="saldo-caixa">
                 0 MT
             </h3>
 
-            <small class="text-success">
-                <i class="bi bi-arrow-up-right"></i>
-                8% vs ontem
+            <small
+                id="ver-detalhes-caixa"
+                style="display:none; cursor:pointer; color:blue;"
+                onclick="abrirCaixa()"
+            >
+                Ver detalhes
             </small>
 
         </div>
