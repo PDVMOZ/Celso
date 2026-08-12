@@ -9,7 +9,6 @@ from models.despesa import Despesa
 from models.caixa import Caixa, MovimentoCaixa
 
 
-
 async def calcular_saldo_caixa(
     db: AsyncSession,
     usuario_id: int
@@ -28,46 +27,34 @@ async def calcular_saldo_caixa(
 
     usuario = resultado.scalar_one_or_none()
 
-
     if not usuario:
 
         return {
-
             "vendas": Decimal("0.00"),
-
             "despesas": Decimal("0.00"),
-
             "retirado": Decimal("0.00"),
-
+            "saldo_recolhido": Decimal("0.00"),
             "saldo_caixa": Decimal("0.00")
-
         }
-
 
 
     # =====================================
     # SOMAR VENDAS
-    # tabela: vendas
-    # campo: total
     # =====================================
 
     resultado = await db.execute(
 
         select(
             func.coalesce(
-                func.sum(
-                    Venda.total
-                ),
+                func.sum(Venda.total),
                 0
             )
         )
-
         .where(
             Venda.usuario_id == usuario_id
         )
 
     )
-
 
     vendas = Decimal(
         str(
@@ -76,12 +63,19 @@ async def calcular_saldo_caixa(
     )
 
 
-
-
     # =====================================
-    # SOMAR DESPESAS APROVADAS
-    # tabela: despesas
-    # campo: valor_aprovado
+    # SOMAR DESPESAS NORMAIS
+    #
+    # IMPORTANTE:
+    #
+    # Somente despesas com
+    # valor_aprovado preenchido entram
+    # aqui.
+    #
+    # Despesas pagas com dinheiro
+    # recolhido ficam com valor_aprovado
+    # NULL e não entram na caixa
+    # do vendedor.
     # =====================================
 
     resultado = await db.execute(
@@ -94,17 +88,13 @@ async def calcular_saldo_caixa(
                 0
             )
         )
-
         .where(
-
             Despesa.usuario_id == usuario_id,
-
-            Despesa.estado == "aprovado"
-
+            Despesa.estado == "aprovado",
+            Despesa.valor_aprovado.is_not(None)
         )
 
     )
-
 
     despesas = Decimal(
         str(
@@ -113,75 +103,155 @@ async def calcular_saldo_caixa(
     )
 
 
-
-
     # =====================================
-    # DEFINIR TIPO DE SAIDA
+    # VENDEDOR
     #
-    # vendedor:
-    #   RECOLHA
-    #
-    # admin/gerente:
-    #   RETIRADA
-    #
+    # A saída da caixa é RECOLHA.
     # =====================================
 
     if usuario.tipo == "vendedor":
 
-        tipo_saida = "RECOLHA"
+        resultado = await db.execute(
 
-    else:
+            select(
+                func.coalesce(
+                    func.sum(
+                        MovimentoCaixa.valor
+                    ),
+                    0
+                )
+            )
+            .join(
+                Caixa
+            )
+            .where(
+                Caixa.usuario_id == usuario_id,
+                MovimentoCaixa.tipo == "RECOLHA"
+            )
 
-        tipo_saida = "RETIRADA"
+        )
+
+        retirado = Decimal(
+            str(
+                resultado.scalar() or 0
+            )
+        )
+
+        saldo_recolhido = Decimal("0.00")
+
+        saldo_caixa = (
+            vendas
+            - despesas
+            - retirado
+        )
 
 
+        return {
+
+            "vendas": vendas,
+
+            "despesas": despesas,
+
+            "retirado": retirado,
+
+            "saldo_recolhido":
+                saldo_recolhido,
+
+            "saldo_caixa":
+                saldo_caixa
+
+        }
 
 
     # =====================================
-    # SOMAR RECOLHAS / RETIRADAS
+    # ADMIN / GERENTE
     #
-    # tabela:
-    # movimentos_caixa
-    #
-    # campo:
-    # valor
-    #
+    # Aqui existe dinheiro recebido
+    # através das recolhas dos vendedores.
     # =====================================
 
     resultado = await db.execute(
 
         select(
-
             func.coalesce(
-
                 func.sum(
-
                     MovimentoCaixa.valor
-
                 ),
-
                 0
-
             )
-
         )
-
         .join(
-
             Caixa
-
         )
-
         .where(
-
             Caixa.usuario_id == usuario_id,
-
-            MovimentoCaixa.tipo == tipo_saida
-
+            MovimentoCaixa.tipo == "RECOLHA_RECEBIDA"
         )
 
     )
 
+    recolhido_recebido = Decimal(
+        str(
+            resultado.scalar() or 0
+        )
+    )
+
+
+    # =====================================
+    # DESPESAS PAGAS COM DINHEIRO
+    # RECOLHIDO
+    # =====================================
+
+    resultado = await db.execute(
+
+        select(
+            func.coalesce(
+                func.sum(
+                    MovimentoCaixa.valor
+                ),
+                0
+            )
+        )
+        .join(
+            Caixa
+        )
+        .where(
+            Caixa.usuario_id == usuario_id,
+            MovimentoCaixa.tipo == "DESPESA_RECOLHIDA"
+        )
+
+    )
+
+    despesas_recolhidas = Decimal(
+        str(
+            resultado.scalar() or 0
+        )
+    )
+
+
+    # =====================================
+    # RETIRADAS DO ADMIN / GERENTE
+    # =====================================
+
+    resultado = await db.execute(
+
+        select(
+            func.coalesce(
+                func.sum(
+                    MovimentoCaixa.valor
+                ),
+                0
+            )
+        )
+        .join(
+            Caixa
+        )
+        .where(
+            Caixa.usuario_id == usuario_id,
+            MovimentoCaixa.tipo == "RETIRADA"
+        )
+
+    )
 
     retirado = Decimal(
         str(
@@ -190,23 +260,38 @@ async def calcular_saldo_caixa(
     )
 
 
+    # =====================================
+    # SALDO DISPONÍVEL DO DINHEIRO
+    # RECOLHIDO
+    # =====================================
+
+    saldo_recolhido = (
+        recolhido_recebido
+        - despesas_recolhidas
+        - retirado
+    )
+
+
+    if saldo_recolhido < 0:
+
+        saldo_recolhido = Decimal("0.00")
 
 
     # =====================================
     # SALDO FINAL
+    #
+    # Mantemos vendas/despesas próprias
+    # e adicionamos o dinheiro recebido
+    # das recolhas.
     # =====================================
 
     saldo_caixa = (
-
         vendas
-
         - despesas
-
+        + recolhido_recebido
+        - despesas_recolhidas
         - retirado
-
     )
-
-
 
 
     return {
@@ -217,6 +302,10 @@ async def calcular_saldo_caixa(
 
         "retirado": retirado,
 
-        "saldo_caixa": saldo_caixa
+        "saldo_recolhido":
+            saldo_recolhido,
+
+        "saldo_caixa":
+            saldo_caixa
 
     }

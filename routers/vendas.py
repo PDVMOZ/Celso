@@ -7,6 +7,8 @@ from database import get_db
 from models.usuario import Usuario
 from models.venda import Venda, ItemVenda
 from models.produto import Produto
+from zoneinfo import ZoneInfo
+from decimal import Decimal
 
 from schemas.venda import VendaCreate, VendaResponse
 
@@ -184,27 +186,96 @@ async def buscar_venda(
 # =====================================================
 
 @router.get("/dashboard/vendas-dia")
-async def vendas_do_dia(
+async def vendas_dia(
     usuario_id: int | None = None,
     db: AsyncSession = Depends(get_db)
 ):
 
-    hoje = datetime.now().date()
+    hoje = datetime.now(
+        ZoneInfo("Africa/Maputo")
+    ).date()
 
-    consulta = select(
-        func.coalesce(func.sum(Venda.total), 0)
-    ).where(
-        func.date(Venda.data_venda) == hoje
-    )
+    # =====================================
+    # VERIFICAR USUÁRIO
+    # =====================================
+
+    usuario = None
 
     if usuario_id is not None:
-        consulta = consulta.where(
-            Venda.usuario_id == int(usuario_id)
+
+        resultado = await db.execute(
+            select(Usuario)
+            .where(
+                Usuario.id == usuario_id
+            )
         )
 
-    resultado = await db.execute(consulta)
+        usuario = resultado.scalar_one_or_none()
 
-    total = resultado.scalar()
+        if not usuario:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Usuário não encontrado"
+            )
+
+    # =====================================
+    # BUSCAR VENDAS
+    # =====================================
+
+    consulta = select(Venda)
+
+    # =====================================
+    # VENDEDOR
+    # =====================================
+
+    if (
+        usuario
+        and usuario.tipo == "vendedor"
+    ):
+
+        consulta = consulta.where(
+            Venda.usuario_id == usuario.id
+        )
+
+    resultado = await db.execute(
+        consulta
+    )
+
+    vendas = resultado.scalars().all()
+
+    # =====================================
+    # SOMAR VENDAS DE HOJE
+    # =====================================
+
+    total = Decimal("0.00")
+
+    for venda in vendas:
+
+        if not venda.data_venda:
+            continue
+
+        data_venda = venda.data_venda
+
+        # Se vier sem timezone,
+        # consideramos que é horário de Maputo.
+        if data_venda.tzinfo is None:
+
+            data_venda = data_venda.replace(
+                tzinfo=ZoneInfo("Africa/Maputo")
+            )
+
+        else:
+
+            data_venda = data_venda.astimezone(
+                ZoneInfo("Africa/Maputo")
+            )
+
+        if data_venda.date() == hoje:
+
+            total += Decimal(
+                str(venda.total or 0)
+            )
 
     return {
         "vendas_dia": float(total)
@@ -359,3 +430,43 @@ async def vendas_por_vendedor(
 
 
     return list(dados.values())
+
+@router.get("/dashboard/debug-vendas")
+async def debug_vendas(
+    db: AsyncSession = Depends(get_db)
+):
+
+    resultado = await db.execute(
+        select(Venda)
+        .order_by(
+            Venda.id.desc()
+        )
+    )
+
+    vendas = resultado.scalars().all()
+
+    resultado = []
+
+    for venda in vendas:
+
+        resultado.append({
+
+            "id": venda.id,
+
+            "usuario_id": venda.usuario_id,
+
+            "total": float(
+                venda.total or 0
+            ),
+
+            "data_venda": str(
+                venda.data_venda
+            ),
+
+            "tipo_data": str(
+                type(venda.data_venda)
+            )
+
+        })
+
+    return resultado

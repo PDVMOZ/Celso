@@ -1,3 +1,7 @@
+# =====================================================
+# ROUTER DE DESPESAS
+# =====================================================
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -21,6 +25,10 @@ from schemas.despesa import (
 )
 
 
+# =====================================================
+# ROUTER
+# =====================================================
+
 router = APIRouter(
     prefix="/despesas",
     tags=["Despesas"]
@@ -28,14 +36,13 @@ router = APIRouter(
 
 
 # =====================================================
-# FUNÇÃO AUXILIAR
+# AUXILIAR
 # TRANSFORMAR DESPESA EM RESPOSTA
 # =====================================================
 
 def despesa_para_resposta(despesa):
 
     return {
-
         "id": despesa.id,
 
         "usuario_id": despesa.usuario_id,
@@ -59,16 +66,13 @@ def despesa_para_resposta(despesa):
         "observacao": despesa.observacao,
 
         "data_despesa": despesa.data_despesa
-
     }
+
+
 # =====================================================
-# CRIAR DESPESA DIRETA
+# CRIAR DESPESA DIRETAMENTE
 #
 # ADMIN
-#
-# O ADMIN CRIA E JÁ FICA APROVADA.
-#
-# Endpoint:
 #
 # POST /despesas/
 # =====================================================
@@ -82,20 +86,17 @@ async def criar_despesa(
     db: AsyncSession = Depends(get_db)
 ):
 
-    # =================================================
+    # -------------------------------------------------
     # BUSCAR USUÁRIO
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
-
         select(Usuario).where(
             Usuario.id == dados.usuario_id
         )
-
     )
 
     usuario = resultado.scalar_one_or_none()
-
 
     if not usuario:
 
@@ -104,17 +105,15 @@ async def criar_despesa(
             detail="Usuário não encontrado"
         )
 
-
-    # =================================================
-    # SOMENTE ADMIN
-    # =================================================
+    # -------------------------------------------------
+    # VERIFICAR ADMIN
+    # -------------------------------------------------
 
     tipo_usuario = (
         str(usuario.tipo or "")
         .strip()
         .lower()
     )
-
 
     if tipo_usuario not in [
         "admin",
@@ -123,13 +122,15 @@ async def criar_despesa(
 
         raise HTTPException(
             status_code=403,
-            detail="Somente o admin pode criar despesa diretamente"
+            detail=(
+                "Somente o administrador "
+                "pode criar despesa diretamente"
+            )
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # VALIDAR VALOR
-    # =================================================
+    # -------------------------------------------------
 
     if (
         dados.valor_proposto is None
@@ -138,13 +139,15 @@ async def criar_despesa(
 
         raise HTTPException(
             status_code=400,
-            detail="O valor da despesa deve ser maior que zero"
+            detail=(
+                "O valor da despesa "
+                "deve ser maior que zero"
+            )
         )
 
-
-    # =================================================
-    # CRIAR E APROVAR AUTOMATICAMENTE
-    # =================================================
+    # -------------------------------------------------
+    # CRIAR
+    # -------------------------------------------------
 
     despesa = Despesa(
 
@@ -161,9 +164,7 @@ async def criar_despesa(
         estado="aprovado",
 
         observacao=dados.observacao
-
     )
-
 
     db.add(despesa)
 
@@ -171,10 +172,9 @@ async def criar_despesa(
 
     await db.refresh(despesa)
 
-
-    # =================================================
+    # -------------------------------------------------
     # RECARREGAR COM USUÁRIO
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
@@ -188,25 +188,21 @@ async def criar_despesa(
 
     )
 
-
     despesa = resultado.scalar_one()
-
 
     return despesa_para_resposta(despesa)
 
 
 # =====================================================
-# LISTAR DESPESAS DO USUÁRIO
+# LISTAR DESPESAS DE UM USUÁRIO
+#
+# GET /despesas/usuario/{usuario_id}
 #
 # ADMIN / GERENTE
 #     -> TODAS
 #
 # VENDEDOR
 #     -> SOMENTE AS SUAS
-#
-# Endpoint:
-#
-# GET /despesas/usuario/{usuario_id}
 # =====================================================
 
 @router.get(
@@ -218,9 +214,9 @@ async def listar_despesas(
     db: AsyncSession = Depends(get_db)
 ):
 
-    # =================================================
+    # -------------------------------------------------
     # BUSCAR USUÁRIO
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
@@ -232,7 +228,6 @@ async def listar_despesas(
 
     usuario = resultado.scalar_one_or_none()
 
-
     if not usuario:
 
         raise HTTPException(
@@ -240,6 +235,9 @@ async def listar_despesas(
             detail="Usuário não encontrado"
         )
 
+    # -------------------------------------------------
+    # TIPO
+    # -------------------------------------------------
 
     tipo_usuario = (
         str(usuario.tipo or "")
@@ -247,27 +245,25 @@ async def listar_despesas(
         .lower()
     )
 
-
-    # =================================================
+    # -------------------------------------------------
     # CONSULTA
-    # =================================================
+    # -------------------------------------------------
 
     consulta = (
 
         select(Despesa)
 
         .options(
-            selectinload(Despesa.usuario)
+            selectinload(
+                Despesa.usuario
+            )
         )
 
     )
 
-
-    # =================================================
+    # -------------------------------------------------
     # VENDEDOR
-    #
-    # SOMENTE AS PRÓPRIAS
-    # =================================================
+    # -------------------------------------------------
 
     if tipo_usuario == "vendedor":
 
@@ -277,12 +273,9 @@ async def listar_despesas(
 
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # ADMIN / GERENTE
-    #
-    # TODAS
-    # =================================================
+    # -------------------------------------------------
 
     elif tipo_usuario in [
         "admin",
@@ -292,49 +285,44 @@ async def listar_despesas(
 
         pass
 
+    # -------------------------------------------------
+    # OUTRO
+    # -------------------------------------------------
 
     else:
 
         raise HTTPException(
             status_code=403,
-            detail="Sem permissão para visualizar despesas"
+            detail=(
+                "Sem permissão para "
+                "visualizar despesas"
+            )
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # ORDENAR
-    # =================================================
+    # -------------------------------------------------
 
     consulta = consulta.order_by(
-
         Despesa.data_despesa.desc()
-
     )
 
-
-    resultado = await db.execute(consulta)
+    resultado = await db.execute(
+        consulta
+    )
 
     despesas = resultado.scalars().all()
 
-
     return [
-
         despesa_para_resposta(despesa)
-
         for despesa in despesas
-
     ]
 
 
 # =====================================================
-# LISTAR DESPESAS PARA ADMIN / GERENTE
+# LISTAR DESPESAS PENDENTES
 #
 # ADMIN / GERENTE
-#     -> TODAS AS DESPESAS
-#
-# O NOME DO SOLICITANTE É DEVOLVIDO.
-#
-# Endpoint:
 #
 # GET /despesas/pendentes?usuario_id=1
 # =====================================================
@@ -348,9 +336,9 @@ async def listar_pendentes(
     db: AsyncSession = Depends(get_db)
 ):
 
-    # =================================================
+    # -------------------------------------------------
     # BUSCAR USUÁRIO
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
@@ -362,7 +350,6 @@ async def listar_pendentes(
 
     usuario = resultado.scalar_one_or_none()
 
-
     if not usuario:
 
         raise HTTPException(
@@ -370,6 +357,9 @@ async def listar_pendentes(
             detail="Usuário não encontrado"
         )
 
+    # -------------------------------------------------
+    # TIPO
+    # -------------------------------------------------
 
     tipo_usuario = (
         str(usuario.tipo or "")
@@ -377,10 +367,9 @@ async def listar_pendentes(
         .lower()
     )
 
-
-    # =================================================
-    # SOMENTE ADMIN / GERENTE
-    # =================================================
+    # -------------------------------------------------
+    # PERMISSÃO
+    # -------------------------------------------------
 
     if tipo_usuario not in [
         "admin",
@@ -390,20 +379,29 @@ async def listar_pendentes(
 
         raise HTTPException(
             status_code=403,
-            detail="Sem permissão"
+            detail=(
+                "Somente admin ou gerente "
+                "pode visualizar esta lista"
+            )
         )
 
-
-    # =================================================
-    # BUSCAR TODAS AS DESPESAS
-    # =================================================
+    # -------------------------------------------------
+    # BUSCAR DESPESAS
+    #
+    # IMPORTANTE:
+    # A rota chama-se pendentes, mas podemos retornar
+    # todas as despesas para permitir ao admin/gerente
+    # visualizar o histórico completo.
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
         select(Despesa)
 
         .options(
-            selectinload(Despesa.usuario)
+            selectinload(
+                Despesa.usuario
+            )
         )
 
         .order_by(
@@ -412,30 +410,16 @@ async def listar_pendentes(
 
     )
 
-
     despesas = resultado.scalars().all()
 
-
     return [
-
         despesa_para_resposta(despesa)
-
         for despesa in despesas
-
     ]
 
 
 # =====================================================
 # ATUALIZAR DESPESA
-#
-# ADMIN / GERENTE
-#     -> PODEM ALTERAR
-#
-# VENDEDOR
-#     -> SOMENTE A PRÓPRIA
-#     -> SOMENTE SE PENDENTE
-#
-# Endpoint:
 #
 # PUT /despesas/{id}?usuario_id=1
 # =====================================================
@@ -451,9 +435,9 @@ async def atualizar_despesa(
     db: AsyncSession = Depends(get_db)
 ):
 
-    # =================================================
+    # -------------------------------------------------
     # BUSCAR USUÁRIO
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
@@ -465,7 +449,6 @@ async def atualizar_despesa(
 
     usuario = resultado.scalar_one_or_none()
 
-
     if not usuario:
 
         raise HTTPException(
@@ -473,24 +456,24 @@ async def atualizar_despesa(
             detail="Usuário não encontrado"
         )
 
-
     tipo_usuario = (
         str(usuario.tipo or "")
         .strip()
         .lower()
     )
 
-
-    # =================================================
+    # -------------------------------------------------
     # BUSCAR DESPESA
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
         select(Despesa)
 
         .options(
-            selectinload(Despesa.usuario)
+            selectinload(
+                Despesa.usuario
+            )
         )
 
         .where(
@@ -499,9 +482,7 @@ async def atualizar_despesa(
 
     )
 
-
     despesa = resultado.scalar_one_or_none()
-
 
     if not despesa:
 
@@ -510,61 +491,51 @@ async def atualizar_despesa(
             detail="Despesa não encontrada"
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # VENDEDOR
-    # =================================================
+    # -------------------------------------------------
 
     if tipo_usuario == "vendedor":
-
-        # ---------------------------------------------
-        # SOMENTE A PRÓPRIA
-        # ---------------------------------------------
 
         if despesa.usuario_id != usuario.id:
 
             raise HTTPException(
                 status_code=403,
-                detail="Você só pode alterar suas próprias despesas"
+                detail=(
+                    "Você só pode alterar "
+                    "suas próprias despesas"
+                )
             )
-
-
-        # ---------------------------------------------
-        # SOMENTE PENDENTE
-        # ---------------------------------------------
 
         if despesa.estado != "pendente":
 
             raise HTTPException(
                 status_code=403,
-                detail="Despesa aprovada não pode ser alterada"
+                detail=(
+                    "Despesa aprovada "
+                    "não pode ser alterada"
+                )
             )
 
-
-        # ---------------------------------------------
-        # VENDEDOR NÃO PODE ALTERAR APROVAÇÃO
-        # ---------------------------------------------
-
-        dados_atualizacao = dados.model_dump(
-            exclude_unset=True
+        dados_atualizacao = (
+            dados.model_dump(
+                exclude_unset=True
+            )
         )
-
 
         dados_atualizacao.pop(
             "valor_aprovado",
             None
         )
 
-
         dados_atualizacao.pop(
             "estado",
             None
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # ADMIN / GERENTE
-    # =================================================
+    # -------------------------------------------------
 
     elif tipo_usuario in [
         "admin",
@@ -572,14 +543,11 @@ async def atualizar_despesa(
         "gerente"
     ]:
 
-        dados_atualizacao = dados.model_dump(
-            exclude_unset=True
+        dados_atualizacao = (
+            dados.model_dump(
+                exclude_unset=True
+            )
         )
-
-
-    # =================================================
-    # OUTRO
-    # =================================================
 
     else:
 
@@ -588,10 +556,9 @@ async def atualizar_despesa(
             detail="Sem permissão"
         )
 
-
-    # =================================================
-    # APLICAR ALTERAÇÕES
-    # =================================================
+    # -------------------------------------------------
+    # APLICAR
+    # -------------------------------------------------
 
     for campo, valor in dados_atualizacao.items():
 
@@ -601,22 +568,22 @@ async def atualizar_despesa(
             valor
         )
 
-
     await db.commit()
 
     await db.refresh(despesa)
 
-
-    # =================================================
-    # RECARREGAR USUÁRIO
-    # =================================================
+    # -------------------------------------------------
+    # RECARREGAR
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
         select(Despesa)
 
         .options(
-            selectinload(Despesa.usuario)
+            selectinload(
+                Despesa.usuario
+            )
         )
 
         .where(
@@ -625,30 +592,24 @@ async def atualizar_despesa(
 
     )
 
-
     despesa = resultado.scalar_one()
-
 
     return despesa_para_resposta(despesa)
 
 
 # =====================================================
-# SOLICITAR / CRIAR DESPESA
-#
-# ADMIN:
-#     -> CRIA
-#     -> APROVA IMEDIATAMENTE
-#
-# VENDEDOR:
-#     -> SOLICITA
-#     -> FICA PENDENTE
-#
-# GERENTE:
-#     -> NÃO PODE CRIAR
-#
-# Endpoint:
+# SOLICITAR DESPESA
 #
 # POST /despesas/solicitar
+#
+# ADMIN
+#     -> APROVADA
+#
+# VENDEDOR
+#     -> PENDENTE
+#
+# GERENTE
+#     -> BLOQUEADO
 # =====================================================
 
 @router.post(
@@ -660,9 +621,9 @@ async def solicitar_despesa(
     db: AsyncSession = Depends(get_db)
 ):
 
-    # =================================================
+    # -------------------------------------------------
     # BUSCAR USUÁRIO
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
@@ -674,7 +635,6 @@ async def solicitar_despesa(
 
     usuario = resultado.scalar_one_or_none()
 
-
     if not usuario:
 
         raise HTTPException(
@@ -682,17 +642,15 @@ async def solicitar_despesa(
             detail="Usuário não encontrado"
         )
 
-
     tipo_usuario = (
         str(usuario.tipo or "")
         .strip()
         .lower()
     )
 
-
-    # =================================================
-    # VALIDAR VALOR
-    # =================================================
+    # -------------------------------------------------
+    # VALOR
+    # -------------------------------------------------
 
     if dados.valor_proposto is None:
 
@@ -701,24 +659,19 @@ async def solicitar_despesa(
             detail="Informe o valor da despesa"
         )
 
-
     if dados.valor_proposto <= 0:
 
         raise HTTPException(
             status_code=400,
-            detail="O valor da despesa deve ser maior que zero"
+            detail=(
+                "O valor da despesa "
+                "deve ser maior que zero"
+            )
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # ADMIN
-    #
-    # ADMIN NÃO SOLICITA.
-    #
-    # ADMIN CRIA DIRETAMENTE.
-    #
-    # E JÁ FICA APROVADO.
-    # =================================================
+    # -------------------------------------------------
 
     if tipo_usuario in [
         "admin",
@@ -740,9 +693,7 @@ async def solicitar_despesa(
             estado="aprovado",
 
             observacao=dados.observacao
-
         )
-
 
         db.add(despesa)
 
@@ -750,53 +701,25 @@ async def solicitar_despesa(
 
         await db.refresh(despesa)
 
-
-        # ---------------------------------------------
-        # RECARREGAR COM USUÁRIO
-        # ---------------------------------------------
-
-        resultado = await db.execute(
-
-            select(Despesa)
-
-            .options(
-                selectinload(Despesa.usuario)
-            )
-
-            .where(
-                Despesa.id == despesa.id
-            )
-
-        )
-
-
-        despesa = resultado.scalar_one()
-
-
-        return despesa_para_resposta(despesa)
-
-
-    # =================================================
+    # -------------------------------------------------
     # GERENTE
-    #
-    # NÃO CRIA
-    # =================================================
+    # -------------------------------------------------
 
-    if tipo_usuario == "gerente":
+    elif tipo_usuario == "gerente":
 
         raise HTTPException(
             status_code=403,
-            detail="O gerente não pode criar despesas"
+            detail=(
+                "O gerente não pode "
+                "criar despesas"
+            )
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # VENDEDOR
-    #
-    # FICA PENDENTE
-    # =================================================
+    # -------------------------------------------------
 
-    if tipo_usuario == "vendedor":
+    elif tipo_usuario == "vendedor":
 
         despesa = Despesa(
 
@@ -813,9 +736,7 @@ async def solicitar_despesa(
             estado="pendente",
 
             observacao=dados.observacao
-
         )
-
 
         db.add(despesa)
 
@@ -823,53 +744,47 @@ async def solicitar_despesa(
 
         await db.refresh(despesa)
 
+    # -------------------------------------------------
+    # OUTRO
+    # -------------------------------------------------
 
-        # ---------------------------------------------
-        # RECARREGAR COM USUÁRIO
-        # ---------------------------------------------
+    else:
 
-        resultado = await db.execute(
-
-            select(Despesa)
-
-            .options(
-                selectinload(Despesa.usuario)
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Usuário sem permissão "
+                "para criar despesa"
             )
-
-            .where(
-                Despesa.id == despesa.id
-            )
-
         )
 
+    # -------------------------------------------------
+    # RECARREGAR COM USUÁRIO
+    # -------------------------------------------------
 
-        despesa = resultado.scalar_one()
+    resultado = await db.execute(
 
+        select(Despesa)
 
-        return despesa_para_resposta(despesa)
+        .options(
+            selectinload(
+                Despesa.usuario
+            )
+        )
 
+        .where(
+            Despesa.id == despesa.id
+        )
 
-    # =================================================
-    # OUTRO TIPO
-    # =================================================
-
-    raise HTTPException(
-        status_code=403,
-        detail="Usuário sem permissão para criar despesa"
     )
+
+    despesa = resultado.scalar_one()
+
+    return despesa_para_resposta(despesa)
 
 
 # =====================================================
 # APAGAR DESPESA
-#
-# ADMIN / GERENTE
-#     -> PODEM APAGAR
-#
-# VENDEDOR
-#     -> SOMENTE A PRÓPRIA
-#     -> SOMENTE PENDENTE
-#
-# Endpoint:
 #
 # DELETE /despesas/{id}?usuario_id=1
 # =====================================================
@@ -883,9 +798,9 @@ async def apagar_despesa(
     db: AsyncSession = Depends(get_db)
 ):
 
-    # =================================================
+    # -------------------------------------------------
     # BUSCAR USUÁRIO
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
@@ -897,7 +812,6 @@ async def apagar_despesa(
 
     usuario = resultado.scalar_one_or_none()
 
-
     if not usuario:
 
         raise HTTPException(
@@ -905,17 +819,15 @@ async def apagar_despesa(
             detail="Usuário não encontrado"
         )
 
-
     tipo_usuario = (
         str(usuario.tipo or "")
         .strip()
         .lower()
     )
 
-
-    # =================================================
+    # -------------------------------------------------
     # BUSCAR DESPESA
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
@@ -925,9 +837,7 @@ async def apagar_despesa(
 
     )
 
-
     despesa = resultado.scalar_one_or_none()
-
 
     if not despesa:
 
@@ -936,40 +846,35 @@ async def apagar_despesa(
             detail="Despesa não encontrada"
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # VENDEDOR
-    # =================================================
+    # -------------------------------------------------
 
     if tipo_usuario == "vendedor":
-
-        # ---------------------------------------------
-        # SOMENTE PRÓPRIA
-        # ---------------------------------------------
 
         if despesa.usuario_id != usuario.id:
 
             raise HTTPException(
                 status_code=403,
-                detail="Você só pode apagar suas próprias despesas"
+                detail=(
+                    "Você só pode apagar "
+                    "suas próprias despesas"
+                )
             )
-
-
-        # ---------------------------------------------
-        # SOMENTE PENDENTE
-        # ---------------------------------------------
 
         if despesa.estado != "pendente":
 
             raise HTTPException(
                 status_code=403,
-                detail="Despesa aprovada não pode ser removida"
+                detail=(
+                    "Despesa aprovada "
+                    "não pode ser removida"
+                )
             )
 
-
-    # =================================================
+    # -------------------------------------------------
     # ADMIN / GERENTE
-    # =================================================
+    # -------------------------------------------------
 
     elif tipo_usuario in [
         "admin",
@@ -979,11 +884,6 @@ async def apagar_despesa(
 
         pass
 
-
-    # =================================================
-    # OUTRO
-    # =================================================
-
     else:
 
         raise HTTPException(
@@ -991,31 +891,25 @@ async def apagar_despesa(
             detail="Sem permissão"
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # APAGAR
-    # =================================================
+    # -------------------------------------------------
 
     await db.delete(despesa)
 
     await db.commit()
 
-
     return {
-
         "mensagem": "Despesa removida"
-
     }
 
 
 # =====================================================
 # APROVAR DESPESA
 #
-# ADMIN / GERENTE
-#
-# Endpoint:
-#
 # PUT /despesas/{id}/aprovar?usuario_id=1
+#
+# ADMIN / GERENTE
 # =====================================================
 
 @router.put(
@@ -1029,9 +923,9 @@ async def aprovar_despesa(
     db: AsyncSession = Depends(get_db)
 ):
 
-    # =================================================
-    # BUSCAR USUÁRIO
-    # =================================================
+    # -------------------------------------------------
+    # BUSCAR RESPONSÁVEL
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
@@ -1041,27 +935,24 @@ async def aprovar_despesa(
 
     )
 
-    usuario = resultado.scalar_one_or_none()
+    responsavel = resultado.scalar_one_or_none()
 
-
-    if not usuario:
+    if not responsavel:
 
         raise HTTPException(
             status_code=404,
             detail="Usuário não encontrado"
         )
 
-
     tipo_usuario = (
-        str(usuario.tipo or "")
+        str(responsavel.tipo or "")
         .strip()
         .lower()
     )
 
-
-    # =================================================
-    # SOMENTE ADMIN / GERENTE
-    # =================================================
+    # -------------------------------------------------
+    # PERMISSÃO
+    # -------------------------------------------------
 
     if tipo_usuario not in [
         "admin",
@@ -1071,20 +962,24 @@ async def aprovar_despesa(
 
         raise HTTPException(
             status_code=403,
-            detail="Sem permissão para aprovar despesas"
+            detail=(
+                "Sem permissão para "
+                "aprovar despesas"
+            )
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # BUSCAR DESPESA
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
         select(Despesa)
 
         .options(
-            selectinload(Despesa.usuario)
+            selectinload(
+                Despesa.usuario
+            )
         )
 
         .where(
@@ -1093,9 +988,7 @@ async def aprovar_despesa(
 
     )
 
-
     despesa = resultado.scalar_one_or_none()
-
 
     if not despesa:
 
@@ -1104,10 +997,20 @@ async def aprovar_despesa(
             detail="Despesa não encontrada"
         )
 
+    # -------------------------------------------------
+    # VERIFICAR SE JÁ ESTÁ APROVADA
+    # -------------------------------------------------
 
-    # =================================================
+    if despesa.estado == "aprovado":
+
+        raise HTTPException(
+            status_code=400,
+            detail="Esta despesa já está aprovada"
+        )
+
+    # -------------------------------------------------
     # VALIDAR VALOR
-    # =================================================
+    # -------------------------------------------------
 
     if dados.valor_aprovado is None:
 
@@ -1116,18 +1019,28 @@ async def aprovar_despesa(
             detail="Informe o valor aprovado"
         )
 
-
     if dados.valor_aprovado <= 0:
 
         raise HTTPException(
             status_code=400,
-            detail="O valor aprovado deve ser maior que zero"
+            detail=(
+                "O valor aprovado "
+                "deve ser maior que zero"
+            )
         )
 
-
-    # =================================================
+    # -------------------------------------------------
     # APROVAR
-    # =================================================
+    #
+    # IMPORTANTE:
+    # Removemos aqui a chamada para:
+    #
+    # calcular_saldo_caixa()
+    #
+    # porque essa função não existe no teu projeto.
+    #
+    # Primeiro fazemos a aprovação funcionar.
+    # -------------------------------------------------
 
     despesa.valor_aprovado = (
         dados.valor_aprovado
@@ -1135,10 +1048,9 @@ async def aprovar_despesa(
 
     despesa.estado = "aprovado"
 
-
-    # =================================================
-    # ATUALIZAR CATEGORIA
-    # =================================================
+    # -------------------------------------------------
+    # CATEGORIA
+    # -------------------------------------------------
 
     if dados.categoria is not None:
 
@@ -1146,10 +1058,9 @@ async def aprovar_despesa(
             dados.categoria
         )
 
-
-    # =================================================
-    # ATUALIZAR OBSERVAÇÃO
-    # =================================================
+    # -------------------------------------------------
+    # OBSERVAÇÃO
+    # -------------------------------------------------
 
     if dados.observacao is not None:
 
@@ -1157,22 +1068,26 @@ async def aprovar_despesa(
             dados.observacao
         )
 
+    # -------------------------------------------------
+    # GUARDAR
+    # -------------------------------------------------
 
     await db.commit()
 
     await db.refresh(despesa)
 
-
-    # =================================================
+    # -------------------------------------------------
     # RECARREGAR COM USUÁRIO
-    # =================================================
+    # -------------------------------------------------
 
     resultado = await db.execute(
 
         select(Despesa)
 
         .options(
-            selectinload(Despesa.usuario)
+            selectinload(
+                Despesa.usuario
+            )
         )
 
         .where(
@@ -1181,8 +1096,8 @@ async def aprovar_despesa(
 
     )
 
-
     despesa = resultado.scalar_one()
 
-
-    return despesa_para_resposta(despesa)
+    return despesa_para_resposta(
+        despesa
+    )

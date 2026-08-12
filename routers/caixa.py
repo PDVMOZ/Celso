@@ -285,6 +285,10 @@ async def recolher_caixa(
     db: AsyncSession = Depends(get_db)
 ):
 
+    # =====================================================
+    # BUSCAR RESPONSÁVEL
+    # =====================================================
+
     resultado = await db.execute(
         select(Usuario)
         .where(
@@ -292,19 +296,19 @@ async def recolher_caixa(
         )
     )
 
-
     responsavel = resultado.scalar_one_or_none()
-
-
 
     if not responsavel:
 
         raise HTTPException(
-            404,
-            "Usuário não encontrado"
+            status_code=404,
+            detail="Usuário não encontrado"
         )
 
 
+    # =====================================================
+    # SOMENTE ADMIN / GERENTE
+    # =====================================================
 
     if responsavel.tipo not in [
         "admin",
@@ -312,11 +316,14 @@ async def recolher_caixa(
     ]:
 
         raise HTTPException(
-            403,
-            "Sem permissão"
+            status_code=403,
+            detail="Sem permissão"
         )
 
 
+    # =====================================================
+    # BUSCAR CAIXA DO VENDEDOR
+    # =====================================================
 
     resultado = await db.execute(
         select(Caixa)
@@ -325,10 +332,12 @@ async def recolher_caixa(
         )
     )
 
-
     caixa = resultado.scalar_one_or_none()
 
 
+    # =====================================================
+    # CRIAR CAIXA SE NÃO EXISTIR
+    # =====================================================
 
     if not caixa:
 
@@ -342,13 +351,14 @@ async def recolher_caixa(
         await db.flush()
 
 
+    # =====================================================
+    # CALCULAR SALDO ATUAL
+    # =====================================================
 
     saldo = await calcular_saldo_caixa(
         db,
         dados.vendedor_id
     )
-
-
 
     saldo_atual = Decimal(
         str(
@@ -357,15 +367,34 @@ async def recolher_caixa(
     )
 
 
+    # =====================================================
+    # NÃO BLOQUEAR RECOLHA POR SALDO INSUFICIENTE
+    #
+    # A recolha continua sendo registrada.
+    #
+    # Se o vendedor tiver saldo:
+    #     segue normalmente.
+    #
+    # Se não tiver saldo:
+    #     também registra a recolha.
+    #
+    # O saldo poderá ficar negativo.
+    # =====================================================
 
-    if dados.valor > saldo_atual:
 
-        raise HTTPException(
-            400,
-            "Valor maior que saldo disponível"
-        )
+    # =====================================================
+    # NOVO SALDO
+    # =====================================================
+
+    novo_saldo = (
+        saldo_atual
+        - dados.valor
+    )
 
 
+    # =====================================================
+    # REGISTRAR RECOLHA
+    # =====================================================
 
     movimento = MovimentoCaixa(
 
@@ -379,8 +408,7 @@ async def recolher_caixa(
 
         saldo_anterior=saldo_atual,
 
-        saldo_depois=
-            saldo_atual - dados.valor,
+        saldo_depois=novo_saldo,
 
         responsavel_id=responsavel.id,
 
@@ -389,28 +417,36 @@ async def recolher_caixa(
     )
 
 
-
     db.add(movimento)
 
     await db.commit()
 
 
+    # =====================================================
+    # RESPOSTA
+    # =====================================================
 
     return {
 
         "mensagem":
             "Recolha realizada",
 
+        "saldo_anterior":
+            float(
+                saldo_atual
+            ),
+
+        "valor_recolhido":
+            float(
+                dados.valor
+            ),
+
         "novo_saldo":
             float(
-                saldo_atual - dados.valor
+                novo_saldo
             )
 
     }
-
-
-
-
 
 # =====================================================
 # RETIRAR DA PRÓPRIA CAIXA
@@ -759,3 +795,104 @@ async def historico_geral(
 
     return historico
 
+
+@router.get("/dashboard/vendas-dia")
+async def vendas_dia(
+    usuario_id: int | None = None,
+    db: AsyncSession = Depends(get_db)
+):
+
+    hoje = datetime.now().date()
+
+    # =====================================
+    # BUSCAR USUÁRIO
+    # =====================================
+
+    usuario = None
+
+    if usuario_id is not None:
+
+        resultado = await db.execute(
+            select(Usuario)
+            .where(
+                Usuario.id == usuario_id
+            )
+        )
+
+        usuario = resultado.scalar_one_or_none()
+
+        if not usuario:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Usuário não encontrado"
+            )
+
+    # =====================================
+    # BUSCAR TODAS AS VENDAS
+    # =====================================
+
+    consulta = select(Venda).order_by(
+        Venda.data_venda.desc()
+    )
+
+    # =====================================
+    # FILTRAR VENDEDOR
+    # =====================================
+
+    if (
+        usuario is not None
+        and usuario.tipo == "vendedor"
+    ):
+
+        consulta = consulta.where(
+            Venda.usuario_id == usuario.id
+        )
+
+    resultado = await db.execute(
+        consulta
+    )
+
+    vendas = resultado.scalars().all()
+
+    print("=====================================")
+    print(" VENDAS ENCONTRADAS:", len(vendas))
+    print(" HOJE:", hoje)
+    print("=====================================")
+
+    total = Decimal("0.00")
+
+    for venda in vendas:
+
+        print(
+            "VENDA:",
+            venda.id,
+            "USUARIO:",
+            venda.usuario_id,
+            "TOTAL:",
+            venda.total,
+            "DATA:",
+            venda.data_venda
+        )
+
+        if venda.data_venda:
+
+            data_venda = venda.data_venda
+
+            if hasattr(data_venda, "date"):
+
+                data_venda = data_venda.date()
+
+            if data_venda == hoje:
+
+                total += Decimal(
+                    str(venda.total or 0)
+                )
+
+    print("=====================================")
+    print("TOTAL VENDAS HOJE:", total)
+    print("=====================================")
+
+    return {
+        "vendas_dia": float(total)
+    }
