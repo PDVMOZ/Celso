@@ -21,6 +21,7 @@ from routers import (
     stock,
     caixa,
     despesas,
+    despesa_fora_caixa,
     relatorios
 )
 
@@ -127,46 +128,13 @@ async def home(request: Request):
 # ROTAS API
 # ==========================
 
-app.include_router(
-    auth.router
-)
-
-
-app.include_router(
-    dashboard.router
-)
-
-
-app.include_router(
-    categorias.router
-)
-
-
-app.include_router(
-    produtos.router
-)
-
-
-app.include_router(
-    vendas.router
-)
-
-
-app.include_router(
-    stock.router
-)
-
-
-app.include_router(
-    caixa.router
-)
-
-
-app.include_router(
-    despesas.router
-)
-
-
-app.include_router(
-    relatorios.router
-)
+app.include_router(auth.router)
+app.include_router(dashboard.router)
+app.include_router(produtos.router)
+app.include_router(categorias.router)
+app.include_router(vendas.router)
+app.include_router(stock.router)
+app.include_router(caixa.router)
+app.include_router(despesas.router)
+app.include_router(despesa_fora_caixa.router)
+app.include_router(relatorios.router)

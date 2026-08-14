@@ -1,0 +1,112 @@
+<!-- ===================================== -->
+<!-- MODAL DETALHES DINHEIRO RECOLHIDO -->
+<!-- ===================================== -->
+
+<div
+    id="modal-detalhes-dinheiro-recolhido"
+    style="
+        display:none;
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.5);
+        z-index:9999;
+        align-items:center;
+        justify-content:center;
+    "
+>
+
+    <div
+        style="
+            background:white;
+            width:90%;
+            max-width:500px;
+            border-radius:10px;
+            padding:20px;
+        "
+    >
+
+        <!-- CABEÇALHO -->
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+            "
+        >
+
+            <h4 style="margin:0;">
+
+                Dinheiro recolhido
+
+            </h4>
+
+
+            <!-- X -->
+
+            <button
+                type="button"
+                onclick="fecharDetalhesDinheiroRecolhido()"
+                style="
+                    border:none;
+                    background:none;
+                    color:#dc3545;
+                    font-size:28px;
+                    font-weight:bold;
+                    cursor:pointer;
+                    line-height:1;
+                "
+                title="Fechar"
+            >
+
+                &times;
+
+            </button>
+
+        </div>
+
+
+        <hr>
+
+
+        <!-- LISTA -->
+
+        <div id="lista-dinheiro-recolhido-gerentes">
+
+            <div class="text-center text-muted">
+
+                Carregando...
+
+            </div>
+
+        </div>
+
+
+        <hr>
+
+
+        <!-- TOTAL -->
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                font-weight:bold;
+                font-size:18px;
+            "
+        >
+
+            <span>
+                TOTAL
+            </span>
+
+            <span id="total-detalhes-recolhido">
+                0.00 MT
+            </span>
+
+        </div>
+
+    </div>
+
+</div>
