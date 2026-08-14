@@ -76,194 +76,422 @@ function fecharCaixa(){
 // CARREGAR TODAS AS CAIXAS
 // =====================================
 
+// =====================================
+// CARREGAR TODAS AS CAIXAS
+// =====================================
+
 async function carregarTodasCaixas(){
 
-    const usuario =
-        JSON.parse(
-            localStorage.getItem("usuario")
+    console.log("=====================================");
+    console.log(" CARREGANDO TODAS AS CAIXAS");
+    console.log("=====================================");
+
+
+    // =====================================
+    // 1. PEGAR USUÁRIO LOGADO
+    // =====================================
+
+    const usuarioStorage =
+        localStorage.getItem("usuario");
+
+
+    if(!usuarioStorage){
+
+        console.error(
+            "Usuário não encontrado no localStorage."
         );
 
-    if(!usuario){
         return;
     }
 
-    const resposta =
-        await fetch(
-            `/caixa/todas?usuario_id=${usuario.id}`
-        );
 
-    if(!resposta.ok){
+    let usuario;
+
+    try{
+
+        usuario =
+            JSON.parse(usuarioStorage);
+
+    }
+    catch(erro){
 
         console.error(
-            "Erro ao carregar caixas:",
+            "Erro ao ler usuário:",
+            erro
+        );
+
+        return;
+    }
+
+
+    if(!usuario){
+
+        return;
+
+    }
+
+
+    console.log(
+        "USUÁRIO LOGADO:",
+        usuario
+    );
+
+
+    // =====================================
+    // 2. BUSCAR TODAS AS CAIXAS
+    // =====================================
+
+    try{
+
+        const resposta =
+            await fetch(
+                `/caixa/todas?usuario_id=${usuario.id}`,
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+            );
+
+
+        console.log(
+            "STATUS /caixa/todas:",
             resposta.status
         );
 
-        return;
-    }
 
-    const caixas =
-        await resposta.json();
+        if(!resposta.ok){
 
+            const erroTexto =
+                await resposta.text();
 
-    const area =
-        document.getElementById(
-            "lista-caixas"
-        );
-
-    if(!area){
-        return;
-    }
-
-
-    area.innerHTML = "";
-
-
-    caixas.forEach(c => {
-
-        // =====================================
-        // GERENTE
-        // =====================================
-        // Gerente só pode ver vendedores
-        // =====================================
-
-        if(usuario.tipo === "gerente"){
-
-            if(c.tipo !== "vendedor"){
-                return;
-            }
-
-        }
-
-
-        // =====================================
-        // ADMIN
-        // =====================================
-        // Admin não precisa mostrar caixa
-        // de gerente no resumo
-        // =====================================
-
-        if(
-            usuario.tipo === "admin" &&
-            c.tipo === "gerente"
-        ){
+            console.error(
+                "Erro ao carregar caixas:",
+                erroTexto
+            );
 
             return;
-
         }
 
 
-        let botao = "";
+        const caixas =
+            await resposta.json();
+
+
+        console.log(
+            "CAIXAS RECEBIDAS:",
+            caixas
+        );
 
 
         // =====================================
-        // ADMIN NA PRÓPRIA CAIXA
+        // 3. ÁREA DAS CAIXAS
+        // =====================================
+
+        const area =
+            document.getElementById(
+                "lista-caixas"
+            );
+
+
+        if(!area){
+
+            console.error(
+                "Elemento #lista-caixas não encontrado."
+            );
+
+            return;
+        }
+
+
+        area.innerHTML = "";
+
+
+        // =====================================
+        // 4. VERIFICAR SE EXISTEM CAIXAS
         // =====================================
 
         if(
-            usuario.tipo === "admin" &&
-            c.usuario_id == usuario.id
+            !Array.isArray(caixas) ||
+            caixas.length === 0
         ){
 
-            botao = `
+            area.innerHTML = `
 
-                <button
-                    class="btn btn-warning w-100 mt-2"
-                    onclick="abrirRetirada()"
-                >
-                    Retirar
-                </button>
+                <div class="alert alert-info">
+
+                    Nenhuma caixa encontrada.
+
+                </div>
 
             `;
 
+            await carregarHistoricoGeral();
+
+            return;
         }
 
 
         // =====================================
-        // ADMIN OU GERENTE RECOLHENDO
-        // SOMENTE VENDEDORES
+        // 5. PERCORRER CAIXAS
         // =====================================
 
-        else if(
-            (
-                usuario.tipo === "admin" ||
+        caixas.forEach(c => {
+
+
+            // =====================================
+            // GERENTE
+            // =====================================
+            //
+            // Gerente continua vendo SOMENTE
+            // as caixas dos vendedores.
+            // =====================================
+
+            if(
                 usuario.tipo === "gerente"
-            )
-            &&
-            c.tipo === "vendedor"
-        ){
+            ){
 
-            botao = `
+                if(
+                    c.tipo !== "vendedor"
+                ){
 
-                <button
-                    class="btn btn-danger w-100 mt-2"
-                    onclick="abrirRecolha(
-                        ${c.usuario_id},
-                        '${c.nome}'
-                    )"
-                >
-                    Recolher
-                </button>
+                    return;
+
+                }
+
+            }
+
+
+            // =====================================
+            // BOTÃO DA CAIXA
+            // =====================================
+
+            let botao = "";
+
+
+            // =====================================
+            // ADMIN NA PRÓPRIA CAIXA
+            // =====================================
+            //
+            // Admin pode retirar dinheiro
+            // da própria caixa.
+            // =====================================
+
+            if(
+                usuario.tipo === "admin" &&
+                c.usuario_id == usuario.id
+            ){
+
+                botao = `
+
+                    <button
+                        class="btn btn-warning w-100 mt-2"
+                        onclick="abrirRetirada()"
+                    >
+                        Retirar
+                    </button>
+
+                `;
+
+            }
+
+
+            // =====================================
+            // ADMIN RECOLHENDO DO GERENTE
+            // =====================================
+            //
+            // NOVO:
+            // Admin pode recolher o dinheiro
+            // acumulado pelo gerente.
+            // =====================================
+
+            else if(
+                usuario.tipo === "admin" &&
+                c.tipo === "gerente"
+            ){
+
+                botao = `
+
+                    <button
+                        class="btn btn-danger w-100 mt-2"
+                        onclick="abrirRecolha(
+                            ${c.usuario_id},
+                            '${String(
+                                c.nome ?? ""
+                            ).replace(
+                                /'/g,
+                                "\\'"
+                            )}'
+                        )"
+                    >
+                        Recolher
+                    </button>
+
+                `;
+
+            }
+
+
+            // =====================================
+            // ADMIN OU GERENTE RECOLHENDO VENDEDOR
+            // =====================================
+
+            else if(
+                (
+                    usuario.tipo === "admin" ||
+                    usuario.tipo === "gerente"
+                )
+                &&
+                c.tipo === "vendedor"
+            ){
+
+                botao = `
+
+                    <button
+                        class="btn btn-danger w-100 mt-2"
+                        onclick="abrirRecolha(
+                            ${c.usuario_id},
+                            '${String(
+                                c.nome ?? ""
+                            ).replace(
+                                /'/g,
+                                "\\'"
+                            )}'
+                        )"
+                    >
+                        Recolher
+                    </button>
+
+                `;
+
+            }
+
+
+            // =====================================
+            // VALORES
+            // =====================================
+
+            const vendas =
+                Number(
+                    c.vendas ?? 0
+                );
+
+
+            const despesas =
+                Number(
+                    c.despesas ?? 0
+                );
+
+
+            const retirado =
+                Number(
+                    c.retirado ?? 0
+                );
+
+
+            const saldo =
+                Number(
+                    c.saldo ?? 0
+                );
+
+
+            // =====================================
+            // MOSTRAR CAIXA
+            // =====================================
+
+            area.innerHTML += `
+
+                <div class="caixa-item">
+
+                    <h5>
+                        ${escaparHtml(
+                            c.nome ?? "-"
+                        )}
+                    </h5>
+
+
+                    Tipo:
+
+                    ${escaparHtml(
+                        c.tipo ?? "-"
+                    )}
+
+
+                    <br><br>
+
+
+                    Vendas:
+
+                    ${vendas.toFixed(2)}
+                    MT
+
+
+                    <br>
+
+
+                    Despesas:
+
+                    ${despesas.toFixed(2)}
+                    MT
+
+
+                    <br>
+
+
+                    Retirado:
+
+                    ${retirado.toFixed(2)}
+                    MT
+
+
+                    <br><br>
+
+
+                    <b>
+
+                        Saldo:
+
+                        ${saldo.toFixed(2)}
+                        MT
+
+                    </b>
+
+
+                    ${botao}
+
+                </div>
 
             `;
 
-        }
+        });
 
 
         // =====================================
-        // MOSTRAR CAIXA
+        // 6. CARREGAR HISTÓRICO GERAL
         // =====================================
 
-        area.innerHTML += `
-
-            <div class="caixa-item">
-
-                <h5>
-                    ${c.nome}
-                </h5>
-
-                Tipo:
-                ${c.tipo}
-
-                <br><br>
-
-                Vendas:
-                ${c.vendas ?? 0} MT
-
-                <br>
-
-                Despesas:
-                ${c.despesas ?? 0} MT
-
-                <br>
-
-                Retirado:
-                ${c.retirado ?? 0} MT
-
-                <br><br>
-
-                <b>
-                    Saldo:
-                    ${c.saldo ?? 0} MT
-                </b>
-
-                ${botao}
-
-            </div>
-
-        `;
-
-    });
+        await carregarHistoricoGeral();
 
 
-    await carregarHistoricoGeral();
+        console.log(
+            "CAIXAS CARREGADAS COM SUCESSO."
+        );
+
+
+    }
+    catch(erro){
+
+        console.error(
+            "ERRO AO CARREGAR TODAS AS CAIXAS:",
+            erro
+        );
+
+    }
 
 }
-
-
-// =====================================
-// CARREGAR MINHA CAIXA
-// =====================================
 
 // =====================================
 // CARREGAR MINHA CAIXA
@@ -506,88 +734,158 @@ function fecharOperacaoCaixa(){
 // RECOLHER DINHEIRO
 // =====================================
 
+// =====================================
+// RECOLHER DINHEIRO
+// =====================================
+
 async function recolherDinheiro(){
 
+    // =====================================
+    // PEGAR USUÁRIO
+    // =====================================
 
     const usuario =
-    JSON.parse(
-        localStorage.getItem("usuario")
-    );
+        JSON.parse(
+            localStorage.getItem("usuario")
+        );
 
 
+    if(!usuario){
 
-    const valor =
-    Number(
-        document
-        .getElementById(
-            "caixa-valor-recolha"
-        )
-        .value
-    );
-
-
-
-    const observacao =
-    document
-    .getElementById(
-        "caixa-observacao"
-    )
-    .value;
-
-
-
-    const resposta =
-    await fetch(
-
-    `/caixa/recolher?usuario_id=${usuario.id}`,
-
-    {
-
-        method:"POST",
-
-        headers:{
-
-            "Content-Type":
-            "application/json"
-
-        },
-
-        body:JSON.stringify({
-
-            vendedor_id:
-            vendedorSelecionado,
-
-            valor:valor,
-
-            observacao:observacao
-
-        })
-
-    }
-
-    );
-
-
-
-    const dados =
-    await resposta.json();
-
-
-
-    if(!resposta.ok){
-
-        alert(
-            dados.detail
+        console.error(
+            "Usuário não encontrado."
         );
 
         return;
 
     }
+
+
+    // =====================================
+    // PEGAR VALOR
+    // =====================================
+
+    const valor =
+        Number(
+            document
+                .getElementById(
+                    "caixa-valor-recolha"
+                )
+                .value
+        );
+
+
+    // =====================================
+    // PEGAR OBSERVAÇÃO
+    // =====================================
+
+    const observacao =
+        document
+            .getElementById(
+                "caixa-observacao"
+            )
+            .value;
+
+
+    // =====================================
+    // ENVIAR RECOLHA
+    // =====================================
+
+    const resposta =
+        await fetch(
+            `/caixa/recolher?usuario_id=${usuario.id}`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    vendedor_id:
+                        vendedorSelecionado,
+
+                    valor:
+                        valor,
+
+                    observacao:
+                        observacao
+
+                })
+            }
+        );
+
+
+    // =====================================
+    // LER RESPOSTA
+    // =====================================
+
+    const dados =
+        await resposta.json();
+
+
+    // =====================================
+    // ERRO
+    // =====================================
+
+    if(!resposta.ok){
+
+        alert(
+            dados.detail ||
+            "Erro ao realizar recolha."
+        );
+
+        return;
+
+    }
+
+
+    // =====================================
+    // FECHAR OPERAÇÃO
+    // =====================================
+
     fecharOperacaoCaixa();
+
+
+    // =====================================
+    // ATUALIZAR CAIXA
+    // =====================================
+
     await atualizarCaixa();
 
 
+    // =====================================
+    // ATUALIZAR DASHBOARD
+    // SEM F5
+    // =====================================
+
+    if(
+        typeof window.atualizarDadosCaixaDashboard ===
+        "function"
+    ){
+
+        await window.atualizarDadosCaixaDashboard();
+
+    }
+
+
+    // =====================================
+    // COMPATIBILIDADE COM FUNÇÃO ANTIGA
+    // =====================================
+
+    if(
+        typeof window.atualizarSaldoCaixaAgora ===
+        "function"
+    ){
+
+        await window.atualizarSaldoCaixaAgora();
+
+    }
+
 }
+
 
 
 
@@ -694,7 +992,27 @@ async function retirarCaixa(){
     }
 
     fecharOperacaoCaixa();
+
     await atualizarCaixa();
+
+    // Atualizar saldo do dashboard
+    if(
+        typeof window.atualizarSaldoCaixaAgora ===
+        "function"
+    ){
+
+        await window.atualizarSaldoCaixaAgora();
+
+    }
+    if(
+        typeof window.atualizarDadosCaixaDashboard ===
+        "function"
+    ){
+
+        await window.atualizarDadosCaixaDashboard();
+
+    }
+
 }
 
 
@@ -958,46 +1276,222 @@ async function carregarHistoricoGeral(){
         localStorage.getItem("usuario")
     );
 
-    const resposta = await fetch(
-        `/caixa/historico?usuario_id=${usuario.id}`
-    );
-
-    if(!resposta.ok){
-        console.error("Erro ao carregar histórico");
+    if(!usuario){
         return;
     }
 
-    historicoCompleto = await resposta.json();
+    try{
 
-    montarHistoricoCaixa(historicoCompleto);
+        // =========================================
+        // 1. HISTÓRICO NORMAL DA CAIXA
+        // =========================================
+
+        const respostaCaixa = await fetch(
+            `/caixa/historico?usuario_id=${usuario.id}`
+        );
+
+        if(!respostaCaixa.ok){
+
+            console.error(
+                "Erro ao carregar histórico da caixa:",
+                respostaCaixa.status
+            );
+
+            return;
+        }
+
+        const historicoCaixa =
+            await respostaCaixa.json();
+
+
+        // =========================================
+        // 2. DESPESAS FORA DA CAIXA
+        // =========================================
+
+        const respostaForaCaixa = await fetch(
+            `/despesas-fora-caixa/historico-geral?usuario_id=${usuario.id}`
+        );
+
+        if(!respostaForaCaixa.ok){
+
+            console.error(
+                "Erro ao carregar despesas fora da caixa:",
+                respostaForaCaixa.status
+            );
+
+            return;
+        }
+
+        const despesasForaCaixa =
+            await respostaForaCaixa.json();
+
+
+        // =========================================
+        // 3. TRANSFORMAR DESPESAS FORA DA CAIXA
+        // PARA O MESMO FORMATO DO HISTÓRICO
+        // =========================================
+
+        const movimentosForaCaixa =
+            despesasForaCaixa.map(despesa => {
+
+                return {
+
+                    // Nome de quem solicitou
+                    nome:
+                        despesa.solicitante_nome
+                        ?? "-",
+
+                    // Identificação do movimento
+                    tipo:
+                        "despesa_fora_caixa",
+
+                    // Valor
+                    valor:
+                        despesa.valor_aprovado
+                        ??
+                        despesa.valor_solicitado
+                        ??
+                        0,
+
+                    // Data
+                    data:
+                        despesa.data_aprovacao
+                        ??
+                        despesa.data_solicitacao,
+
+                    // Observação
+                    observacao:
+                        despesa.observacao
+                        ??
+                        "",
+
+                    // Informações extras
+                    despesa_id:
+                        despesa.id,
+
+                    descricao:
+                        despesa.descricao,
+
+                    categoria:
+                        despesa.categoria,
+
+                    estado:
+                        despesa.estado,
+
+                    valor_solicitado:
+                        despesa.valor_solicitado,
+
+                    valor_aprovado:
+                        despesa.valor_aprovado,
+
+                    aprovador_nome:
+                        despesa.aprovador_nome
+
+                };
+
+            });
+
+
+        // =========================================
+        // 4. JUNTAR OS DOIS HISTÓRICOS
+        // =========================================
+
+        historicoCompleto = [
+
+            ...historicoCaixa,
+
+            ...movimentosForaCaixa
+
+        ];
+
+
+        // =========================================
+        // 5. ORDENAR POR DATA
+        // MAIS RECENTE PRIMEIRO
+        // =========================================
+
+        historicoCompleto.sort(
+            (a, b) => {
+
+                const dataA =
+                    a.data
+                    ?
+                    new Date(a.data).getTime()
+                    :
+                    0;
+
+                const dataB =
+                    b.data
+                    ?
+                    new Date(b.data).getTime()
+                    :
+                    0;
+
+                return dataB - dataA;
+
+            }
+        );
+
+
+        // =========================================
+        // 6. MOSTRAR HISTÓRICO
+        // =========================================
+
+        montarHistoricoCaixa(
+            historicoCompleto
+        );
+
+
+        // =========================================
+        // 7. APLICAR FILTRO SE EXISTIR
+        // =========================================
+
+        const filtro =
+            document.getElementById(
+                "filtro-historico"
+            );
+
+        if(
+            filtro &&
+            filtro.value.trim() !== ""
+        ){
+
+            filtrarHistorico();
+
+        }
+
+    }
+    catch(erro){
+
+        console.error(
+            "Erro ao carregar histórico geral:",
+            erro
+        );
+
+    }
+
 }
 
-
 // =====================================
-// DEBUG + SALDO DO CAIXA NO DASHBOARD
-// =====================================
-
-// =====================================
-// SALDO DO CAIXA NO DASHBOARD
+// SALDO DA CAIXA NO DASHBOARD
 // =====================================
 
 window.atualizarSaldoCaixaDashboard = async function(){
 
     console.log("=====================================");
-    console.log(" INICIANDO SALDO DO CAIXA");
+    console.log(" ATUALIZANDO SALDO DA CAIXA");
     console.log("=====================================");
 
     // =====================================
-    // 1. USUARIO
+    // 1. BUSCAR USUÁRIO
     // =====================================
 
-    const usuarioStorage =
-        localStorage.getItem("usuario");
+    const usuarioStorage = localStorage.getItem("usuario");
 
     if(!usuarioStorage){
 
         console.error(
-            "ERRO: usuario não existe no localStorage"
+            "ERRO: usuário não encontrado no localStorage"
         );
 
         return;
@@ -1007,27 +1501,25 @@ window.atualizarSaldoCaixaDashboard = async function(){
 
     try{
 
-        usuario =
-            JSON.parse(usuarioStorage);
+        usuario = JSON.parse(usuarioStorage);
 
     }
     catch(erro){
 
         console.error(
-            "ERRO AO LER USUARIO:",
+            "ERRO AO LER USUÁRIO:",
             erro
         );
 
         return;
     }
 
-    console.log("USUARIO:", usuario);
-    console.log("ID:", usuario.id);
-    console.log("TIPO:", usuario.tipo);
+
+    console.log("USUÁRIO:", usuario);
 
 
     // =====================================
-    // 2. ELEMENTOS
+    // 2. ELEMENTO DO SALDO
     // =====================================
 
     const saldoElemento =
@@ -1035,14 +1527,16 @@ window.atualizarSaldoCaixaDashboard = async function(){
             "saldo-caixa"
         );
 
+
     if(!saldoElemento){
 
         console.error(
-            "ERRO: #saldo-caixa não existe"
+            "ERRO: elemento #saldo-caixa não encontrado"
         );
 
         return;
     }
+
 
     const detalhesElemento =
         document.getElementById(
@@ -1056,41 +1550,20 @@ window.atualizarSaldoCaixaDashboard = async function(){
         // VENDEDOR
         // =====================================
 
-        if(
-            usuario.tipo !== "admin" &&
-            usuario.tipo !== "gerente"
-        ){
+        if(usuario.tipo === "vendedor"){
 
             console.log(
-                "====================================="
-            );
-
-            console.log(
-                " MODO VENDEDOR"
-            );
-
-            console.log(
-                "=====================================");
-
-
-            const url =
-                API +
-                "/caixa/minha/" +
-                usuario.id;
-
-
-            console.log(
-                "URL MINHA CAIXA:",
-                url
+                "MODO: VENDEDOR"
             );
 
 
-            const resposta =
-                await fetch(url);
+            const resposta = await fetch(
+                `/caixa/minha/${usuario.id}`
+            );
 
 
             console.log(
-                "STATUS:",
+                "STATUS MINHA CAIXA:",
                 resposta.status
             );
 
@@ -1101,7 +1574,7 @@ window.atualizarSaldoCaixaDashboard = async function(){
                     await resposta.text();
 
                 console.error(
-                    "ERRO BACKEND:",
+                    "ERRO AO BUSCAR MINHA CAIXA:",
                     erroTexto
                 );
 
@@ -1123,32 +1596,8 @@ window.atualizarSaldoCaixaDashboard = async function(){
 
 
             // =====================================
-            // MOSTRAR TODOS OS CAMPOS RECEBIDOS
-            // =====================================
-
-            console.log(
-                "VENDAS:",
-                dados.vendas
-            );
-
-            console.log(
-                "DESPESAS:",
-                dados.despesas
-            );
-
-            console.log(
-                "RETIRADO:",
-                dados.retirado
-            );
-
-            console.log(
-                "SALDO_ATUAL:",
-                dados.saldo_atual
-            );
-
-
-            // =====================================
-            // SALDO DO VENDEDOR
+            // USAR EXATAMENTE O MESMO SALDO
+            // DO RESUMO DA CAIXA
             // =====================================
 
             const saldo =
@@ -1158,7 +1607,7 @@ window.atualizarSaldoCaixaDashboard = async function(){
 
 
             console.log(
-                "SALDO FINAL DO VENDEDOR:",
+                "SALDO DO VENDEDOR:",
                 saldo
             );
 
@@ -1179,12 +1628,6 @@ window.atualizarSaldoCaixaDashboard = async function(){
             }
 
 
-            console.log(
-                "SALDO DO VENDEDOR ATUALIZADO:",
-                saldoElemento.innerText
-            );
-
-
             return;
         }
 
@@ -1193,135 +1636,156 @@ window.atualizarSaldoCaixaDashboard = async function(){
         // ADMIN / GERENTE
         // =====================================
 
-        console.log(
-            "====================================="
-        );
+        if(
+            usuario.tipo === "admin" ||
+            usuario.tipo === "gerente"
+        ){
 
-        console.log(
-            " MODO ADMIN / GERENTE"
-        );
-
-        console.log(
-            "====================================="
-        );
-
-
-        const url =
-            API +
-            "/caixa/todas?usuario_id=" +
-            usuario.id;
-
-
-        console.log(
-            "URL TODAS AS CAIXAS:",
-            url
-        );
-
-
-        const resposta =
-            await fetch(url);
-
-
-        console.log(
-            "STATUS:",
-            resposta.status
-        );
-
-
-        if(!resposta.ok){
-
-            const erroTexto =
-                await resposta.text();
-
-            console.error(
-                "ERRO BACKEND:",
-                erroTexto
+            console.log(
+                "MODO: ADMIN / GERENTE"
             );
 
-            throw new Error(
-                "Erro HTTP " +
+
+            const resposta = await fetch(
+                `/caixa/todas?usuario_id=${usuario.id}`
+            );
+
+
+            console.log(
+                "STATUS TODAS AS CAIXAS:",
                 resposta.status
             );
-        }
 
 
-        const caixas =
-            await resposta.json();
+            if(!resposta.ok){
 
+                const erroTexto =
+                    await resposta.text();
 
-        console.log(
-            "CAIXAS RECEBIDAS:",
-            caixas
-        );
-
-
-        let saldoTotal = 0;
-
-
-        caixas.forEach(
-            (caixa, index) => {
-
-                console.log(
-                    "CAIXA #" + index,
-                    caixa
+                console.error(
+                    "ERRO AO BUSCAR TODAS AS CAIXAS:",
+                    erroTexto
                 );
+
+                throw new Error(
+                    "Erro HTTP " +
+                    resposta.status
+                );
+            }
+
+
+            const caixas =
+                await resposta.json();
+
+
+            console.log(
+                "CAIXAS RECEBIDAS:",
+                caixas
+            );
+
+
+            let saldoTotal = 0;
+
+
+            // =====================================
+            // SOMAR OS SALDOS DAS CAIXAS
+            // =====================================
+
+            caixas.forEach(caixa => {
+
+                // =====================================
+                // GERENTE
+                // =====================================
+                // Gerente soma somente vendedores
+                // =====================================
+
+                if(usuario.tipo === "gerente"){
+
+                    if(caixa.tipo !== "vendedor"){
+
+                        return;
+                    }
+                }
 
 
                 // =====================================
-                // NÃO SOMAR CAIXA DO GERENTE
+                // ADMIN
+                // =====================================
+                // Não somar caixa de gerente
                 // =====================================
 
                 if(
+                    usuario.tipo === "admin" &&
                     caixa.tipo === "gerente"
                 ){
-
-                    console.log(
-                        "CAIXA DO GERENTE IGNORADA"
-                    );
 
                     return;
                 }
 
 
-                const saldoCaixa =
+                const saldo =
                     Number(
                         caixa.saldo ?? 0
                     );
 
 
-                saldoTotal +=
-                    saldoCaixa;
+                console.log(
+                    "CAIXA:",
+                    caixa.nome,
+                    "TIPO:",
+                    caixa.tipo,
+                    "SALDO:",
+                    saldo
+                );
 
+
+                saldoTotal += saldo;
+
+            });
+
+
+            console.log(
+                "SALDO TOTAL:",
+                saldoTotal
+            );
+
+
+            // =====================================
+            // MOSTRAR NO DASHBOARD
+            // =====================================
+
+            saldoElemento.innerText =
+                saldoTotal.toFixed(2) +
+                " MT";
+
+
+            // =====================================
+            // ADMIN / GERENTE PODE VER DETALHES
+            // =====================================
+
+            if(detalhesElemento){
+
+                detalhesElemento.style.display =
+                    "block";
             }
-        );
 
 
-        console.log(
-            "SALDO TOTAL ADMIN/GERENTE:",
-            saldoTotal
+            return;
+        }
+
+
+        // =====================================
+        // TIPO DESCONHECIDO
+        // =====================================
+
+        console.warn(
+            "TIPO DE USUÁRIO NÃO RECONHECIDO:",
+            usuario.tipo
         );
 
 
         saldoElemento.innerText =
-            saldoTotal.toFixed(2) +
-            " MT";
-
-
-        // =====================================
-        // ADMIN / GERENTE PODE VER DETALHES
-        // =====================================
-
-        if(detalhesElemento){
-
-            detalhesElemento.style.display =
-                "block";
-        }
-
-
-        console.log(
-            "SALDO ADMIN/GERENTE ATUALIZADO:",
-            saldoElemento.innerText
-        );
+            "0.00 MT";
 
 
     }
@@ -1332,7 +1796,7 @@ window.atualizarSaldoCaixaDashboard = async function(){
         );
 
         console.error(
-            "ERRO SALDO CAIXA:"
+            "ERRO AO ATUALIZAR SALDO DA CAIXA:"
         );
 
         console.error(erro);
@@ -1345,5 +1809,218 @@ window.atualizarSaldoCaixaDashboard = async function(){
         saldoElemento.innerText =
             "0.00 MT";
     }
+
+};
+// =====================================
+// DINHEIRO TOTAL RECOLHIDO
+// =====================================
+
+// =====================================
+// ATUALIZAR DINHEIRO RECOLHIDO
+// =====================================
+
+// =====================================
+// ATUALIZAR DINHEIRO RECOLHIDO
+// =====================================
+
+window.atualizarDinheiroRecolhido = async function(){
+
+    console.log("=====================================");
+    console.log(" ATUALIZANDO DINHEIRO RECOLHIDO");
+    console.log("=====================================");
+
+    // =====================================
+    // 1. PEGAR USUÁRIO
+    // =====================================
+
+    const usuarioStorage =
+        localStorage.getItem("usuario");
+
+    if(!usuarioStorage){
+
+        console.error(
+            "ERRO: usuário não encontrado no localStorage"
+        );
+
+        return;
+    }
+
+
+    let usuario;
+
+    try{
+
+        usuario =
+            JSON.parse(usuarioStorage);
+
+    }
+    catch(erro){
+
+        console.error(
+            "ERRO AO LER USUÁRIO:",
+            erro
+        );
+
+        return;
+    }
+
+
+    console.log(
+        "USUÁRIO:",
+        usuario
+    );
+
+
+    // =====================================
+    // 2. PEGAR ELEMENTO DO CARD
+    // =====================================
+
+    const elemento =
+        document.getElementById(
+            "dinheiro-recolhido"
+        );
+
+
+    if(!elemento){
+
+        console.error(
+            "ERRO: #dinheiro-recolhido não encontrado"
+        );
+
+        return;
+    }
+
+
+    // =====================================
+    // 3. CHAMAR A ROTA CORRETA
+    // =====================================
+
+    try{
+
+        const resposta =
+            await fetch(
+                `/caixa/dashboard/dinheiro-recolhido-gerentes?usuario_id=${usuario.id}`,
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+            );
+
+
+        console.log(
+            "STATUS:",
+            resposta.status
+        );
+
+
+        // =====================================
+        // 4. VERIFICAR ERRO
+        // =====================================
+
+        if(!resposta.ok){
+
+            const erroTexto =
+                await resposta.text();
+
+            console.error(
+                "ERRO NA ROTA:",
+                erroTexto
+            );
+
+            elemento.innerText =
+                "0.00 MT";
+
+            return;
+        }
+
+
+        // =====================================
+        // 5. LER JSON
+        // =====================================
+
+        const dados =
+            await resposta.json();
+
+
+        console.log(
+            "RESPOSTA DINHEIRO RECOLHIDO:",
+            dados
+        );
+
+
+        // =====================================
+        // 6. PEGAR SOMENTE total_geral
+        // =====================================
+
+        const totalGeral =
+            Number(
+                dados.total_geral ?? 0
+            );
+
+
+        console.log(
+            "TOTAL GERAL:",
+            totalGeral
+        );
+
+
+        // =====================================
+        // 7. ATUALIZAR CARD
+        // =====================================
+
+        elemento.innerText =
+            totalGeral.toFixed(2) +
+            " MT";
+
+
+        console.log(
+            "CARD ATUALIZADO:",
+            elemento.innerText
+        );
+
+    }
+    catch(erro){
+
+        console.error(
+            "ERRO AO ATUALIZAR DINHEIRO RECOLHIDO:",
+            erro
+        );
+
+        elemento.innerText =
+            "0.00 MT";
+    }
+
+};
+
+// =====================================
+// CARREGAR DADOS DO DASHBOARD
+// =====================================
+
+window.atualizarDadosCaixaDashboard = async function(){
+
+    console.log(
+        "====================================="
+    );
+
+    console.log(
+        " ATUALIZANDO DADOS DO DASHBOARD"
+    );
+
+    console.log(
+        "====================================="
+    );
+
+    await Promise.all([
+
+        window.atualizarSaldoCaixaDashboard(),
+
+        window.atualizarDinheiroRecolhido()
+
+
+    ]);
 
 };

@@ -15,7 +15,6 @@ class DespesaCreate(BaseModel):
 
     categoria: str | None = None
 
-    # Valor sugerido pelo vendedor
     valor_proposto: Decimal | None = None
 
     observacao: str | None = None
@@ -52,9 +51,16 @@ class DespesaAprovar(BaseModel):
 
     observacao: str | None = None
 
+# =====================================================
+# REJEITAR DESPESA
+# =====================================================
+
+class DespesaRejeitar(BaseModel):
+
+    observacao: str | None = None
 
 # =====================================================
-# RESPOSTA
+# RESPOSTA NORMAL
 # =====================================================
 
 class DespesaResponse(BaseModel):
@@ -62,10 +68,6 @@ class DespesaResponse(BaseModel):
     id: int
 
     usuario_id: int
-
-    # =================================================
-    # NOME DE QUEM SOLICITOU / CRIOU
-    # =================================================
 
     solicitante_nome: str | None = None
 
@@ -86,3 +88,36 @@ class DespesaResponse(BaseModel):
     model_config = ConfigDict(
         from_attributes=True
     )
+
+
+# =====================================================
+# RESPOSTA AO SOLICITAR DESPESA
+#
+# Usado quando:
+#
+# ADMIN com saldo:
+#     -> despesa normal
+#
+# ADMIN sem saldo:
+#     -> despesa fora da caixa
+# =====================================================
+
+class DespesaSolicitacaoResponse(BaseModel):
+
+    tipo: str
+
+    id: int
+
+    usuario_id: int
+
+    descricao: str
+
+    categoria: str | None = None
+
+    valor: Decimal
+
+    estado: str
+
+    saldo_caixa: Decimal | None = None
+
+    mensagem: str | None = None

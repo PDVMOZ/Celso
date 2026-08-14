@@ -484,9 +484,106 @@ function limparFormularioDespesa(){
 
 }
 
+// =====================================================
+// VERIFICAR SALDO DA CAIXA
+// =====================================================
 
+async function obterSaldoCaixa(usuarioId) {
+
+    try {
+
+        const resposta = await fetch(
+
+            API +
+            "/caixa/minha/" +
+            encodeURIComponent(usuarioId),
+
+            {
+                method: "GET",
+
+                headers: {
+                    "Accept": "application/json"
+                }
+            }
+
+        );
+
+
+        const dados =
+            await lerRespostaJson(
+                resposta
+            );
+
+
+        if (!resposta.ok) {
+
+            console.error(
+                "Erro ao consultar saldo da caixa:",
+                dados
+            );
+
+            throw new Error(
+                obterMensagemErro(
+                    dados,
+                    "Não foi possível consultar o saldo da caixa."
+                )
+            );
+
+        }
+
+
+        /*
+         * Resposta esperada do backend:
+         *
+         * {
+         *     usuario_id: 4,
+         *     nome: "...",
+         *     tipo: "vendedor",
+         *     vendas: 1500.00,
+         *     despesas: 200.00,
+         *     retirado: 100.00,
+         *     saldo_atual: 1200.00,
+         *     movimentos: []
+         * }
+         */
+
+
+        const saldo =
+            Number(
+                dados.saldo_atual || 0
+            );
+
+
+        if (
+            !Number.isFinite(saldo)
+        ) {
+
+            throw new Error(
+                "Saldo da caixa inválido."
+            );
+
+        }
+
+
+        return saldo;
+
+    }
+    catch(error) {
+
+        console.error(
+            "Erro ao obter saldo da caixa:",
+            error
+        );
+
+        throw error;
+
+    }
+
+}
 // =====================================================
 // SALVAR DESPESA
+// =====================================================
+
 // =====================================================
 
 window.salvarDespesa = async function(){
@@ -494,6 +591,10 @@ window.salvarDespesa = async function(){
     const usuario =
         obterUsuarioLogado();
 
+
+    // =================================================
+    // USUÁRIO
+    // =================================================
 
     if(!usuario){
 
@@ -514,9 +615,7 @@ window.salvarDespesa = async function(){
     // PERMISSÃO
     // =================================================
 
-    if(
-        tipoUsuario === "gerente"
-    ){
+    if(tipoUsuario === "gerente"){
 
         alert(
             "O gerente não pode criar despesas."
@@ -655,72 +754,358 @@ window.salvarDespesa = async function(){
 
 
     // =================================================
-    // DADOS
+    // PROCESSAMENTO
     // =================================================
-
-    const dados = {
-
-        usuario_id:
-            usuario.id,
-
-        descricao:
-            descricao,
-
-        categoria:
-            categoria,
-
-        valor_proposto:
-            valor,
-
-        observacao:
-            observacao
-
-    };
-
-
-    // =================================================
-    // ENDPOINT
-    // =================================================
-
-    let endpoint;
-
-
-    /*
-     * ADMIN:
-     *
-     * POST /despesas/
-     *
-     *
-     * VENDEDOR:
-     *
-     * POST /despesas/solicitar
-     */
-
-    if(
-        tipoUsuario === "admin" ||
-        tipoUsuario === "administrador"
-    ){
-
-        endpoint =
-            API +
-            "/despesas/";
-
-    }
-    else{
-
-        endpoint =
-            API +
-            "/despesas/solicitar";
-
-    }
-
 
     try{
 
-        const resposta =
+        // =================================================
+        // 1. CONSULTAR A PRÓPRIA CAIXA
+        //
+        // Tanto ADMIN quanto VENDEDOR consultam
+        // a caixa do próprio usuário.
+        // =================================================
+
+        const saldoCaixa =
+            await obterSaldoCaixa(
+                usuario.id
+            );
+
+
+        console.log(
+            "================================="
+        );
+
+        console.log(
+            "CRIANDO DESPESA"
+        );
+
+        console.log(
+            "Usuário:",
+            usuario.id
+        );
+
+        console.log(
+            "Tipo:",
+            tipoUsuario
+        );
+
+        console.log(
+            "Saldo da própria caixa:",
+            saldoCaixa
+        );
+
+        console.log(
+            "Valor da despesa:",
+            valor
+        );
+
+        console.log(
+            "Saldo suficiente:",
+            saldoCaixa >= valor
+        );
+
+        console.log(
+            "================================="
+        );
+
+
+        // =================================================
+        // 2. SALDO SUFICIENTE
+        // =================================================
+
+        if(saldoCaixa >= valor){
+
+            console.log(
+                "SALDO SUFICIENTE."
+            );
+
+            // =================================================
+            // ADMIN
+            // =================================================
+
+            if(
+                tipoUsuario === "admin" ||
+                tipoUsuario === "administrador"
+            ){
+
+                console.log(
+                    "Criando despesa normal do ADMIN."
+                );
+
+
+                const resposta =
+                    await fetch(
+
+                        API +
+                        "/despesas/",
+
+                        {
+
+                            method: "POST",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json",
+
+                                "Accept":
+                                    "application/json"
+
+                            },
+
+                            body:
+                                JSON.stringify({
+
+                                    usuario_id:
+                                        usuario.id,
+
+                                    descricao:
+                                        descricao,
+
+                                    categoria:
+                                        categoria,
+
+                                    valor_proposto:
+                                        valor,
+
+                                    observacao:
+                                        observacao
+
+                                })
+
+                        }
+
+                    );
+
+
+                const resultado =
+                    await lerRespostaJson(
+                        resposta
+                    );
+
+
+                if(!resposta.ok){
+
+                    console.error(
+                        "Erro ao criar despesa normal:",
+                        resultado
+                    );
+
+
+                    alert(
+                        obterMensagemErro(
+                            resultado,
+                            "Erro ao criar despesa."
+                        )
+                    );
+
+                    return;
+
+                }
+
+
+                limparFormularioDespesa();
+
+                const formulario =
+                    document.getElementById(
+                        "formulario-despesa"
+                    );
+
+                if(formulario){
+
+                    formulario.style.display =
+                        "none";
+
+                }
+
+                await carregarDespesasPendentes();
+
+
+                // =================================================
+                // ATUALIZAR SALDO DA CAIXA
+                // =================================================
+
+                if(
+                    typeof window.atualizarSaldoCaixaAgora ===
+                    "function"
+                ){
+
+                    try{
+
+                        await window.atualizarSaldoCaixaAgora();
+
+                        console.log(
+                            "✅ Saldo da caixa atualizado após criar despesa."
+                        );
+
+                    }
+                    catch(error){
+
+                        console.error(
+                            "❌ Erro ao atualizar saldo da caixa:",
+                            error
+                        );
+
+                    }
+
+                }
+                else{
+
+                    console.warn(
+                        "⚠️ atualizarSaldoCaixaAgora não está disponível."
+                    );
+
+                }
+
+
+                alert(
+                    "Despesa criada na caixa do administrador com sucesso."
+                );
+
+                return;
+
+
+            }
+
+
+            // =================================================
+            // VENDEDOR
+            // =================================================
+
+            if(
+                tipoUsuario === "vendedor"
+            ){
+
+                console.log(
+                    "Criando solicitação normal do VENDEDOR."
+                );
+
+
+                const resposta =
+                    await fetch(
+
+                        API +
+                        "/despesas/solicitar",
+
+                        {
+
+                            method: "POST",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json",
+
+                                "Accept":
+                                    "application/json"
+
+                            },
+
+                            body:
+                                JSON.stringify({
+
+                                    usuario_id:
+                                        usuario.id,
+
+                                    descricao:
+                                        descricao,
+
+                                    categoria:
+                                        categoria,
+
+                                    valor_proposto:
+                                        valor,
+
+                                    observacao:
+                                        observacao
+
+                                })
+
+                        }
+
+                    );
+
+
+                const resultado =
+                    await lerRespostaJson(
+                        resposta
+                    );
+
+
+                if(!resposta.ok){
+
+                    console.error(
+                        "Erro ao solicitar despesa:",
+                        resultado
+                    );
+
+
+                    alert(
+                        obterMensagemErro(
+                            resultado,
+                            "Erro ao solicitar despesa."
+                        )
+                    );
+
+                    return;
+
+                }
+
+
+                limparFormularioDespesa();
+
+
+                const formulario =
+                    document.getElementById(
+                        "formulario-despesa"
+                    );
+
+
+                if(formulario){
+
+                    formulario.style.display =
+                        "none";
+
+                }
+
+
+                await carregarMinhasDespesas();
+
+
+                alert(
+                    "Solicitação de despesa enviada com sucesso."
+                );
+
+
+                return;
+
+            }
+
+        }
+
+
+        // =================================================
+        // 3. SALDO INSUFICIENTE
+        //
+        // ADMIN E VENDEDOR:
+        // cria fora da caixa
+        // =================================================
+
+        console.log(
+            "SALDO INSUFICIENTE."
+        );
+
+        console.log(
+            "Criando despesa FORA DA CAIXA."
+        );
+
+
+        const respostaForaCaixa =
             await fetch(
 
-                endpoint,
+                API +
+                "/despesas-fora-caixa/solicitar",
 
                 {
 
@@ -729,38 +1114,71 @@ window.salvarDespesa = async function(){
                     headers: {
 
                         "Content-Type":
+                            "application/json",
+
+                        "Accept":
                             "application/json"
 
                     },
 
                     body:
-                        JSON.stringify(
-                            dados
-                        )
+                        JSON.stringify({
+
+                            usuario_id:
+                                usuario.id,
+
+                            descricao:
+                                descricao,
+
+                            categoria:
+                                categoria,
+
+                            valor_solicitado:
+                                valor,
+
+                            observacao:
+                                observacao
+
+                        })
 
                 }
 
             );
 
 
-        const resultado =
+        const resultadoForaCaixa =
             await lerRespostaJson(
-                resposta
+                respostaForaCaixa
             );
 
 
-        if(!resposta.ok){
+        // =================================================
+        // 4. ERRO FORA DA CAIXA
+        // =================================================
+
+        if(!respostaForaCaixa.ok){
 
             console.error(
-                "Erro ao criar despesa:",
-                resultado
+                "Erro ao criar despesa fora da caixa:",
+                {
+
+                    status:
+                        respostaForaCaixa.status,
+
+                    statusText:
+                        respostaForaCaixa.statusText,
+
+                    dados:
+                        resultadoForaCaixa
+
+                }
             );
 
 
             alert(
                 obterMensagemErro(
-                    resultado,
-                    "Erro ao criar despesa."
+                    resultadoForaCaixa,
+                    "Erro ao criar despesa fora da caixa."
                 )
             );
 
@@ -770,7 +1188,7 @@ window.salvarDespesa = async function(){
 
 
         // =================================================
-        // LIMPAR
+        // 5. LIMPAR FORMULÁRIO
         // =================================================
 
         limparFormularioDespesa();
@@ -791,7 +1209,7 @@ window.salvarDespesa = async function(){
 
 
         // =================================================
-        // ATUALIZAR LISTA
+        // 6. ATUALIZAR LISTA
         // =================================================
 
         if(
@@ -801,38 +1219,51 @@ window.salvarDespesa = async function(){
 
             await carregarDespesasPendentes();
 
-            alert(
-                "Despesa criada com sucesso."
-            );
-
         }
         else{
 
             await carregarMinhasDespesas();
 
-            alert(
-                "Solicitação de despesa enviada com sucesso."
-            );
-
         }
+
+
+        // =================================================
+        // 7. MENSAGEM
+        // =================================================
+
+        alert(
+
+            "O saldo da sua caixa é insuficiente para esta despesa.\n\n" +
+
+            "A solicitação foi criada em " +
+
+            "'Despesa Fora da Caixa' " +
+
+            "e aguarda aprovação."
+
+        );
+
 
     }
     catch(error){
 
         console.error(
-            "Erro ao salvar despesa:",
+            "Erro ao processar despesa:",
             error
         );
 
 
         alert(
+
+            error.message ||
+
             "Erro de comunicação com o servidor."
+
         );
 
     }
 
 };
-
 
 // =====================================================
 // LER JSON COM SEGURANÇA
@@ -921,73 +1352,210 @@ function obterMensagemErro(
 // VENDEDOR
 // =====================================================
 
+// =====================================================
+// CARREGAR MINHAS DESPESAS
+// VENDEDOR
+//
+// NORMAL + FORA DA CAIXA
+// =====================================================
+
 async function carregarMinhasDespesas(){
 
     const usuario =
         obterUsuarioLogado();
 
-
-    if(!usuario)
+    if(!usuario){
         return;
-
+    }
 
     try{
 
-        const resposta =
+        // =================================================
+        // 1. DESPESAS NORMAIS
+        // =================================================
+
+        const respostaNormais =
             await fetch(
 
                 API +
                 "/despesas/usuario/" +
                 encodeURIComponent(
                     usuario.id
-                )
+                ),
+
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
 
             );
 
 
-        const dados =
+        const dadosNormais =
             await lerRespostaJson(
-                resposta
+                respostaNormais
             );
 
 
-        if(!resposta.ok){
+        if(!respostaNormais.ok){
 
-            console.error(
-                "Erro ao carregar minhas despesas:",
-                dados
-            );
-
-
-            mostrarErroLista(
+            throw new Error(
                 obterMensagemErro(
-                    dados,
+                    dadosNormais,
                     "Erro ao carregar despesas."
                 )
             );
 
-            return;
+        }
+
+
+        // =================================================
+        // 2. DESPESAS FORA DA CAIXA
+        // =================================================
+
+        const respostaForaCaixa =
+            await fetch(
+
+                API +
+                "/despesas-fora-caixa/usuario/" +
+                encodeURIComponent(
+                    usuario.id
+                ),
+
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+
+            );
+
+
+        const dadosForaCaixa =
+            await lerRespostaJson(
+                respostaForaCaixa
+            );
+
+
+        if(!respostaForaCaixa.ok){
+
+            throw new Error(
+                obterMensagemErro(
+                    dadosForaCaixa,
+                    "Erro ao carregar despesas fora da caixa."
+                )
+            );
 
         }
 
 
-        despesasAtuais =
-            Array.isArray(dados)
-                ? dados
+        // =================================================
+        // 3. NORMALIZAR DESPESAS NORMAIS
+        // =================================================
+
+        const despesasNormais =
+            Array.isArray(dadosNormais)
+                ? dadosNormais.map(
+                    function(d){
+
+                        return {
+
+                            ...d,
+
+                            tipo_despesa:
+                                "normal",
+
+                            valor_proposto:
+                                d.valor_proposto,
+
+                            data_despesa:
+                                d.data_despesa
+
+                        };
+
+                    }
+                )
                 : [];
 
+
+        // =================================================
+        // 4. NORMALIZAR FORA DA CAIXA
+        // =================================================
+
+        const despesasForaCaixa =
+            Array.isArray(dadosForaCaixa)
+                ? dadosForaCaixa.map(
+                    function(d){
+
+                        return {
+
+                            ...d,
+
+                            tipo_despesa:
+                                "fora_caixa",
+
+                            // IMPORTANTE:
+                            // a rota usa valor_solicitado
+                            valor_proposto:
+                                d.valor_solicitado,
+
+                            data_despesa:
+                                d.data_solicitacao
+
+                        };
+
+                    }
+                )
+                : [];
+
+
+        // =================================================
+        // 5. JUNTAR AS DUAS
+        // =================================================
+
+        despesasAtuais = [
+
+            ...despesasNormais,
+
+            ...despesasForaCaixa
+
+        ];
+
+
+        // =================================================
+        // 6. MODO VENDEDOR
+        // =================================================
 
         modoTabelaDespesas =
             false;
 
 
+        // =================================================
+        // 7. MOSTRAR
+        // =================================================
+
         mostrarTabelaDespesas(
+
             despesasAtuais,
+
             false
+
         );
 
 
+        // =================================================
+        // 8. FILTRO
+        // =================================================
+
         configurarFiltroDespesas();
+
 
     }
     catch(error){
@@ -999,240 +1567,354 @@ async function carregarMinhasDespesas(){
 
 
         mostrarErroLista(
+
+            error.message ||
             "Erro de comunicação com o servidor."
+
         );
 
     }
 
 }
-
-
 // =====================================================
-// CARREGAR DESPESAS PENDENTES
+// CARREGAR DESPESAS
+// ADMIN / GERENTE
 //
-// ESTA É A ROTA CORRETA DO BACKEND:
-//
-// GET /despesas/pendentes
-// =====================================================
-
-// =====================================================
-// CARREGAR DESPESAS PENDENTES
-// GERENTE
+// CARREGA:
+// 1. Normais pendentes
+// 2. Normais rejeitadas
+// 3. Fora da caixa pendentes
 // =====================================================
 
 async function carregarDespesasPendentes(){
 
-    const usuario = obterUsuarioLogado();
+    const usuario =
+        obterUsuarioLogado();
+
 
     if(!usuario){
-
-        console.error(
-            "Usuário não encontrado."
-        );
 
         mostrarErroLista(
             "Usuário não encontrado."
         );
 
         return;
+
     }
 
 
     if(!usuario.id){
-
-        console.error(
-            "ID do usuário não encontrado:",
-            usuario
-        );
 
         mostrarErroLista(
             "ID do usuário não encontrado."
         );
 
         return;
+
     }
 
 
     try{
 
         // =================================================
-        // O BACKEND EXIGE usuario_id
+        // 1. DESPESAS NORMAIS PENDENTES
         // =================================================
 
-        const url =
-            API +
-            "/despesas/pendentes?usuario_id=" +
-            encodeURIComponent(
-                usuario.id
-            );
-
-
-        console.log(
-            "Carregando despesas pendentes:",
-            url
-        );
-
-
-        const resposta =
+        const respostaPendentes =
             await fetch(
-                url,
+
+                API +
+                "/despesas/pendentes?usuario_id=" +
+                encodeURIComponent(
+                    usuario.id
+                ),
+
                 {
                     method: "GET",
+
                     headers: {
-                        "Accept": "application/json"
+                        "Accept":
+                            "application/json"
                     }
                 }
+
             );
 
 
-        // =================================================
-        // LER RESPOSTA
-        // =================================================
+        const dadosPendentes =
+            await lerRespostaJson(
+                respostaPendentes
+            );
 
-        let dados = null;
 
-        try{
+        if(!respostaPendentes.ok){
 
-            dados =
-                await resposta.json();
-
-        }
-        catch(error){
-
-            console.error(
-                "Resposta não é JSON:",
-                error
+            throw new Error(
+                obterMensagemErro(
+                    dadosPendentes,
+                    "Erro ao carregar despesas pendentes."
+                )
             );
 
         }
 
 
         // =================================================
-        // ERRO HTTP
+        // 2. DESPESAS NORMAIS REJEITADAS
         // =================================================
 
-        if(!resposta.ok){
+        const respostaRejeitadas =
+            await fetch(
 
-            console.error(
-                "Erro ao carregar despesas pendentes:",
+                API +
+                "/despesas/rejeitadas?usuario_id=" +
+                encodeURIComponent(
+                    usuario.id
+                ),
+
                 {
-                    status: resposta.status,
-                    statusText: resposta.statusText,
-                    dados: dados
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
                 }
+
             );
 
 
-            let mensagem =
-                "Erro ao carregar despesas pendentes.";
-
-
-            if(
-                dados &&
-                dados.detail
-            ){
-
-                if(
-                    Array.isArray(
-                        dados.detail
-                    )
-                ){
-
-                    mensagem =
-                        dados.detail
-                            .map(function(item){
-
-                                if(
-                                    item &&
-                                    item.msg
-                                ){
-
-                                    return item.msg;
-
-                                }
-
-                                return String(item);
-
-                            })
-                            .join(", ");
-
-                }
-                else{
-
-                    mensagem =
-                        String(
-                            dados.detail
-                        );
-
-                }
-
-            }
-
-
-            mostrarErroLista(
-                mensagem
+        const dadosRejeitadas =
+            await lerRespostaJson(
+                respostaRejeitadas
             );
 
-            return;
+
+        if(!respostaRejeitadas.ok){
+
+            throw new Error(
+                obterMensagemErro(
+                    dadosRejeitadas,
+                    "Erro ao carregar despesas rejeitadas."
+                )
+            );
 
         }
 
 
         // =================================================
-        // NORMALIZAR DADOS
+        // 3. NORMALIZAR PENDENTES
         // =================================================
 
-        despesasAtuais =
-            Array.isArray(dados)
-                ? dados
-                : [];
+        const despesasPendentes =
+            Array.isArray(
+                dadosPendentes
+            )
 
+            ? dadosPendentes.map(
+                function(d){
+
+                    return {
+
+                        ...d,
+
+                        tipo_despesa:
+                            "normal",
+
+                        valor_proposto:
+                            d.valor_proposto,
+
+                        data_despesa:
+                            d.data_despesa
+
+                    };
+
+                }
+            )
+
+            : [];
+
+
+        // =================================================
+        // 4. NORMALIZAR REJEITADAS
+        // =================================================
+
+        const despesasRejeitadas =
+            Array.isArray(
+                dadosRejeitadas
+            )
+
+            ? dadosRejeitadas.map(
+                function(d){
+
+                    return {
+
+                        ...d,
+
+                        tipo_despesa:
+                            "normal",
+
+                        valor_proposto:
+                            d.valor_proposto,
+
+                        data_despesa:
+                            d.data_despesa,
+
+                        estado:
+                            "rejeitado"
+
+                    };
+
+                }
+            )
+
+            : [];
+
+
+        // =================================================
+        // 5. DESPESAS FORA DA CAIXA PENDENTES
+        // =================================================
+
+        const respostaForaCaixa =
+            await fetch(
+
+                API +
+                "/despesas-fora-caixa/pendentes?usuario_id=" +
+                encodeURIComponent(
+                    usuario.id
+                ),
+
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+
+            );
+
+
+        const dadosForaCaixa =
+            await lerRespostaJson(
+                respostaForaCaixa
+            );
+
+
+        if(!respostaForaCaixa.ok){
+
+            throw new Error(
+                obterMensagemErro(
+                    dadosForaCaixa,
+                    "Erro ao carregar despesas fora da caixa."
+                )
+            );
+
+        }
+
+
+        // =================================================
+        // 6. NORMALIZAR FORA DA CAIXA
+        // =================================================
+
+        const despesasForaCaixa =
+            Array.isArray(
+                dadosForaCaixa
+            )
+
+            ? dadosForaCaixa.map(
+                function(d){
+
+                    return {
+
+                        ...d,
+
+                        tipo_despesa:
+                            "fora_caixa",
+
+                        valor_proposto:
+                            d.valor_solicitado,
+
+                        data_despesa:
+                            d.data_solicitacao
+
+                    };
+
+                }
+            )
+
+            : [];
+
+
+        // =================================================
+        // 7. JUNTAR TODAS
+        // =================================================
+
+        despesasAtuais = [
+
+            ...despesasPendentes,
+
+            ...despesasRejeitadas,
+
+            ...despesasForaCaixa
+
+        ];
+
+
+        // =================================================
+        // 8. MODO ADMIN / GERENTE
+        // =================================================
 
         modoTabelaDespesas =
             true;
 
 
         // =================================================
-        // MOSTRAR TABELA
+        // 9. MOSTRAR TABELA
         // =================================================
 
         mostrarTabelaDespesas(
+
             despesasAtuais,
+
             true
+
         );
 
 
         // =================================================
-        // CONFIGURAR FILTRO
+        // 10. CONFIGURAR FILTRO
         // =================================================
 
         configurarFiltroDespesas();
+
+
+        console.log(
+            "Despesas carregadas:",
+            despesasAtuais
+        );
 
 
     }
     catch(error){
 
         console.error(
-            "Erro de comunicação ao carregar despesas pendentes:",
+            "Erro ao carregar despesas:",
             error
         );
 
 
         mostrarErroLista(
+
+            error.message ||
             "Erro de comunicação com o servidor."
+
         );
 
     }
 
 }
-
-async function carregarTodasDespesasAdmin(){
-
-    await carregarDespesasPendentes();
-
-}
-
-
 // =====================================================
 // COMPATIBILIDADE GERENTE
 // =====================================================
@@ -1725,6 +2407,16 @@ function escaparHtml(valor){
 // MOSTRAR TABELA
 // =====================================================
 
+// =====================================================
+// MOSTRAR TABELA DE DESPESAS
+//
+// ADMIN / GERENTE:
+//     Aprovar / Rejeitar
+//
+// VENDEDOR:
+//     Editar / Apagar somente pendente
+// =====================================================
+
 function mostrarTabelaDespesas(
     dados,
     adminOuGerente
@@ -1774,6 +2466,8 @@ function mostrarTabelaDespesas(
 
                         <th>Categoria</th>
 
+                        <th>Tipo</th>
+
                         <th>Valor Proposto</th>
 
                         <th>Valor Aprovado</th>
@@ -1800,7 +2494,7 @@ function mostrarTabelaDespesas(
             <tr>
 
                 <td
-                    colspan="8"
+                    colspan="9"
                     class="text-center text-muted"
                 >
 
@@ -1815,255 +2509,335 @@ function mostrarTabelaDespesas(
     }
 
 
-    dados.forEach(
-        function(d){
+    dados.forEach(function(d){
 
-            const estado =
-                normalizarTexto(
-                    d.estado
-                );
+        const estado =
+            normalizarTexto(
+                d.estado
+            );
 
 
-            const nomeSolicitante =
-                d.solicitante_nome ||
-                d.usuario_nome ||
-                d.nome ||
-                "Não informado";
+        const tipoDespesa =
+            normalizarTexto(
+                d.tipo_despesa
+            );
 
 
-            const descricao =
-                d.descricao ||
-                "";
+        const nomeSolicitante =
+            d.solicitante_nome ||
+            d.usuario_nome ||
+            d.nome ||
+            "Não informado";
 
 
-            const categoria =
-                d.categoria ||
-                "";
+        const descricao =
+            d.descricao ||
+            "";
 
 
-            const valorProposto =
-                d.valor_proposto;
+        const categoria =
+            d.categoria ||
+            "";
 
 
-            const valorAprovado =
-                d.valor_aprovado;
+        const valorProposto =
+            d.valor_proposto;
 
 
-            html += `
+        const valorAprovado =
+            d.valor_aprovado;
 
-                <tr data-id="${Number(d.id)}">
 
-                    <td class="nome-solicitante">
+        const ehForaCaixa =
+            tipoDespesa === "fora_caixa";
 
-                        ${escaparHtml(
-                            nomeSolicitante
-                        )}
 
-                    </td>
+        const textoTipo =
+            ehForaCaixa
+                ? "Fora da Caixa"
+                : "Normal";
 
 
-                    <td class="descricao">
+        html += `
 
-                        ${escaparHtml(
-                            descricao
-                        )}
+            <tr
+                data-id="${Number(d.id)}"
+                data-tipo="${escaparHtml(tipoDespesa)}"
+            >
 
-                    </td>
+                <td class="nome-solicitante">
 
+                    ${escaparHtml(
+                        nomeSolicitante
+                    )}
 
-                    <td class="categoria">
+                </td>
 
-                        ${escaparHtml(
-                            categoria
-                        )}
 
-                    </td>
+                <td class="descricao">
 
+                    ${escaparHtml(
+                        descricao
+                    )}
 
-                    <td class="valor">
+                </td>
 
-                        ${formatarValor(
-                            valorProposto
-                        )}
 
-                    </td>
+                <td class="categoria">
 
+                    ${escaparHtml(
+                        categoria
+                    )}
 
-                    <td class="valor-aprovado">
+                </td>
 
-                        ${
-                            valorAprovado !== null &&
-                            valorAprovado !== undefined
 
-                            ?
+                <td>
 
-                            formatarValor(
-                                valorAprovado
-                            )
+                    ${
+                        ehForaCaixa
 
-                            :
+                        ? `
 
-                            "-"
-                        }
+                            <span class="badge bg-warning text-dark">
 
-                    </td>
+                                Fora da Caixa
 
+                            </span>
 
-                    <td class="estado">
+                        `
 
-                        ${escaparHtml(
-                            d.estado ||
-                            "-"
-                        )}
+                        :
 
-                    </td>
+                        `
 
+                            <span class="badge bg-primary">
 
-                    <td>
+                                Normal
 
-                        ${formatarData(
-                            d.data_despesa
-                        )}
+                            </span>
 
-                    </td>
+                        `
+                    }
 
+                </td>
 
-                    <td>
-            `;
 
+                <td class="valor">
 
-            // =================================================
-            // ADMIN / GERENTE
-            // =================================================
+                    ${formatarValor(
+                        valorProposto
+                    )}
 
-            if(
-                adminOuGerente
-            ){
+                </td>
 
-                if(
-                    estado === "pendente"
-                ){
 
-                    html += `
+                <td class="valor-aprovado">
 
-                        <button
-                            type="button"
-                            class="btn btn-success btn-sm"
-                            onclick="aprovarDespesa(${Number(d.id)})"
-                        >
+                    ${
+                        valorAprovado !== null &&
+                        valorAprovado !== undefined
 
-                            <i class="bi bi-check-circle"></i>
+                        ?
 
-                            Aprovar
+                        formatarValor(
+                            valorAprovado
+                        )
 
-                        </button>
+                        :
 
-                    `;
+                        "-"
+                    }
 
-                }
-                else if(
-                    estado === "aprovado"
-                ){
+                </td>
 
-                    html += `
 
-                        <span class="text-success">
+                <td class="estado">
 
-                            <i class="bi bi-check-circle"></i>
+                    ${escaparHtml(
+                        d.estado || "-"
+                    )}
 
-                            Aprovada
+                </td>
 
-                        </span>
 
-                    `;
+                <td>
 
-                }
-                else{
+                    ${formatarData(
+                        d.data_despesa
+                    )}
 
-                    html += `
+                </td>
 
-                        <span class="text-muted">
 
-                            ${escaparHtml(
-                                d.estado || "-"
-                            )}
+                <td class="acao-despesa">
 
-                        </span>
+        `;
 
-                    `;
 
-                }
+        // =================================================
+        // ADMIN / GERENTE
+        // =================================================
+
+        if(adminOuGerente){
+
+            if(estado === "pendente"){
+
+                html += `
+
+                    <button
+                        type="button"
+                        class="btn btn-success btn-sm me-1"
+                        onclick="aprovarDespesa(
+                            ${Number(d.id)},
+                            '${tipoDespesa}'
+                        )"
+                    >
+
+                        <i class="bi bi-check-circle"></i>
+
+                        Aprovar
+
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="btn btn-danger btn-sm"
+                        onclick="rejeitarDespesa(
+                            ${Number(d.id)},
+                            '${tipoDespesa}'
+                        )"
+                    >
+
+                        <i class="bi bi-x-circle"></i>
+
+                        Rejeitar
+
+                    </button>
+
+                `;
 
             }
+            else if(estado === "aprovado"){
 
+                html += `
 
-            // =================================================
-            // VENDEDOR
-            // =================================================
+                    <span class="text-success">
 
+                        <i class="bi bi-check-circle"></i>
+
+                        Aprovada
+
+                    </span>
+
+                `;
+
+            }
+            else if(estado === "rejeitado"){
+
+                html += `
+
+                    <span class="text-danger">
+
+                        <i class="bi bi-x-circle"></i>
+
+                        Rejeitada
+
+                    </span>
+
+                `;
+
+            }
             else{
 
-                if(
-                    estado === "pendente"
-                ){
+                html += `
 
-                    html += `
+                    <span class="text-muted">
 
-                        <button
-                            type="button"
-                            class="btn btn-warning btn-sm me-1"
-                            onclick="editarDespesa(${Number(d.id)})"
-                        >
+                        ${escaparHtml(
+                            d.estado || "-"
+                        )}
 
-                            <i class="bi bi-pencil"></i>
+                    </span>
 
-                            Editar
-
-                        </button>
-
-
-                        <button
-                            type="button"
-                            class="btn btn-danger btn-sm"
-                            onclick="apagarDespesa(${Number(d.id)})"
-                        >
-
-                            <i class="bi bi-trash"></i>
-
-                            Apagar
-
-                        </button>
-
-                    `;
-
-                }
-                else{
-
-                    html += `
-
-                        <span class="text-muted">
-
-                            Bloqueada
-
-                        </span>
-
-                    `;
-
-                }
+                `;
 
             }
 
+        }
 
-            html += `
 
-                    </td>
+        // =================================================
+        // VENDEDOR
+        // =================================================
 
-                </tr>
+        else{
 
-            `;
+            if(estado === "pendente"){
+
+                html += `
+
+                    <button
+                        type="button"
+                        class="btn btn-warning btn-sm me-1"
+                        onclick="editarDespesa(
+                            ${Number(d.id)},
+                            '${tipoDespesa}'
+                        )"
+                    >
+
+                        <i class="bi bi-pencil"></i>
+
+                        Editar
+
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="btn btn-danger btn-sm"
+                        onclick="apagarDespesa(
+                            ${Number(d.id)},
+                            '${tipoDespesa}'
+                        )"
+                    >
+
+                        <i class="bi bi-trash"></i>
+
+                        Apagar
+
+                    </button>
+
+                `;
+
+            }
+            else{
+
+                html += `
+
+                    <span class="text-muted">
+
+                        Bloqueada
+
+                    </span>
+
+                `;
+
+            }
 
         }
-    );
+
+
+        html += `
+
+                </td>
+
+            </tr>
+
+        `;
+
+    });
 
 
     html += `
@@ -2081,11 +2855,15 @@ function mostrarTabelaDespesas(
         html;
 
 }
-
+// =====================================================
+// EDITAR DESPESA
+// SOMENTE VENDEDOR
+// =====================================================
 
 // =====================================================
 // EDITAR DESPESA
 // SOMENTE VENDEDOR
+// NORMAL OU FORA DA CAIXA
 // =====================================================
 
 window.editarDespesa = function(id){
@@ -2101,30 +2879,24 @@ window.editarDespesa = function(id){
     }
 
 
-    const linha =
-        document.querySelector(
-            `tr[data-id="${id}"]`
+    // =================================================
+    // PROCURAR NA LISTA ATUAL
+    // =================================================
+
+    const despesa =
+        despesasAtuais.find(
+            function(d){
+
+                return Number(d.id) === Number(id);
+
+            }
         );
 
 
-    if(!linha)
-        return;
-
-
-    const estado =
-        normalizarTexto(
-            linha
-                .querySelector(".estado")
-                ?.innerText
-        );
-
-
-    if(
-        estado !== "pendente"
-    ){
+    if(!despesa){
 
         alert(
-            "Esta despesa já foi aprovada e não pode ser alterada."
+            "Despesa não encontrada."
         );
 
         return;
@@ -2132,49 +2904,119 @@ window.editarDespesa = function(id){
     }
 
 
+    // =================================================
+    // VERIFICAR ESTADO
+    // =================================================
+
+    const estado =
+        normalizarTexto(
+            despesa.estado
+        );
+
+
+    if(estado !== "pendente"){
+
+        alert(
+            "Esta despesa já foi aprovada ou rejeitada e não pode ser alterada."
+        );
+
+        return;
+
+    }
+
+
+    // =================================================
+    // IDENTIFICAR TIPO
+    // =================================================
+
+    const tipoDespesa =
+        normalizarTexto(
+            despesa.tipo_despesa
+        );
+
+
+    console.log(
+        "Editando despesa:",
+        {
+            id: id,
+            tipo: tipoDespesa,
+            dados: despesa
+        }
+    );
+
+
     const nome =
-        linha
-            .querySelector(".nome-solicitante")
-            ?.innerText
-            .trim() ||
-        "";
+        despesa.solicitante_nome ||
+        despesa.usuario_nome ||
+        despesa.nome ||
+        "Não informado";
 
 
     const descricao =
-        linha
-            .querySelector(".descricao")
-            ?.innerText
-            .trim() ||
+        despesa.descricao ||
         "";
 
 
     const categoria =
-        linha
-            .querySelector(".categoria")
-            ?.innerText
-            .trim() ||
+        despesa.categoria ||
         "";
 
 
-    const valorTexto =
-        linha
-            .querySelector(".valor")
-            ?.innerText
-            .replace(
-                "MT",
-                ""
-            )
-            .trim() ||
-        "0";
+    // =================================================
+    // VALOR
+    // =================================================
+
+    let valorOriginal;
+
+
+    if(tipoDespesa === "fora_caixa"){
+
+        valorOriginal =
+            despesa.valor_solicitado;
+
+    }
+    else{
+
+        valorOriginal =
+            despesa.valor_proposto;
+
+    }
 
 
     const valor =
         Number(
-            valorTexto
-                .replace(/\./g, "")
-                .replace(",", ".")
+            valorOriginal || 0
         );
 
+
+    // =================================================
+    // ENCONTRAR LINHA
+    // =================================================
+
+    const linha =
+        document.querySelector(
+            `tr[data-id="${id}"]`
+        );
+
+
+    if(!linha){
+
+        return;
+
+    }
+
+
+    // =================================================
+    // MANTER TIPO NA LINHA
+    // =================================================
+
+    linha.dataset.tipoDespesa =
+        tipoDespesa;
+
+
+    // =================================================
+    // MOSTRAR CAMPOS DE EDIÇÃO
+    // =================================================
 
     linha.innerHTML = `
 
@@ -2233,12 +3075,16 @@ window.editarDespesa = function(id){
 
 
         <td class="estado">
+
             pendente
+
         </td>
 
 
         <td>
+
             -
+
         </td>
 
 
@@ -2275,10 +3121,19 @@ window.editarDespesa = function(id){
 
 };
 
-
 // =====================================================
 // GUARDAR EDIÇÃO
-// PUT /despesas/{id}
+// NORMAL OU FORA DA CAIXA
+// =====================================================
+
+// =====================================================
+// GUARDAR EDIÇÃO DA DESPESA
+//
+// NORMAL:
+// PUT /despesas/{id}?usuario_id=1
+//
+// FORA DA CAIXA:
+// PUT /despesas-fora-caixa/{id}/editar?usuario_id=1
 // =====================================================
 
 window.salvarEdicaoDespesa = async function(id){
@@ -2287,9 +3142,20 @@ window.salvarEdicaoDespesa = async function(id){
         obterUsuarioLogado();
 
 
-    if(!usuario)
+    if(!usuario){
+
+        alert(
+            "Usuário não encontrado."
+        );
+
         return;
 
+    }
+
+
+    // =================================================
+    // SOMENTE VENDEDOR
+    // =================================================
 
     if(!usuarioEhVendedor()){
 
@@ -2301,6 +3167,35 @@ window.salvarEdicaoDespesa = async function(id){
 
     }
 
+
+    // =================================================
+    // PROCURAR DESPESA ORIGINAL
+    // =================================================
+
+    const despesa =
+        despesasAtuais.find(
+            function(d){
+
+                return Number(d.id) === Number(id);
+
+            }
+        );
+
+
+    if(!despesa){
+
+        alert(
+            "Despesa não encontrada."
+        );
+
+        return;
+
+    }
+
+
+    // =================================================
+    // CAMPOS
+    // =================================================
 
     const campoDescricao =
         document.getElementById(
@@ -2335,6 +3230,10 @@ window.salvarEdicaoDespesa = async function(id){
     }
 
 
+    // =================================================
+    // VALORES
+    // =================================================
+
     const descricao =
         campoDescricao.value.trim();
 
@@ -2349,11 +3248,17 @@ window.salvarEdicaoDespesa = async function(id){
         );
 
 
+    // =================================================
+    // VALIDAÇÃO
+    // =================================================
+
     if(!descricao){
 
         alert(
             "Informe a descrição."
         );
+
+        campoDescricao.focus();
 
         return;
 
@@ -2365,6 +3270,8 @@ window.salvarEdicaoDespesa = async function(id){
         alert(
             "Informe a categoria."
         );
+
+        campoCategoria.focus();
 
         return;
 
@@ -2380,37 +3287,134 @@ window.salvarEdicaoDespesa = async function(id){
             "Informe um valor válido."
         );
 
+        campoValor.focus();
+
         return;
 
     }
 
 
-    const dados = {
+    // =================================================
+    // IDENTIFICAR TIPO
+    // =================================================
 
-        descricao:
-            descricao,
+    const tipoDespesa =
+        normalizarTexto(
+            despesa.tipo_despesa
+        );
 
-        categoria:
-            categoria,
 
-        valor_proposto:
-            valor
+    const ehForaCaixa =
+        tipoDespesa === "fora_caixa";
 
-    };
+
+    console.log(
+        "Editando despesa:",
+        {
+            id: id,
+            tipo: tipoDespesa,
+            fora_caixa: ehForaCaixa
+        }
+    );
 
 
     try{
 
-        const resposta =
-            await fetch(
+        let url;
 
+        let dados;
+
+
+        // =================================================
+        // DESPESA FORA DA CAIXA
+        // =================================================
+
+        if(ehForaCaixa){
+
+            url =
+                API +
+                "/despesas-fora-caixa/" +
+                id +
+                "/editar?usuario_id=" +
+                encodeURIComponent(
+                    usuario.id
+                );
+
+
+            dados = {
+
+                usuario_id:
+                    usuario.id,
+
+                descricao:
+                    descricao,
+
+                categoria:
+                    categoria,
+
+                valor_solicitado:
+                    valor,
+
+                observacao:
+                    despesa.observacao || ""
+
+            };
+
+        }
+
+
+        // =================================================
+        // DESPESA NORMAL
+        // =================================================
+
+        else{
+
+            url =
                 API +
                 "/despesas/" +
                 id +
                 "?usuario_id=" +
                 encodeURIComponent(
                     usuario.id
-                ),
+                );
+
+
+            dados = {
+
+                descricao:
+                    descricao,
+
+                categoria:
+                    categoria,
+
+                valor_proposto:
+                    valor
+
+            };
+
+        }
+
+
+        console.log(
+            "URL da edição:",
+            url
+        );
+
+
+        console.log(
+            "Dados enviados:",
+            dados
+        );
+
+
+        // =================================================
+        // ENVIAR
+        // =================================================
+
+        const resposta =
+            await fetch(
+
+                url,
 
                 {
 
@@ -2419,6 +3423,9 @@ window.salvarEdicaoDespesa = async function(id){
                     headers: {
 
                         "Content-Type":
+                            "application/json",
+
+                        "Accept":
                             "application/json"
 
                     },
@@ -2439,11 +3446,21 @@ window.salvarEdicaoDespesa = async function(id){
             );
 
 
+        // =================================================
+        // ERRO
+        // =================================================
+
         if(!resposta.ok){
 
             console.error(
                 "Erro ao editar despesa:",
-                resultado
+                {
+                    status:
+                        resposta.status,
+
+                    dados:
+                        resultado
+                }
             );
 
 
@@ -2459,12 +3476,23 @@ window.salvarEdicaoDespesa = async function(id){
         }
 
 
+        // =================================================
+        // SUCESSO
+        // =================================================
+
         alert(
-            "Despesa atualizada com sucesso."
+            ehForaCaixa
+                ? "Despesa fora da caixa atualizada com sucesso."
+                : "Despesa atualizada com sucesso."
         );
 
 
+        // =================================================
+        // RECARREGAR
+        // =================================================
+
         await carregarMinhasDespesas();
+
 
     }
     catch(error){
@@ -2476,6 +3504,7 @@ window.salvarEdicaoDespesa = async function(id){
 
 
         alert(
+            error.message ||
             "Erro de comunicação com o servidor."
         );
 
@@ -2483,13 +3512,15 @@ window.salvarEdicaoDespesa = async function(id){
 
 };
 
-
 // =====================================================
 // ABRIR APROVAÇÃO
 // ADMIN / GERENTE
 // =====================================================
 
-window.aprovarDespesa = function(id){
+window.aprovarDespesa = function(
+    id,
+    tipoDespesa
+){
 
     if(
         !usuarioEhAdmin() &&
@@ -2529,7 +3560,7 @@ window.aprovarDespesa = function(id){
 
     const colunaAcao =
         linha.querySelector(
-            "td:last-child"
+            ".acao-despesa"
         );
 
 
@@ -2542,17 +3573,6 @@ window.aprovarDespesa = function(id){
         console.error(
             "Elementos da aprovação não encontrados."
         );
-
-        return;
-
-    }
-
-
-    if(
-        document.getElementById(
-            "valor-aprovado-" + id
-        )
-    ){
 
         return;
 
@@ -2607,7 +3627,10 @@ window.aprovarDespesa = function(id){
         <button
             type="button"
             class="btn btn-success btn-sm me-1"
-            onclick="guardarAprovacaoDespesa(${id})"
+            onclick="guardarAprovacaoDespesa(
+                ${id},
+                '${tipoDespesa}'
+            )"
         >
 
             <i class="bi bi-check"></i>
@@ -2647,7 +3670,6 @@ window.aprovarDespesa = function(id){
     }
 
 };
-
 
 // =====================================================
 // CANCELAR APROVAÇÃO
@@ -2746,15 +3768,43 @@ window.cancelarAprovacaoDespesa = function(id){
 // PUT /despesas/{id}/aprovar
 // =====================================================
 
-window.guardarAprovacaoDespesa = async function(id){
+// =====================================================
+// GUARDAR APROVAÇÃO
+//
+// NORMAL:
+// PUT /despesas/{id}/aprovar
+//
+// FORA DA CAIXA:
+// PUT /despesas-fora-caixa/{id}/aprovar
+// =====================================================
+
+window.guardarAprovacaoDespesa = async function(
+    id,
+    tipoDespesa
+){
 
     const usuario =
         obterUsuarioLogado();
 
 
-    if(!usuario)
+    // =================================================
+    // VERIFICAR USUÁRIO
+    // =================================================
+
+    if(!usuario){
+
+        alert(
+            "Usuário não encontrado."
+        );
+
         return;
 
+    }
+
+
+    // =================================================
+    // VERIFICAR PERMISSÃO
+    // =================================================
 
     if(
         !usuarioEhAdmin() &&
@@ -2769,6 +3819,10 @@ window.guardarAprovacaoDespesa = async function(id){
 
     }
 
+
+    // =================================================
+    // CAMPO DE VALOR APROVADO
+    // =================================================
 
     const campo =
         document.getElementById(
@@ -2787,11 +3841,19 @@ window.guardarAprovacaoDespesa = async function(id){
     }
 
 
+    // =================================================
+    // VALOR
+    // =================================================
+
     const valor =
         Number(
             campo.value
         );
 
+
+    // =================================================
+    // VALIDAR VALOR
+    // =================================================
 
     if(
         !Number.isFinite(valor) ||
@@ -2809,18 +3871,110 @@ window.guardarAprovacaoDespesa = async function(id){
     }
 
 
+    // =================================================
+    // NORMALIZAR TIPO
+    // =================================================
+
+    const tipo =
+        normalizarTexto(
+            tipoDespesa
+        );
+
+
+    const ehForaCaixa =
+        tipo === "fora_caixa";
+
+
+    // =================================================
+    // DEFINIR ROTA
+    // =================================================
+
+    let url;
+
+
+    if(ehForaCaixa){
+
+        url =
+            API +
+            "/despesas-fora-caixa/" +
+            id +
+            "/aprovar?usuario_id=" +
+            encodeURIComponent(
+                usuario.id
+            );
+
+    }
+    else{
+
+        url =
+            API +
+            "/despesas/" +
+            id +
+            "/aprovar?usuario_id=" +
+            encodeURIComponent(
+                usuario.id
+            );
+
+    }
+
+
+    // =================================================
+    // LOG
+    // =================================================
+
+    console.log(
+        "================================="
+    );
+
+    console.log(
+        "APROVANDO DESPESA"
+    );
+
+    console.log(
+        "ID:",
+        id
+    );
+
+    console.log(
+        "Tipo:",
+        tipo
+    );
+
+    console.log(
+        "Fora da caixa:",
+        ehForaCaixa
+    );
+
+    console.log(
+        "Valor aprovado:",
+        valor
+    );
+
+    console.log(
+        "Usuário aprovador:",
+        usuario.id
+    );
+
+    console.log(
+        "URL:",
+        url
+    );
+
+    console.log(
+        "================================="
+    );
+
+
     try{
+
+        // =================================================
+        // 1. ENVIAR APROVAÇÃO PARA O BACKEND
+        // =================================================
 
         const resposta =
             await fetch(
 
-                API +
-                "/despesas/" +
-                id +
-                "/aprovar?usuario_id=" +
-                encodeURIComponent(
-                    usuario.id
-                ),
+                url,
 
                 {
 
@@ -2829,6 +3983,9 @@ window.guardarAprovacaoDespesa = async function(id){
                     headers: {
 
                         "Content-Type":
+                            "application/json",
+
+                        "Accept":
                             "application/json"
 
                     },
@@ -2846,17 +4003,36 @@ window.guardarAprovacaoDespesa = async function(id){
             );
 
 
+        // =================================================
+        // 2. LER RESPOSTA
+        // =================================================
+
         const dados =
             await lerRespostaJson(
                 resposta
             );
 
 
+        // =================================================
+        // 3. VERIFICAR ERRO
+        // =================================================
+
         if(!resposta.ok){
 
             console.error(
-                "Erro ao aprovar:",
-                dados
+                "Erro ao aprovar despesa:",
+                {
+
+                    status:
+                        resposta.status,
+
+                    statusText:
+                        resposta.statusText,
+
+                    dados:
+                        dados
+
+                }
             );
 
 
@@ -2872,17 +4048,170 @@ window.guardarAprovacaoDespesa = async function(id){
         }
 
 
-        alert(
-            "Despesa aprovada com sucesso."
+        console.log(
+            "✅ Despesa aprovada pelo backend."
         );
 
 
-        /*
-         * Depois da aprovação, recarregamos
-         * as pendentes.
-         */
+        // =================================================
+        // 4. ATUALIZAR SALDO DA CAIXA
+        //
+        // IMPORTANTE:
+        // Fazer depois que o backend confirmou
+        // a aprovação.
+        // =================================================
 
-        await carregarDespesasPendentes();
+        if(
+            typeof window.atualizarSaldoCaixaAgora ===
+            "function"
+        ){
+
+            try{
+
+                console.log(
+                    "🔄 Atualizando saldo da caixa..."
+                );
+
+
+                await window.atualizarSaldoCaixaAgora();
+
+
+                console.log(
+                    "✅ Saldo da caixa atualizado após aprovação."
+                );
+
+            }
+            catch(error){
+
+                console.error(
+                    "❌ Erro ao atualizar saldo da caixa:",
+                    error
+                );
+
+            }
+
+        }
+        else{
+
+            console.warn(
+                "⚠️ atualizarSaldoCaixaAgora não está disponível."
+            );
+
+        }
+
+
+        // =================================================
+        // 5. ATUALIZAR DASHBOARD
+        //
+        // Para despesa normal.
+        //
+        // Despesa fora da caixa não altera a caixa
+        // normal, portanto não precisa atualizar
+        // indicadores relacionados à caixa.
+        // =================================================
+
+        if(!ehForaCaixa){
+
+            if(
+                typeof window.atualizarVendasDoDia ===
+                "function"
+            ){
+
+                try{
+
+                    console.log(
+                        "🔄 Atualizando dashboard..."
+                    );
+
+
+                    await window.atualizarVendasDoDia();
+
+
+                    console.log(
+                        "✅ Dashboard atualizado após aprovação."
+                    );
+
+                }
+                catch(error){
+
+                    console.error(
+                        "❌ Erro ao atualizar dashboard:",
+                        error
+                    );
+
+                }
+
+            }
+            else{
+
+                console.warn(
+                    "⚠️ atualizarVendasDoDia não está disponível."
+                );
+
+            }
+
+        }
+
+
+        // =================================================
+        // 6. RECARREGAR LISTA DE DESPESAS
+        //
+        // Fazemos isso depois da aprovação para que
+        // a tabela mostre o estado atualizado.
+        // =================================================
+
+        try{
+
+            console.log(
+                "🔄 Recarregando lista de despesas..."
+            );
+
+
+            await carregarDespesasPendentes();
+
+
+            console.log(
+                "✅ Lista de despesas atualizada."
+            );
+
+        }
+        catch(error){
+
+            console.error(
+                "❌ Erro ao recarregar lista de despesas:",
+                error
+            );
+
+        }
+
+
+        // =================================================
+        // 7. MENSAGEM DE SUCESSO
+        // =================================================
+
+        alert(
+
+            ehForaCaixa
+
+                ? "Despesa fora da caixa aprovada com sucesso."
+
+                : "Despesa aprovada com sucesso."
+
+        );
+
+
+        console.log(
+            "================================="
+        );
+
+        console.log(
+            "✅ PROCESSO DE APROVAÇÃO CONCLUÍDO"
+        );
+
+        console.log(
+            "================================="
+        );
+
 
     }
     catch(error){
@@ -2894,18 +4223,413 @@ window.guardarAprovacaoDespesa = async function(id){
 
 
         alert(
+
+            error.message ||
+
             "Erro de comunicação com o servidor."
+
         );
 
     }
 
 };
 
+// =====================================================
+// REJEITAR DESPESA
+// ADMIN / GERENTE
+// =====================================================
 
 // =====================================================
-// APAGAR DESPESA
-// DELETE /despesas/{id}
+// REJEITAR DESPESA
+// ADMIN / GERENTE
+//
+// IMPORTANTE:
+// A despesa NÃO deve desaparecer da tabela.
+// Depois de rejeitar, o estado passa para:
+// "rejeitado"
 // =====================================================
+
+window.rejeitarDespesa = async function(
+    id,
+    tipoDespesa
+){
+
+    const usuario =
+        obterUsuarioLogado();
+
+
+    // =================================================
+    // VERIFICAR USUÁRIO
+    // =================================================
+
+    if(!usuario){
+
+        alert(
+            "Usuário não encontrado."
+        );
+
+        return;
+
+    }
+
+
+    // =================================================
+    // VERIFICAR PERMISSÃO
+    // =================================================
+
+    if(
+        !usuarioEhAdmin() &&
+        !usuarioEhGerente()
+    ){
+
+        alert(
+            "Você não tem permissão para rejeitar despesas."
+        );
+
+        return;
+
+    }
+
+
+    // =================================================
+    // CONFIRMAR REJEIÇÃO
+    // =================================================
+
+    const confirmar =
+        confirm(
+            "Deseja realmente rejeitar esta despesa?"
+        );
+
+
+    if(!confirmar){
+
+        return;
+
+    }
+
+
+    // =================================================
+    // NORMALIZAR TIPO
+    // =================================================
+
+    const tipo =
+        normalizarTexto(
+            tipoDespesa
+        );
+
+
+    // =================================================
+    // DEFINIR ROTA
+    // =================================================
+
+    let url;
+
+
+    if(
+        tipo === "fora_caixa"
+    ){
+
+        url =
+            API +
+            "/despesas-fora-caixa/" +
+            id +
+            "/rejeitar?usuario_id=" +
+            encodeURIComponent(
+                usuario.id
+            );
+
+    }
+    else{
+
+        url =
+            API +
+            "/despesas/" +
+            id +
+            "/rejeitar?usuario_id=" +
+            encodeURIComponent(
+                usuario.id
+            );
+
+    }
+
+
+    console.log(
+        "================================="
+    );
+
+    console.log(
+        "REJEITANDO DESPESA"
+    );
+
+    console.log(
+        "ID:",
+        id
+    );
+
+    console.log(
+        "TIPO:",
+        tipo
+    );
+
+    console.log(
+        "URL:",
+        url
+    );
+
+    console.log(
+        "USUÁRIO:",
+        usuario.id
+    );
+
+    console.log(
+        "================================="
+    );
+
+
+    try{
+
+        // =================================================
+        // ENVIAR REJEIÇÃO
+        // =================================================
+
+        const resposta =
+            await fetch(
+
+                url,
+
+                {
+
+                    method: "PUT",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json",
+
+                        "Accept":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            observacao:
+                                "Despesa rejeitada."
+
+                        })
+
+                }
+
+            );
+
+
+        // =================================================
+        // LER RESPOSTA
+        // =================================================
+
+        const dados =
+            await lerRespostaJson(
+                resposta
+            );
+
+
+        // =================================================
+        // VERIFICAR ERRO
+        // =================================================
+
+        if(!resposta.ok){
+
+            console.error(
+                "Erro ao rejeitar despesa:",
+                {
+
+                    status:
+                        resposta.status,
+
+                    statusText:
+                        resposta.statusText,
+
+                    dados:
+                        dados
+
+                }
+            );
+
+
+            alert(
+                obterMensagemErro(
+                    dados,
+                    "Erro ao rejeitar despesa."
+                )
+            );
+
+
+            return;
+
+        }
+
+
+        // =================================================
+        // PROCURAR DESPESA NA LISTA ATUAL
+        // =================================================
+
+        const indice =
+            despesasAtuais.findIndex(
+                function(d){
+
+                    return (
+
+                        Number(d.id) ===
+                            Number(id)
+
+                        &&
+
+                        normalizarTexto(
+                            d.tipo_despesa
+                        ) === tipo
+
+                    );
+
+                }
+            );
+
+
+        // =================================================
+        // ATUALIZAR ESTADO LOCAL
+        // =================================================
+
+        if(indice !== -1){
+
+            /*
+             * Mantemos todos os dados que já estavam
+             * na tabela e alteramos somente o estado.
+             *
+             * Isso impede que a linha desapareça.
+             */
+
+            despesasAtuais[indice] = {
+
+                ...despesasAtuais[indice],
+
+                /*
+                 * Se o backend retornar dados atualizados,
+                 * eles serão aproveitados.
+                 */
+                ...(
+
+                    dados &&
+                    typeof dados === "object" &&
+                    !Array.isArray(dados)
+
+                        ? dados
+
+                        : {}
+
+                ),
+
+                /*
+                 * Garantir o tipo original.
+                 */
+                tipo_despesa:
+                    despesasAtuais[indice]
+                        .tipo_despesa,
+
+                /*
+                 * ESTE É O PONTO PRINCIPAL.
+                 */
+                estado:
+                    "rejeitado"
+
+            };
+
+
+            console.log(
+                "Despesa atualizada localmente:",
+                despesasAtuais[indice]
+            );
+
+        }
+        else{
+
+            console.warn(
+                "Despesa rejeitada não encontrada em despesasAtuais.",
+                {
+                    id: id,
+                    tipo: tipo
+                }
+            );
+
+        }
+
+
+        // =================================================
+        // ATUALIZAR A TABELA
+        // =================================================
+
+        mostrarTabelaDespesas(
+
+            despesasAtuais,
+
+            true
+
+        );
+
+
+        // =================================================
+        // RECONFIGURAR FILTRO
+        // =================================================
+
+        configurarFiltroDespesas();
+
+
+        // =================================================
+        // MENSAGEM
+        // =================================================
+
+        alert(
+
+            tipo === "fora_caixa"
+
+                ? "Despesa fora da caixa rejeitada."
+
+                : "Despesa rejeitada."
+
+        );
+
+
+        /*
+         * IMPORTANTE:
+         *
+         * NÃO fazer:
+         *
+         * await carregarDespesasPendentes();
+         *
+         * porque /pendentes normalmente retorna
+         * somente despesas com estado "pendente".
+         *
+         * Se chamarmos essa função aqui,
+         * a despesa rejeitada desaparece novamente.
+         */
+
+
+    }
+    catch(error){
+
+        console.error(
+            "Erro ao rejeitar despesa:",
+            error
+        );
+
+
+        alert(
+            error.message ||
+            "Erro de comunicação com o servidor."
+        );
+
+    }
+
+};
 
 window.apagarDespesa = async function(id){
 

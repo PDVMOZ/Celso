@@ -700,31 +700,53 @@ window.finalizarVenda = async function(){
            ATUALIZAR VENDAS DO DIA
         ============================================ */
 
-        if(
-            typeof carregarVendasDia ===
-            "function"
-        ){
+                /* ============================================
+                   ATUALIZAR VENDAS DO DIA
+                ============================================ */
 
-            await carregarVendasDia();
+                if(
+                    typeof carregarVendasDia ===
+                    "function"
+                ){
 
-        }
+                    await carregarVendasDia();
 
-    }
-    catch(error){
-
-        console.error(
-            "ERRO VENDA:",
-            error
-        );
+                }
 
 
-        alert(
-            "Erro ao finalizar venda."
-        );
+                /* ============================================
+                   ATUALIZAR SALDO DA CAIXA
+                ============================================ */
 
-    }
+                if(
+                    typeof window.atualizarSaldoCaixaAgora ===
+                    "function"
+                ){
 
-};
+                    console.log(
+                        "🔄 Atualizando saldo da caixa após venda..."
+                    );
+
+                    await window.atualizarSaldoCaixaAgora();
+
+                }
+
+            }
+            catch(error){
+
+                console.error(
+                    "ERRO VENDA:",
+                    error
+                );
+
+                alert(
+                    "Erro ao finalizar venda."
+                );
+
+            }
+
+        };
+
 
 
 /* =====================================================

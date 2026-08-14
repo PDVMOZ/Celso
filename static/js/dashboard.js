@@ -1173,6 +1173,152 @@ window.fecharModalVendedores = function(){
 
 };
 
+window.atualizarVisibilidadeStock = function(){
+
+    const menuStock =
+        document.getElementById(
+            "menu-stock"
+        );
+
+    if(!menuStock){
+
+        console.error(
+            "ERRO: #menu-stock não encontrado"
+        );
+
+        return;
+    }
+
+    const usuario =
+        obterUsuarioDashboard();
+
+
+    // =====================================
+    // NENHUM USUÁRIO LOGADO
+    // =====================================
+
+    if(!usuario){
+
+        menuStock.style.display =
+            "none";
+
+        return;
+    }
+
+
+    // =====================================
+    // QUALQUER USUÁRIO LOGADO
+    // =====================================
+
+    menuStock.style.display =
+        "block";
+
+
+    console.log(
+        "MENU STOCK VISÍVEL PARA:",
+        usuario.nome,
+        "| TIPO:",
+        usuario.tipo
+    );
+
+};
+
+function atualizarVisibilidadeDinheiroRecolhido(){
+
+    const usuario =
+        obterUsuarioDashboard();
+
+    const card =
+        document.getElementById(
+            "card-dinheiro-recolhido"
+        );
+
+    if(!card){
+
+        console.error(
+            "Card #card-dinheiro-recolhido não encontrado."
+        );
+
+        return;
+    }
+
+
+    if(!usuario){
+
+        card.style.display = "none";
+
+        return;
+    }
+
+
+    // =====================================
+    // VENDEDOR NÃO VÊ
+    // =====================================
+
+    if(usuario.tipo === "vendedor"){
+
+        card.style.display = "none";
+
+        return;
+    }
+
+
+    // =====================================
+    // ADMIN / GERENTE VÊ
+    // =====================================
+
+    if(
+        usuario.tipo === "admin" ||
+        usuario.tipo === "gerente"
+    ){
+
+        card.style.display = "flex";
+
+        return;
+    }
+
+
+    // =====================================
+    // TIPO DESCONHECIDO
+    // =====================================
+
+    card.style.display = "none";
+
+}
+function atualizarVisibilidadeDetalhesDinheiroRecolhido(){
+
+    const usuario =
+        obterUsuarioDashboard();
+
+    const link =
+        document.getElementById(
+            "ver-detalhes-dinheiro-recolhido"
+        );
+
+    if(!link){
+        return;
+    }
+
+
+    // =====================================
+    // SOMENTE ADMIN
+    // =====================================
+
+    if(
+        usuario &&
+        usuario.tipo === "admin"
+    ){
+
+        link.style.display = "inline-block";
+
+    }
+    else{
+
+        link.style.display = "none";
+
+    }
+
+}
 
 // =====================================================
 // INICIALIZAÇÃO
@@ -1193,16 +1339,6 @@ document.addEventListener(
         console.log(
             "====================================="
         );
-
-
-        if(
-            typeof atualizarVisibilidadeDetalhesVendas ===
-            "function"
-        ){
-
-            atualizarVisibilidadeDetalhesVendas();
-
-        }
 
 
         setTimeout(
@@ -1230,7 +1366,56 @@ document.addEventListener(
 
 
                 // =====================================
-                // SALDO
+                // DETALHES DAS VENDAS
+                // =====================================
+
+                if(
+                    typeof atualizarVisibilidadeDetalhesVendas ===
+                    "function"
+                ){
+
+                    atualizarVisibilidadeDetalhesVendas();
+
+                }
+
+
+                // =====================================
+                // VISIBILIDADE DO STOCK
+                // =====================================
+
+                if(
+                    typeof atualizarVisibilidadeStock ===
+                    "function"
+                ){
+
+                    atualizarVisibilidadeStock();
+
+                }
+
+
+                // =====================================
+                // VISIBILIDADE DINHEIRO RECOLHIDO
+                // =====================================
+
+                if(
+                    typeof atualizarVisibilidadeDinheiroRecolhido ===
+                    "function"
+                ){
+
+                    atualizarVisibilidadeDinheiroRecolhido();
+
+                }
+                if(
+                    typeof atualizarVisibilidadeDetalhesDinheiroRecolhido ===
+                    "function"
+                ){
+
+                    atualizarVisibilidadeDetalhesDinheiroRecolhido();
+
+                }
+
+                // =====================================
+                // SALDO DA CAIXA
                 // =====================================
 
                 if(
@@ -1244,10 +1429,33 @@ document.addEventListener(
 
 
                 // =====================================
+                // DINHEIRO RECOLHIDO
+                // =====================================
+
+                if(
+                    typeof atualizarDinheiroRecolhido ===
+                    "function"
+                ){
+
+                    // Só executa para Admin/Gerente
+                    if(
+                        usuario.tipo === "admin" ||
+                        usuario.tipo === "gerente"
+                    ){
+
+                        await atualizarDinheiroRecolhido();
+
+                    }
+
+                }
+
+
+                // =====================================
                 // DASHBOARD
                 // =====================================
 
                 await carregarDashboard();
+
 
             },
             500
@@ -1255,3 +1463,43 @@ document.addEventListener(
 
     }
 );
+
+// =====================================================
+// ATUALIZAR SALDO DA CAIXA QUANDO SOLICITADO
+// =====================================================
+
+window.atualizarSaldoCaixaAgora = async function(){
+
+    console.log("🔄 Atualizando saldo da caixa...");
+
+    if(
+        typeof window.atualizarSaldoCaixaDashboard !==
+        "function"
+    ){
+
+        console.warn(
+            "⚠️ atualizarSaldoCaixaDashboard ainda não está disponível."
+        );
+
+        return;
+    }
+
+    try{
+
+        await window.atualizarSaldoCaixaDashboard();
+
+        console.log(
+            "✅ Saldo da caixa atualizado."
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Erro ao atualizar saldo da caixa:",
+            error
+        );
+
+    }
+
+};

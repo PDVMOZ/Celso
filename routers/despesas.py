@@ -13,6 +13,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from database import get_db
+from decimal import Decimal
+
+from models.despesa_fora_caixa import DespesaForaCaixa
+from services.calculo_caixa import calcular_saldo_caixa
 
 from models.despesa import Despesa
 from models.usuario import Usuario
@@ -21,8 +25,13 @@ from schemas.despesa import (
     DespesaCreate,
     DespesaUpdate,
     DespesaResponse,
-    DespesaAprovar
+    DespesaAprovar,
+    DespesaRejeitar,
+    DespesaSolicitacaoResponse
 )
+
+
+
 
 
 # =====================================================
@@ -318,13 +327,140 @@ async def listar_despesas(
         for despesa in despesas
     ]
 
+# =====================================================
+# LISTAR DESPESAS REJEITADAS
+#
+# GET /despesas/rejeitadas?usuario_id=1
+#
+# ADMIN / GERENTE
+# =====================================================
 
+@router.get(
+    "/rejeitadas",
+    response_model=list[DespesaResponse]
+)
+async def listar_rejeitadas(
+    usuario_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+
+    # -------------------------------------------------
+    # BUSCAR USUÁRIO
+    # -------------------------------------------------
+
+    resultado = await db.execute(
+
+        select(Usuario).where(
+            Usuario.id == usuario_id
+        )
+
+    )
+
+    usuario = (
+        resultado.scalar_one_or_none()
+    )
+
+    if not usuario:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Usuário não encontrado"
+        )
+
+    # -------------------------------------------------
+    # TIPO
+    # -------------------------------------------------
+
+    tipo_usuario = (
+        str(usuario.tipo or "")
+        .strip()
+        .lower()
+    )
+
+    # -------------------------------------------------
+    # PERMISSÃO
+    # -------------------------------------------------
+
+    if tipo_usuario not in [
+        "admin",
+        "administrador",
+        "gerente"
+    ]:
+
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Somente admin ou gerente "
+                "pode visualizar despesas rejeitadas"
+            )
+        )
+
+    # -------------------------------------------------
+    # BUSCAR REJEITADAS
+    # -------------------------------------------------
+
+    resultado = await db.execute(
+
+        select(Despesa)
+
+        .options(
+            selectinload(
+                Despesa.usuario
+            )
+        )
+
+        .where(
+            Despesa.estado == "rejeitado"
+        )
+
+        .order_by(
+            Despesa.data_despesa.desc()
+        )
+
+    )
+
+    despesas = (
+        resultado
+        .scalars()
+        .all()
+    )
+
+    # -------------------------------------------------
+    # RETORNAR
+    # -------------------------------------------------
+
+    return [
+
+        despesa_para_resposta(
+            despesa
+        )
+
+        for despesa in despesas
+
+    ]
 # =====================================================
 # LISTAR DESPESAS PENDENTES
 #
 # ADMIN / GERENTE
 #
 # GET /despesas/pendentes?usuario_id=1
+# =====================================================
+
+# =====================================================
+# LISTAR DESPESAS PARA ADMIN / GERENTE
+#
+# GET /despesas/pendentes?usuario_id=1
+#
+# IMPORTANTE:
+# Apesar do nome da rota ser /pendentes,
+# ela retorna TODAS as despesas:
+#
+# - pendente
+# - aprovado
+# - rejeitado
+#
+# ADMIN / GERENTE
+#     -> vê todas
 # =====================================================
 
 @router.get(
@@ -358,7 +494,7 @@ async def listar_pendentes(
         )
 
     # -------------------------------------------------
-    # TIPO
+    # TIPO DO USUÁRIO
     # -------------------------------------------------
 
     tipo_usuario = (
@@ -386,12 +522,15 @@ async def listar_pendentes(
         )
 
     # -------------------------------------------------
-    # BUSCAR DESPESAS
+    # BUSCAR TODAS AS DESPESAS
     #
-    # IMPORTANTE:
-    # A rota chama-se pendentes, mas podemos retornar
-    # todas as despesas para permitir ao admin/gerente
-    # visualizar o histórico completo.
+    # NÃO FILTRAR POR ESTADO
+    #
+    # Assim aparecem:
+    #
+    # pendente
+    # aprovado
+    # rejeitado
     # -------------------------------------------------
 
     resultado = await db.execute(
@@ -410,13 +549,25 @@ async def listar_pendentes(
 
     )
 
-    despesas = resultado.scalars().all()
+    despesas = (
+        resultado
+        .scalars()
+        .all()
+    )
+
+    # -------------------------------------------------
+    # RETORNAR
+    # -------------------------------------------------
 
     return [
-        despesa_para_resposta(despesa)
-        for despesa in despesas
-    ]
 
+        despesa_para_resposta(
+            despesa
+        )
+
+        for despesa in despesas
+
+    ]
 
 # =====================================================
 # ATUALIZAR DESPESA
@@ -612,18 +763,39 @@ async def atualizar_despesa(
 #     -> BLOQUEADO
 # =====================================================
 
+# =====================================================
+# SOLICITAR DESPESA
+#
+# POST /despesas/solicitar
+#
+# ADMIN / ADMINISTRADOR
+#   -> verifica SOMENTE a própria caixa
+#   -> saldo suficiente:
+#        cria DESPESA aprovada
+#
+#   -> saldo insuficiente:
+#        cria DESPESA FORA DA CAIXA pendente
+#
+# VENDEDOR
+#   -> cria DESPESA normal pendente
+#
+# GERENTE
+#   -> bloqueado
+# =====================================================
+
 @router.post(
     "/solicitar",
-    response_model=DespesaResponse
+    response_model=DespesaSolicitacaoResponse
 )
+
 async def solicitar_despesa(
     dados: DespesaCreate,
     db: AsyncSession = Depends(get_db)
 ):
 
-    # -------------------------------------------------
+    # =================================================
     # BUSCAR USUÁRIO
-    # -------------------------------------------------
+    # =================================================
 
     resultado = await db.execute(
 
@@ -642,15 +814,19 @@ async def solicitar_despesa(
             detail="Usuário não encontrado"
         )
 
+    # =================================================
+    # TIPO DE USUÁRIO
+    # =================================================
+
     tipo_usuario = (
         str(usuario.tipo or "")
         .strip()
         .lower()
     )
 
-    # -------------------------------------------------
-    # VALOR
-    # -------------------------------------------------
+    # =================================================
+    # VALIDAR VALOR
+    # =================================================
 
     if dados.valor_proposto is None:
 
@@ -669,41 +845,182 @@ async def solicitar_despesa(
             )
         )
 
-    # -------------------------------------------------
-    # ADMIN
-    # -------------------------------------------------
+    valor = Decimal(
+        str(dados.valor_proposto)
+    )
+
+    # =================================================
+    # ADMIN / ADMINISTRADOR
+    #
+    # IMPORTANTE:
+    #
+    # O ADMIN PODE TAMBÉM SER VENDEDOR.
+    #
+    # Por isso verificamos SOMENTE a caixa dele:
+    #
+    # calcular_saldo_caixa(
+    #     db,
+    #     usuario.id
+    # )
+    #
+    # NÃO usamos o saldo total das caixas.
+    # =================================================
 
     if tipo_usuario in [
         "admin",
         "administrador"
     ]:
 
-        despesa = Despesa(
+        # =============================================
+        # CALCULAR SALDO DA PRÓPRIA CAIXA
+        # =============================================
 
-            usuario_id=dados.usuario_id,
+        dados_caixa = await calcular_saldo_caixa(
+            db,
+            usuario.id
+        )
+
+        saldo_proprio = Decimal(
+            str(
+                dados_caixa.get(
+                    "saldo_caixa",
+                    0
+                )
+            )
+        )
+
+        # =============================================
+        # TEM SALDO SUFICIENTE
+        #
+        # CRIA DESPESA NORMAL
+        # =============================================
+
+        if saldo_proprio >= valor:
+
+            despesa = Despesa(
+
+                usuario_id=usuario.id,
+
+                descricao=dados.descricao,
+
+                categoria=dados.categoria,
+
+                valor_proposto=valor,
+
+                valor_aprovado=valor,
+
+                estado="aprovado",
+
+                observacao=dados.observacao
+
+            )
+
+            db.add(despesa)
+
+            await db.commit()
+
+            await db.refresh(despesa)
+
+            # -----------------------------------------
+            # RECARREGAR COM USUÁRIO
+            # -----------------------------------------
+
+            resultado = await db.execute(
+
+                select(Despesa)
+
+                .options(
+                    selectinload(
+                        Despesa.usuario
+                    )
+                )
+
+                .where(
+                    Despesa.id == despesa.id
+                )
+
+            )
+
+            despesa = (
+                resultado
+                .scalar_one()
+            )
+
+            return despesa_para_resposta(
+                despesa
+            )
+
+        # =============================================
+        # SALDO INSUFICIENTE
+        #
+        # CRIAR FORA DA CAIXA
+        # =============================================
+
+        despesa_fora = DespesaForaCaixa(
+
+            usuario_id=usuario.id,
 
             descricao=dados.descricao,
 
             categoria=dados.categoria,
 
-            valor_proposto=dados.valor_proposto,
+            valor_solicitado=valor,
 
-            valor_aprovado=dados.valor_proposto,
+            valor_aprovado=None,
 
-            estado="aprovado",
+            # Saldo da PRÓPRIA caixa
+            saldo_caixa=saldo_proprio,
+
+            estado="pendente",
 
             observacao=dados.observacao
+
         )
 
-        db.add(despesa)
+        db.add(despesa_fora)
 
         await db.commit()
 
-        await db.refresh(despesa)
+        # =============================================
+        # IMPORTANTE
+        #
+        # O response_model desta rota é
+        # DespesaResponse.
+        #
+        # Mas aqui criamos DespesaForaCaixa.
+        #
+        # Portanto não podemos retornar diretamente
+        # DespesaForaCaixa nesta rota.
+        #
+        # Para o frontend saber que foi enviada
+        # para fora da caixa, retornamos um erro
+        # controlado depois do commit NÃO é ideal.
+        #
+        # Por isso esta implementação deve retornar
+        # uma resposta compatível.
+        # =============================================
 
-    # -------------------------------------------------
+        raise HTTPException(
+            status_code=202,
+            detail={
+                "mensagem": (
+                    "Saldo insuficiente na sua própria caixa. "
+                    "A despesa foi enviada para aprovação "
+                    "como despesa fora da caixa."
+                ),
+                "saldo_caixa": float(
+                    saldo_proprio
+                ),
+                "valor_solicitado": float(
+                    valor
+                ),
+                "fora_caixa": True
+            }
+        )
+
+    # =================================================
     # GERENTE
-    # -------------------------------------------------
+    # =================================================
 
     elif tipo_usuario == "gerente":
 
@@ -715,27 +1032,30 @@ async def solicitar_despesa(
             )
         )
 
-    # -------------------------------------------------
+    # =================================================
     # VENDEDOR
-    # -------------------------------------------------
+    #
+    # Vendedor continua criando despesa pendente.
+    # =================================================
 
     elif tipo_usuario == "vendedor":
 
         despesa = Despesa(
 
-            usuario_id=dados.usuario_id,
+            usuario_id=usuario.id,
 
             descricao=dados.descricao,
 
             categoria=dados.categoria,
 
-            valor_proposto=dados.valor_proposto,
+            valor_proposto=valor,
 
             valor_aprovado=None,
 
             estado="pendente",
 
             observacao=dados.observacao
+
         )
 
         db.add(despesa)
@@ -744,9 +1064,9 @@ async def solicitar_despesa(
 
         await db.refresh(despesa)
 
-    # -------------------------------------------------
-    # OUTRO
-    # -------------------------------------------------
+    # =================================================
+    # OUTROS
+    # =================================================
 
     else:
 
@@ -758,9 +1078,9 @@ async def solicitar_despesa(
             )
         )
 
-    # -------------------------------------------------
-    # RECARREGAR COM USUÁRIO
-    # -------------------------------------------------
+    # =================================================
+    # RECARREGAR DESPESA NORMAL
+    # =================================================
 
     resultado = await db.execute(
 
@@ -780,8 +1100,9 @@ async def solicitar_despesa(
 
     despesa = resultado.scalar_one()
 
-    return despesa_para_resposta(despesa)
-
+    return despesa_para_resposta(
+        despesa
+    )
 
 # =====================================================
 # APAGAR DESPESA
@@ -1101,3 +1422,250 @@ async def aprovar_despesa(
     return despesa_para_resposta(
         despesa
     )
+# =====================================================
+# REJEITAR DESPESA
+#
+# PUT /despesas/{id}/rejeitar?usuario_id=1
+#
+# ADMIN / GERENTE
+#
+# A despesa deve estar:
+#     pendente
+#
+# Depois passa para:
+#     rejeitado
+# =====================================================
+
+@router.put(
+    "/{id}/rejeitar",
+    response_model=DespesaResponse
+)
+async def rejeitar_despesa(
+
+    id: int,
+
+    usuario_id: int,
+
+    dados: DespesaRejeitar,
+
+    db: AsyncSession = Depends(get_db)
+
+):
+
+    # =================================================
+    # BUSCAR RESPONSÁVEL
+    # =================================================
+
+    resultado = await db.execute(
+
+        select(Usuario).where(
+            Usuario.id == usuario_id
+        )
+
+    )
+
+    responsavel = (
+        resultado
+        .scalar_one_or_none()
+    )
+
+    # =================================================
+    # VERIFICAR USUÁRIO
+    # =================================================
+
+    if not responsavel:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Usuário não encontrado"
+        )
+
+    # =================================================
+    # TIPO DO USUÁRIO
+    # =================================================
+
+    tipo_usuario = (
+        str(responsavel.tipo or "")
+        .strip()
+        .lower()
+    )
+
+    # =================================================
+    # VERIFICAR PERMISSÃO
+    #
+    # SOMENTE ADMIN / GERENTE
+    # =================================================
+
+    if tipo_usuario not in [
+        "admin",
+        "administrador",
+        "gerente"
+    ]:
+
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Somente admin ou gerente "
+                "pode rejeitar despesas"
+            )
+        )
+
+    # =================================================
+    # BUSCAR DESPESA
+    # =================================================
+
+    resultado = await db.execute(
+
+        select(Despesa)
+
+        .options(
+
+            selectinload(
+                Despesa.usuario
+            )
+
+        )
+
+        .where(
+            Despesa.id == id
+        )
+
+    )
+
+    despesa = (
+        resultado
+        .scalar_one_or_none()
+    )
+
+    # =================================================
+    # VERIFICAR DESPESA
+    # =================================================
+
+    if not despesa:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Despesa não encontrada"
+        )
+
+    # =================================================
+    # SOMENTE DESPESA PENDENTE
+    # =================================================
+
+    if despesa.estado != "pendente":
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Esta despesa já foi "
+                f"{despesa.estado}"
+            )
+        )
+
+    # =================================================
+    # REJEITAR
+    # =================================================
+
+    despesa.estado = "rejeitado"
+
+    # =================================================
+    # NÃO EXISTE VALOR APROVADO
+    # =================================================
+
+    despesa.valor_aprovado = None
+
+    # =================================================
+    # OBSERVAÇÃO DA REJEIÇÃO
+    # =================================================
+
+    if dados.observacao is not None:
+
+        despesa.observacao = (
+            dados.observacao
+        )
+
+    # =================================================
+    # GUARDAR NO BANCO
+    # =================================================
+
+    await db.commit()
+
+    # =================================================
+    # ATUALIZAR OBJETO
+    # =================================================
+
+    await db.refresh(
+        despesa
+    )
+
+    # =================================================
+    # RECARREGAR COM USUÁRIO
+    #
+    # Necessário para:
+    # solicitante_nome
+    # =================================================
+
+    resultado = await db.execute(
+
+        select(Despesa)
+
+        .options(
+
+            selectinload(
+                Despesa.usuario
+            )
+
+        )
+
+        .where(
+            Despesa.id == despesa.id
+        )
+
+    )
+
+    despesa = (
+        resultado
+        .scalar_one()
+    )
+
+    # =================================================
+    # RETORNAR
+    # =================================================
+
+    return despesa_para_resposta(
+        despesa
+    )
+# =====================================================
+# AUXILIAR
+# RESPOSTA DA SOLICITAÇÃO DE DESPESA
+# =====================================================
+
+def despesa_solicitacao_para_resposta(
+    despesa,
+    valor,
+    tipo="despesa",
+    saldo_caixa=None,
+    mensagem=None
+):
+
+    return {
+
+        "tipo": tipo,
+
+        "id": despesa.id,
+
+        "usuario_id": despesa.usuario_id,
+
+        "descricao": despesa.descricao,
+
+        "categoria": despesa.categoria,
+
+        "valor": valor,
+
+        "estado": despesa.estado,
+
+        "saldo_caixa": saldo_caixa,
+
+        "mensagem": mensagem
+
+    }
