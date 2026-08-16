@@ -22,7 +22,8 @@ from routers import (
     caixa,
     despesas,
     despesa_fora_caixa,
-    relatorios
+    relatorios,
+    lucros
 )
 
 
@@ -47,7 +48,6 @@ templates = Jinja2Templates(
 # ==========================
 
 is_production = os.getenv("ENV") == "production"
-
 
 app = FastAPI(
     title="Bar do Celso - Sistema de Gestão",
@@ -104,7 +104,6 @@ async def startup():
             Base.metadata.create_all
         )
 
-
     print("✅ Banco de dados conectado")
     print("✅ Sistema Bar do Celso iniciado")
 
@@ -138,3 +137,4 @@ app.include_router(caixa.router)
 app.include_router(despesas.router)
 app.include_router(despesa_fora_caixa.router)
 app.include_router(relatorios.router)
+app.include_router(lucros.router)

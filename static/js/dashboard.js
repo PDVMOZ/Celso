@@ -1,14 +1,23 @@
 // =====================================================
 // DASHBOARD.JS
+// VERSÃO OTIMIZADA
+// CARREGAMENTO RÁPIDO E PARALELO
 // =====================================================
 
-console.log("DASHBOARD.JS FOI CARREGADO");
+console.log("=====================================");
+console.log(" DASHBOARD.JS FOI CARREGADO");
+console.log(" VERSÃO OTIMIZADA");
+console.log("=====================================");
+
+
+// =====================================================
+// CACHE
+// =====================================================
 
 let vendasVendedoresCache = [];
 
 
 // =====================================================
-// FUNÇÃO AUXILIAR
 // OBTER USUÁRIO
 // =====================================================
 
@@ -19,8 +28,11 @@ function obterUsuarioDashboard(){
         const storage =
             localStorage.getItem("usuario");
 
-        if(!storage)
+        if(!storage){
+
             return null;
+
+        }
 
         return JSON.parse(storage);
 
@@ -40,51 +52,298 @@ function obterUsuarioDashboard(){
 
 
 // =====================================================
+// VISIBILIDADE DO PAINEL FINANCEIRO
+// ADMIN / GERENTE
+// =====================================================
+
+window.atualizarVisibilidadeFinanceiro = function(){
+
+    const usuario =
+        obterUsuarioDashboard();
+
+    const painelFinanceiro =
+        document.getElementById(
+            "painel-financeiro"
+        );
+
+    const resumoFinanceiro =
+        document.getElementById(
+            "resumo-financeiro"
+        );
+
+
+    if(!usuario){
+
+        if(painelFinanceiro){
+
+            painelFinanceiro.style.display =
+                "none";
+
+        }
+
+        if(resumoFinanceiro){
+
+            resumoFinanceiro.style.display =
+                "none";
+
+        }
+
+        return;
+
+    }
+
+
+    if(
+        usuario.tipo === "admin" ||
+        usuario.tipo === "gerente"
+    ){
+
+        if(painelFinanceiro){
+
+            painelFinanceiro.style.display =
+                "grid";
+
+        }
+
+        if(resumoFinanceiro){
+
+            resumoFinanceiro.style.display =
+                "grid";
+
+        }
+
+        return;
+
+    }
+
+
+    if(painelFinanceiro){
+
+        painelFinanceiro.style.display =
+            "none";
+
+    }
+
+    if(resumoFinanceiro){
+
+        resumoFinanceiro.style.display =
+            "none";
+
+    }
+
+};
+
+
+// =====================================================
+// CONFIGURAR VISIBILIDADE DO DASHBOARD
+// =====================================================
+
+function configurarVisibilidadeDashboard(){
+
+    const usuario =
+        obterUsuarioDashboard();
+
+
+    // =============================================
+    // DETALHES DAS VENDAS
+    // =============================================
+
+    const verDetalhesVendas =
+        document.getElementById(
+            "ver-detalhes-vendas"
+        );
+
+    if(verDetalhesVendas){
+
+        if(
+            usuario &&
+            (
+                usuario.tipo === "admin" ||
+                usuario.tipo === "gerente"
+            )
+        ){
+
+            verDetalhesVendas.style.display =
+                "block";
+
+        }
+        else{
+
+            verDetalhesVendas.style.display =
+                "none";
+
+        }
+
+    }
+
+
+    // =============================================
+    // BOTÃO LOGIN
+    // =============================================
+
+    const botaoLogin =
+        document.getElementById(
+            "login-button"
+        );
+
+    if(botaoLogin){
+
+        if(usuario){
+
+            botaoLogin.style.display =
+                "none";
+
+        }
+        else{
+
+            botaoLogin.style.display =
+                "block";
+
+            if(
+                typeof abrirLogin ===
+                "function"
+            ){
+
+                botaoLogin.onclick =
+                    abrirLogin;
+
+            }
+
+        }
+
+    }
+
+
+    // =============================================
+    // FINANCEIRO
+    // =============================================
+
+    if(
+        typeof atualizarVisibilidadeFinanceiro ===
+        "function"
+    ){
+
+        atualizarVisibilidadeFinanceiro();
+
+    }
+
+
+    // =============================================
+    // STOCK
+    // =============================================
+
+    if(
+        typeof atualizarVisibilidadeStock ===
+        "function"
+    ){
+
+        atualizarVisibilidadeStock();
+
+    }
+
+
+    // =============================================
+    // DINHEIRO RECOLHIDO
+    // =============================================
+
+    if(
+        typeof atualizarVisibilidadeDinheiroRecolhido ===
+        "function"
+    ){
+
+        atualizarVisibilidadeDinheiroRecolhido();
+
+    }
+
+
+    // =============================================
+    // DETALHES DINHEIRO RECOLHIDO
+    // =============================================
+
+    if(
+        typeof atualizarVisibilidadeDetalhesDinheiroRecolhido ===
+        "function"
+    ){
+
+        atualizarVisibilidadeDetalhesDinheiroRecolhido();
+
+    }
+
+
+    // =============================================
+    // LUCROS
+    // =============================================
+
+    if(
+        typeof atualizarVisibilidadeLucros ===
+        "function"
+    ){
+
+        atualizarVisibilidadeLucros();
+
+    }
+
+}
+
+
+// =====================================================
 // CARREGAR DASHBOARD
 // =====================================================
 
 window.carregarDashboard = async function(){
 
-    try{
-
-        console.log("=====================================");
-        console.log(" CARREGANDO DASHBOARD");
-        console.log("=====================================");
+    console.log("=====================================");
+    console.log(" CARREGANDO DASHBOARD");
+    console.log("=====================================");
 
 
-        const usuario =
-            obterUsuarioDashboard();
+    const usuario =
+        obterUsuarioDashboard();
 
 
-        let urlDashboard =
-            API + "/dashboard/";
-
-
-        // =============================================
-        // VENDEDOR
-        // =============================================
-
-        if(
-            usuario &&
-            usuario.tipo === "vendedor"
-        ){
-
-            urlDashboard +=
-                "?usuario_id=" +
-                encodeURIComponent(usuario.id);
-
-        }
-
+    if(!usuario){
 
         console.log(
-            "URL DASHBOARD:",
-            urlDashboard
+            "Nenhum usuário logado."
         );
 
+        return;
 
-        // =============================================
-        // BUSCAR DASHBOARD
-        // =============================================
+    }
+
+
+    // =================================================
+    // URL
+    // =================================================
+
+    let urlDashboard =
+        API + "/dashboard/";
+
+
+    if(
+        usuario.tipo === "vendedor"
+    ){
+
+        urlDashboard +=
+            "?usuario_id=" +
+            encodeURIComponent(
+                usuario.id
+            );
+
+    }
+
+
+    console.log(
+        "URL DASHBOARD:",
+        urlDashboard
+    );
+
+
+    try{
+
+        // =================================================
+        // DASHBOARD PRINCIPAL
+        // =================================================
 
         const resposta =
             await fetch(
@@ -93,12 +352,6 @@ window.carregarDashboard = async function(){
                     cache: "no-store"
                 }
             );
-
-
-        console.log(
-            "STATUS DASHBOARD:",
-            resposta.status
-        );
 
 
         if(!resposta.ok){
@@ -124,134 +377,35 @@ window.carregarDashboard = async function(){
 
 
         console.log(
-            "========== DASHBOARD =========="
-        );
-
-        console.log(
-            "DADOS COMPLETOS:",
+            "DADOS DASHBOARD:",
             dados
         );
 
-        console.log(
-            "STOCK RECEBIDO:",
-            dados.stock
-        );
 
-        console.log(
-            "BAIXO STOCK RECEBIDO:",
-            dados.stock?.baixo_stock
-        );
-
-        console.log(
-            "TOTAL BAIXO STOCK:",
-            dados.stock?.baixo_stock_total
-        );
-
-
-        // =============================================
-        // DETALHES DAS VENDAS
-        // =============================================
-
-        const verDetalhesVendas =
-            document.getElementById(
-                "ver-detalhes-vendas"
-            );
-
-
-        if(verDetalhesVendas){
-
-            if(
-                usuario &&
-                (
-                    usuario.tipo === "admin" ||
-                    usuario.tipo === "gerente"
-                )
-            ){
-
-                verDetalhesVendas.style.display =
-                    "block";
-
-            }
-            else{
-
-                verDetalhesVendas.style.display =
-                    "none";
-
-            }
-
-        }
-
-
-        // =============================================
-        // BOTÃO LOGIN
-        // =============================================
-
-        const botaoLogin =
-            document.getElementById(
-                "login-button"
-            );
-
-
-        if(botaoLogin){
-
-            if(usuario){
-
-                botaoLogin.style.display =
-                    "none";
-
-            }
-            else{
-
-                botaoLogin.style.display =
-                    "block";
-
-                if(
-                    typeof abrirLogin ===
-                    "function"
-                ){
-
-                    botaoLogin.onclick =
-                        abrirLogin;
-
-                }
-
-            }
-
-        }
-
-
-        // =============================================
+        // =================================================
         // STOCK
-        // =============================================
+        // =================================================
 
         let stock =
             dados.stock || {};
 
 
-        // =============================================
-        // SE O DASHBOARD NÃO TROUXER STOCK,
-        // BUSCAR DIRETAMENTE /stock/
-        // =============================================
-
         let produtosStock =
-            Array.isArray(stock.produtos)
+            Array.isArray(
+                stock.produtos
+            )
                 ? stock.produtos
                 : null;
 
 
+        // =================================================
+        // SE NÃO EXISTIR STOCK,
+        // BUSCAR SEM BLOQUEAR OUTRAS PARTES
+        // =================================================
+
         if(!produtosStock){
 
             try{
-
-                console.log(
-                    "Dashboard não trouxe lista de stock."
-                );
-
-                console.log(
-                    "Buscando diretamente:",
-                    API + "/stock/"
-                );
-
 
                 const respostaStock =
                     await fetch(
@@ -267,19 +421,13 @@ window.carregarDashboard = async function(){
                     produtosStock =
                         await respostaStock.json();
 
-
-                    console.log(
-                        "STOCK DIRETO RECEBIDO:",
-                        produtosStock
-                    );
-
                 }
 
             }
             catch(error){
 
                 console.error(
-                    "ERRO AO BUSCAR STOCK DIRETO:",
+                    "ERRO AO BUSCAR STOCK:",
                     error
                 );
 
@@ -288,13 +436,14 @@ window.carregarDashboard = async function(){
         }
 
 
-        // =============================================
-        // CALCULAR BAIXO STOCK DIRETAMENTE
-        // CASO O DASHBOARD NÃO ENVIE A LISTA
-        // =============================================
+        // =================================================
+        // BAIXO STOCK
+        // =================================================
 
         let baixoStockProdutos =
-            Array.isArray(stock.baixo_stock)
+            Array.isArray(
+                stock.baixo_stock
+            )
                 ? stock.baixo_stock
                 : [];
 
@@ -330,9 +479,9 @@ window.carregarDashboard = async function(){
         }
 
 
-        // =============================================
+        // =================================================
         // TOTAL STOCK
-        // =============================================
+        // =================================================
 
         const totalStock =
             document.getElementById(
@@ -345,9 +494,6 @@ window.carregarDashboard = async function(){
             let total =
                 stock.total;
 
-
-            // Se backend não enviar total,
-            // calcula diretamente
 
             if(
                 total === undefined &&
@@ -379,9 +525,9 @@ window.carregarDashboard = async function(){
         }
 
 
-        // =============================================
+        // =================================================
         // PRODUTOS NOVOS
-        // =============================================
+        // =================================================
 
         const produtosNovos =
             document.getElementById(
@@ -397,9 +543,9 @@ window.carregarDashboard = async function(){
         }
 
 
-        // =============================================
-        // TOTAL BAIXO STOCK
-        // =============================================
+        // =================================================
+        // BAIXO STOCK
+        // =================================================
 
         const baixoStock =
             document.getElementById(
@@ -415,51 +561,9 @@ window.carregarDashboard = async function(){
         }
 
 
-        // =============================================
-        // LUCRO
-        // =============================================
-
-        const lucro =
-            document.getElementById(
-                "lucro-hoje"
-            );
-
-
-        if(lucro){
-
-            lucro.innerText =
-                Number(
-                    dados.lucro_hoje || 0
-                ).toFixed(2)
-                + " MT";
-
-        }
-
-
-        // =============================================
-        // DESPESAS
-        // =============================================
-
-        const despesas =
-            document.getElementById(
-                "despesas-hoje"
-            );
-
-
-        if(despesas){
-
-            despesas.innerText =
-                Number(
-                    dados.despesas_hoje || 0
-                ).toFixed(2)
-                + " MT";
-
-        }
-
-
-        // =============================================
-        // LISTA DE PRODUTOS COM BAIXO STOCK
-        // =============================================
+        // =================================================
+        // LISTA BAIXO STOCK
+        // =================================================
 
         const lista =
             document.getElementById(
@@ -472,15 +576,10 @@ window.carregarDashboard = async function(){
             lista.innerHTML = "";
 
 
-            // =========================================
-            // EXISTEM PRODUTOS COM BAIXO STOCK
-            // =========================================
-
             if(
                 Array.isArray(
                     baixoStockProdutos
-                )
-                &&
+                ) &&
                 baixoStockProdutos.length > 0
             ){
 
@@ -507,36 +606,37 @@ window.carregarDashboard = async function(){
 
                         lista.innerHTML += `
 
-                        <div class="alert-item">
+                            <div class="alert-item">
 
-                            <div>
+                                <div>
 
-                                <strong>
-                                    ${nome}
-                                </strong>
+                                    <strong>
+                                        ${nome}
+                                    </strong>
 
-                                <br>
+                                    <br>
 
-                                <small>
+                                    <small>
 
-                                    Stock:
-                                    ${quantidade}
+                                        Stock:
+                                        ${quantidade}
 
-                                    /
-                                    mínimo:
-                                    ${minimo}
+                                        /
 
-                                </small>
+                                        mínimo:
+                                        ${minimo}
+
+                                    </small>
+
+                                </div>
+
+                                <span
+                                    class="badge bg-danger"
+                                >
+                                    Baixo Stock
+                                </span>
 
                             </div>
-
-                            <span
-                                class="badge bg-danger"
-                            >
-                                Baixo Stock
-                            </span>
-
-                        </div>
 
                         `;
 
@@ -544,11 +644,6 @@ window.carregarDashboard = async function(){
                 );
 
             }
-
-            // =========================================
-            // NENHUM PRODUTO
-            // =========================================
-
             else{
 
                 lista.innerHTML = `
@@ -568,22 +663,8 @@ window.carregarDashboard = async function(){
         }
 
 
-        // =============================================
-        // VENDAS DO DIA
-        // =============================================
-
-        if(
-            typeof carregarVendasDia ===
-            "function"
-        ){
-
-            await carregarVendasDia();
-
-        }
-
-
         console.log(
-            "DASHBOARD CARREGADO COM SUCESSO"
+            "DASHBOARD PRINCIPAL CARREGADO"
         );
 
     }
@@ -605,19 +686,6 @@ window.carregarDashboard = async function(){
 
 window.carregarVendasDia = async function(){
 
-    console.log(
-        "====================================="
-    );
-
-    console.log(
-        " CARREGANDO VENDAS DE HOJE"
-    );
-
-    console.log(
-        "====================================="
-    );
-
-
     const elemento =
         document.getElementById(
             "vendas-dia"
@@ -625,10 +693,6 @@ window.carregarVendasDia = async function(){
 
 
     if(!elemento){
-
-        console.error(
-            "ERRO: #vendas-dia não existe"
-        );
 
         return;
 
@@ -641,10 +705,6 @@ window.carregarVendasDia = async function(){
 
     if(!usuario){
 
-        console.log(
-            "Usuário ainda não está disponível."
-        );
-
         elemento.innerText =
             "0.00 MT";
 
@@ -653,18 +713,13 @@ window.carregarVendasDia = async function(){
     }
 
 
-    // =============================================
-    // URL
-    // =============================================
-
     let url =
         API +
         "/vendas/dashboard/vendas-dia";
 
 
     if(
-        usuario.tipo ===
-        "vendedor"
+        usuario.tipo === "vendedor"
     ){
 
         url +=
@@ -674,32 +729,6 @@ window.carregarVendasDia = async function(){
             );
 
     }
-
-
-    // =============================================
-    // CACHE
-    // =============================================
-
-    if(url.includes("?")){
-
-        url +=
-            "&_=" +
-            Date.now();
-
-    }
-    else{
-
-        url +=
-            "?_=" +
-            Date.now();
-
-    }
-
-
-    console.log(
-        "URL VENDAS:",
-        url
-    );
 
 
     try{
@@ -713,21 +742,7 @@ window.carregarVendasDia = async function(){
             );
 
 
-        console.log(
-            "STATUS VENDAS:",
-            resposta.status
-        );
-
-
         if(!resposta.ok){
-
-            const erroTexto =
-                await resposta.text();
-
-            console.error(
-                "ERRO SERVIDOR VENDAS:",
-                erroTexto
-            );
 
             throw new Error(
                 "Erro HTTP " +
@@ -739,12 +754,6 @@ window.carregarVendasDia = async function(){
 
         const dados =
             await resposta.json();
-
-
-        console.log(
-            "VENDAS RECEBIDAS:",
-            dados
-        );
 
 
         const vendasHoje =
@@ -788,8 +797,11 @@ window.carregarDetalhesVendedores = async function(){
             );
 
 
-        if(!tabela)
+        if(!tabela){
+
             return;
+
+        }
 
 
         const usuario =
@@ -867,8 +879,11 @@ window.mostrarVendasVendedores = function(
         );
 
 
-    if(!tabela)
+    if(!tabela){
+
         return;
+
+    }
 
 
     if(
@@ -891,7 +906,7 @@ window.mostrarVendasVendedores = function(
     }
 
 
-    let agrupado = {};
+    const agrupado = {};
 
 
     dados.forEach(
@@ -982,8 +997,10 @@ window.mostrarVendasVendedores = function(
                 <div class="card-body">
 
                     <h5>
+
                         Vendedor:
                         ${venda.vendedor}
+
                     </h5>
 
 
@@ -1096,8 +1113,11 @@ window.filtrarVendasData = function(){
         );
 
 
-    if(!campo)
+    if(!campo){
+
         return;
+
+    }
 
 
     const texto =
@@ -1173,6 +1193,11 @@ window.fecharModalVendedores = function(){
 
 };
 
+
+// =====================================================
+// VISIBILIDADE STOCK
+// =====================================================
+
 window.atualizarVisibilidadeStock = function(){
 
     const menuStock =
@@ -1180,22 +1205,17 @@ window.atualizarVisibilidadeStock = function(){
             "menu-stock"
         );
 
+
     if(!menuStock){
 
-        console.error(
-            "ERRO: #menu-stock não encontrado"
-        );
-
         return;
+
     }
+
 
     const usuario =
         obterUsuarioDashboard();
 
-
-    // =====================================
-    // NENHUM USUÁRIO LOGADO
-    // =====================================
 
     if(!usuario){
 
@@ -1203,274 +1223,410 @@ window.atualizarVisibilidadeStock = function(){
             "none";
 
         return;
+
     }
 
-
-    // =====================================
-    // QUALQUER USUÁRIO LOGADO
-    // =====================================
 
     menuStock.style.display =
         "block";
 
-
-    console.log(
-        "MENU STOCK VISÍVEL PARA:",
-        usuario.nome,
-        "| TIPO:",
-        usuario.tipo
-    );
-
 };
 
-function atualizarVisibilidadeDinheiroRecolhido(){
+
+// =====================================================
+// VISIBILIDADE DINHEIRO RECOLHIDO
+// =====================================================
+
+window.atualizarVisibilidadeDinheiroRecolhido =
+function(){
 
     const usuario =
         obterUsuarioDashboard();
+
 
     const card =
         document.getElementById(
             "card-dinheiro-recolhido"
         );
 
+
     if(!card){
 
-        console.error(
-            "Card #card-dinheiro-recolhido não encontrado."
-        );
-
         return;
+
     }
 
 
     if(!usuario){
 
-        card.style.display = "none";
+        card.style.display =
+            "none";
 
         return;
+
     }
 
-
-    // =====================================
-    // VENDEDOR NÃO VÊ
-    // =====================================
 
     if(usuario.tipo === "vendedor"){
 
-        card.style.display = "none";
+        card.style.display =
+            "none";
 
         return;
+
     }
 
-
-    // =====================================
-    // ADMIN / GERENTE VÊ
-    // =====================================
 
     if(
         usuario.tipo === "admin" ||
         usuario.tipo === "gerente"
     ){
 
-        card.style.display = "flex";
+        card.style.display =
+            "flex";
 
         return;
+
     }
 
 
-    // =====================================
-    // TIPO DESCONHECIDO
-    // =====================================
+    card.style.display =
+        "none";
 
-    card.style.display = "none";
+};
 
-}
-function atualizarVisibilidadeDetalhesDinheiroRecolhido(){
+
+// =====================================================
+// VISIBILIDADE DETALHES DINHEIRO RECOLHIDO
+// =====================================================
+
+window.atualizarVisibilidadeDetalhesDinheiroRecolhido =
+function(){
 
     const usuario =
         obterUsuarioDashboard();
+
 
     const link =
         document.getElementById(
             "ver-detalhes-dinheiro-recolhido"
         );
 
+
     if(!link){
+
         return;
+
     }
 
-
-    // =====================================
-    // SOMENTE ADMIN
-    // =====================================
 
     if(
         usuario &&
         usuario.tipo === "admin"
     ){
 
-        link.style.display = "inline-block";
+        link.style.display =
+            "inline-block";
 
     }
     else{
 
-        link.style.display = "none";
+        link.style.display =
+            "none";
 
     }
+
+};
+
+
+// =====================================================
+// INICIALIZAÇÃO RÁPIDA
+// =====================================================
+
+async function iniciarDashboard(){
+
+    console.log("=====================================");
+    console.log(" INICIANDO DASHBOARD RÁPIDO");
+    console.log("=====================================");
+
+
+    const usuario =
+        obterUsuarioDashboard();
+
+
+    if(!usuario){
+
+        console.log(
+            "Nenhum usuário logado."
+        );
+
+        return;
+
+    }
+
+
+    // =================================================
+    // 1. CONFIGURAR VISIBILIDADE IMEDIATAMENTE
+    // =================================================
+
+    configurarVisibilidadeDashboard();
+
+
+    // =================================================
+    // 2. OCULTAR LUCROS IMEDIATAMENTE
+    // =================================================
+
+    if(
+        typeof garantirLucrosOcultos ===
+        "function"
+    ){
+
+        garantirLucrosOcultos();
+
+    }
+
+
+    if(
+        typeof configurarAcessoLucros ===
+        "function"
+    ){
+
+        configurarAcessoLucros();
+
+    }
+
+
+    // =================================================
+    // 3. CARREGAR TUDO EM PARALELO
+    // =================================================
+
+    const tarefas = [];
+
+
+    // -----------------------------------------------
+    // DASHBOARD PRINCIPAL
+    // -----------------------------------------------
+
+    if(
+        typeof carregarDashboard ===
+        "function"
+    ){
+
+        tarefas.push(
+
+            carregarDashboard()
+
+                .catch(
+                    error => {
+
+                        console.error(
+                            "ERRO DASHBOARD:",
+                            error
+                        );
+
+                    }
+                )
+
+        );
+
+    }
+
+
+    // -----------------------------------------------
+    // VENDAS DO DIA
+    // -----------------------------------------------
+
+    if(
+        typeof carregarVendasDia ===
+        "function"
+    ){
+
+        tarefas.push(
+
+            carregarVendasDia()
+
+                .catch(
+                    error => {
+
+                        console.error(
+                            "ERRO VENDAS DO DIA:",
+                            error
+                        );
+
+                    }
+                )
+
+        );
+
+    }
+
+
+    // -----------------------------------------------
+    // SALDO DA CAIXA
+    // -----------------------------------------------
+
+    if(
+        typeof atualizarSaldoCaixaDashboard ===
+        "function"
+    ){
+
+        tarefas.push(
+
+            atualizarSaldoCaixaDashboard()
+
+                .catch(
+                    error => {
+
+                        console.error(
+                            "ERRO SALDO CAIXA:",
+                            error
+                        );
+
+                    }
+                )
+
+        );
+
+    }
+
+
+    // -----------------------------------------------
+    // DINHEIRO RECOLHIDO
+    // -----------------------------------------------
+
+    if(
+        typeof atualizarDinheiroRecolhido ===
+        "function"
+    ){
+
+        if(
+            usuario.tipo === "admin" ||
+            usuario.tipo === "gerente"
+        ){
+
+            tarefas.push(
+
+                atualizarDinheiroRecolhido()
+
+                    .catch(
+                        error => {
+
+                            console.error(
+                                "ERRO DINHEIRO RECOLHIDO:",
+                                error
+                            );
+
+                        }
+                    )
+
+            );
+
+        }
+
+    }
+
+
+    // -----------------------------------------------
+    // LUCROS
+    // -----------------------------------------------
+
+    if(
+        typeof carregarLucrosDashboard ===
+        "function"
+    ){
+
+        tarefas.push(
+
+            carregarLucrosDashboard()
+
+                .catch(
+                    error => {
+
+                        console.error(
+                            "ERRO LUCROS:",
+                            error
+                        );
+
+                    }
+                )
+
+        );
+
+    }
+
+
+    // =================================================
+    // ESPERAR TODAS AO MESMO TEMPO
+    // =================================================
+
+    await Promise.all(
+        tarefas
+    );
+
+
+    // =================================================
+    // GARANTIR NOVAMENTE SEGURANÇA DOS LUCROS
+    // =================================================
+
+    if(
+        typeof garantirLucrosOcultos ===
+        "function"
+    ){
+
+        garantirLucrosOcultos();
+
+    }
+
+
+    if(
+        typeof configurarAcessoLucros ===
+        "function"
+    ){
+
+        configurarAcessoLucros();
+
+    }
+
+
+    console.log("=====================================");
+    console.log(" DASHBOARD TOTALMENTE CARREGADO");
+    console.log("=====================================");
 
 }
 
-// =====================================================
-// INICIALIZAÇÃO
-// =====================================================
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function(){
-
-        console.log(
-            "====================================="
-        );
-
-        console.log(
-            " DASHBOARD PRONTO"
-        );
-
-        console.log(
-            "====================================="
-        );
-
-
-        setTimeout(
-            async function(){
-
-                const usuario =
-                    obterUsuarioDashboard();
-
-
-                console.log(
-                    "USUÁRIO NO DASHBOARD:",
-                    usuario
-                );
-
-
-                if(!usuario){
-
-                    console.log(
-                        "Nenhum usuário logado."
-                    );
-
-                    return;
-
-                }
-
-
-                // =====================================
-                // DETALHES DAS VENDAS
-                // =====================================
-
-                if(
-                    typeof atualizarVisibilidadeDetalhesVendas ===
-                    "function"
-                ){
-
-                    atualizarVisibilidadeDetalhesVendas();
-
-                }
-
-
-                // =====================================
-                // VISIBILIDADE DO STOCK
-                // =====================================
-
-                if(
-                    typeof atualizarVisibilidadeStock ===
-                    "function"
-                ){
-
-                    atualizarVisibilidadeStock();
-
-                }
-
-
-                // =====================================
-                // VISIBILIDADE DINHEIRO RECOLHIDO
-                // =====================================
-
-                if(
-                    typeof atualizarVisibilidadeDinheiroRecolhido ===
-                    "function"
-                ){
-
-                    atualizarVisibilidadeDinheiroRecolhido();
-
-                }
-                if(
-                    typeof atualizarVisibilidadeDetalhesDinheiroRecolhido ===
-                    "function"
-                ){
-
-                    atualizarVisibilidadeDetalhesDinheiroRecolhido();
-
-                }
-
-                // =====================================
-                // SALDO DA CAIXA
-                // =====================================
-
-                if(
-                    typeof atualizarSaldoCaixaDashboard ===
-                    "function"
-                ){
-
-                    await atualizarSaldoCaixaDashboard();
-
-                }
-
-
-                // =====================================
-                // DINHEIRO RECOLHIDO
-                // =====================================
-
-                if(
-                    typeof atualizarDinheiroRecolhido ===
-                    "function"
-                ){
-
-                    // Só executa para Admin/Gerente
-                    if(
-                        usuario.tipo === "admin" ||
-                        usuario.tipo === "gerente"
-                    ){
-
-                        await atualizarDinheiroRecolhido();
-
-                    }
-
-                }
-
-
-                // =====================================
-                // DASHBOARD
-                // =====================================
-
-                await carregarDashboard();
-
-
-            },
-            500
-        );
-
-    }
-);
 
 // =====================================================
-// ATUALIZAR SALDO DA CAIXA QUANDO SOLICITADO
+// DOM READY
+// =====================================================
+
+if(
+    document.readyState ===
+    "loading"
+){
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        iniciarDashboard
+    );
+
+}
+else{
+
+    iniciarDashboard();
+
+}
+
+
+// =====================================================
+// ATUALIZAR SALDO DA CAIXA MANUALMENTE
 // =====================================================
 
 window.atualizarSaldoCaixaAgora = async function(){
 
-    console.log("🔄 Atualizando saldo da caixa...");
+    console.log(
+        "🔄 Atualizando saldo da caixa..."
+    );
+
 
     if(
         typeof window.atualizarSaldoCaixaDashboard !==
@@ -1482,11 +1638,14 @@ window.atualizarSaldoCaixaAgora = async function(){
         );
 
         return;
+
     }
+
 
     try{
 
         await window.atualizarSaldoCaixaDashboard();
+
 
         console.log(
             "✅ Saldo da caixa atualizado."

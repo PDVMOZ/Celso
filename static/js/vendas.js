@@ -399,20 +399,22 @@ window.calcularTroco = function(){
 
 /* =====================================================
    FINALIZAR VENDA
+   REGISTRA VENDA + ATUALIZA DASHBOARD FINANCEIRO
 ===================================================== */
 
 window.finalizarVenda = async function(){
 
-    /* ================================================
+    /* =================================================
        VERIFICAR CARRINHO
-    ================================================ */
+    ================================================= */
 
     if(
+        !window.itensVenda ||
         window.itensVenda.length === 0
     ){
 
         alert(
-            "Adicione produtos ao carrinho"
+            "Adicione produtos ao carrinho."
         );
 
         return;
@@ -420,16 +422,13 @@ window.finalizarVenda = async function(){
     }
 
 
-    /* ================================================
-       ATUALIZAR USUÁRIO LOGADO
-    ================================================ */
+    /* =================================================
+       OBTER USUÁRIO LOGADO
+    ================================================= */
 
-    window.usuarioLogado =
-        JSON.parse(
-            localStorage.getItem(
-                "usuario"
-            )
-        );
+    window.usuarioLogado = JSON.parse(
+        localStorage.getItem("usuario")
+    );
 
 
     if(!window.usuarioLogado){
@@ -443,9 +442,9 @@ window.finalizarVenda = async function(){
     }
 
 
-    /* ================================================
-       VALOR ENTREGUE
-    ================================================ */
+    /* =================================================
+       CAMPO VALOR ENTREGUE
+    ================================================= */
 
     const campoValor =
         document.getElementById(
@@ -453,22 +452,34 @@ window.finalizarVenda = async function(){
         );
 
 
+    if(!campoValor){
+
+        alert(
+            "Campo de valor entregue não encontrado."
+        );
+
+        return;
+
+    }
+
+
+    /* =================================================
+       VALOR ENTREGUE
+    ================================================= */
+
     const valorEntregue =
         Number(
             campoValor.value
         );
 
 
-    /* ================================================
+    /* =================================================
        CALCULAR TOTAL
-    ================================================ */
+    ================================================= */
 
     const total =
         window.itensVenda.reduce(
-            (
-                soma,
-                item
-            ) => {
+            (soma, item) => {
 
                 return soma +
                     (
@@ -481,13 +492,11 @@ window.finalizarVenda = async function(){
         );
 
 
-    /* ================================================
-       VALIDAR PAGAMENTO
-    ================================================ */
+    /* =================================================
+       VALIDAR VALOR
+    ================================================= */
 
-    if(
-        !Number.isFinite(valorEntregue)
-    ){
+    if(!Number.isFinite(valorEntregue)){
 
         alert(
             "Informe o valor entregue."
@@ -498,12 +507,10 @@ window.finalizarVenda = async function(){
     }
 
 
-    if(
-        valorEntregue < total
-    ){
+    if(valorEntregue < total){
 
         alert(
-            "Valor entregue insuficiente"
+            "Valor entregue insuficiente."
         );
 
         return;
@@ -511,28 +518,26 @@ window.finalizarVenda = async function(){
     }
 
 
-    /* ================================================
+    /* =================================================
        MONTAR VENDA
-    ================================================ */
+    ================================================= */
 
     const venda = {
 
         usuario_id:
-            window.usuarioLogado.id,
-
+            Number(
+                window.usuarioLogado.id
+            ),
 
         valor_entregue:
             valorEntregue,
 
-
         itens:
-
             window.itensVenda.map(
                 item => ({
 
                     produto_id:
                         Number(item.id),
-
 
                     quantidade:
                         Number(item.quantidade)
@@ -543,65 +548,84 @@ window.finalizarVenda = async function(){
     };
 
 
+    /* =================================================
+       ENVIAR VENDA PARA O BACKEND
+    ================================================= */
+
     try{
 
         console.log(
-            "ENVIANDO VENDA:",
+            "====================================="
+        );
+
+        console.log(
+            "ENVIANDO VENDA:"
+        );
+
+        console.log(
             venda
         );
 
+        console.log(
+            "====================================="
+        );
 
-        /* ============================================
-           ENVIAR VENDA PARA API
-        ============================================ */
 
         const resposta =
             await fetch(
-
                 API + "/vendas/",
-
                 {
-
                     method: "POST",
 
-
                     headers: {
-
                         "Content-Type":
                             "application/json"
-
                     },
 
-
                     body:
-                        JSON.stringify(
-                            venda
-                        )
-
+                        JSON.stringify(venda)
                 }
-
             );
 
 
-        /* ============================================
+        /* =================================================
            LER RESPOSTA
-        ============================================ */
+        ================================================= */
 
-        const dados =
-            await resposta.json();
+        let dados = {};
 
 
-        /* ============================================
+        try{
+
+            dados =
+                await resposta.json();
+
+        }
+        catch(error){
+
+            console.error(
+                "Erro ao ler resposta da venda:",
+                error
+            );
+
+        }
+
+
+        /* =================================================
            VERIFICAR ERRO
-        ============================================ */
+        ================================================= */
 
         if(!resposta.ok){
 
+            console.error(
+                "Erro retornado pelo backend:",
+                dados
+            );
+
+
             alert(
-
                 dados.detail ||
-                "Erro ao realizar venda"
-
+                "Erro ao realizar venda."
             );
 
             return;
@@ -610,42 +634,150 @@ window.finalizarVenda = async function(){
 
 
         console.log(
-            "VENDA REGISTADA:",
+            "====================================="
+        );
+
+        console.log(
+            "✅ VENDA REGISTADA COM SUCESSO"
+        );
+
+        console.log(
             dados
         );
 
-
-        /* ============================================
-           GERAR RECIBO ANTES DE LIMPAR CARRINHO
-        ============================================ */
-
-        gerarRecibo(dados);
+        console.log(
+            "=====================================");
 
 
-        /* ============================================
-           LIMPAR CARRINHO
-        ============================================ */
+        /* =================================================
+           GUARDAR ITENS PARA RECIBO
+        ================================================= */
 
-        window.itensVenda = [];
+        const itensVendaRecibo =
+            window.itensVenda.map(
+                item => ({
+
+                    id:
+                        item.id,
+
+                    nome:
+                        item.nome,
+
+                    preco:
+                        Number(item.preco),
+
+                    quantidade:
+                        Number(item.quantidade)
+
+                })
+            );
 
 
-        mostrarCarrinho();
+        /* =================================================
+           PERGUNTAR SOBRE RECIBO
+        ================================================= */
+
+        let baixarRecibo = false;
 
 
-        /* ============================================
-           LIMPAR VALOR ENTREGUE
-        ============================================ */
+        try{
 
-        if(campoValor){
+            if(
+                typeof window.mostrarOpcaoRecibo ===
+                "function"
+            ){
 
-            campoValor.value = "";
+                baixarRecibo =
+                    await window.mostrarOpcaoRecibo();
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "Erro ao mostrar opção de recibo:",
+                error
+            );
 
         }
 
 
-        /* ============================================
-           RESETAR TROCO
-        ============================================ */
+        /* =================================================
+           GERAR RECIBO
+        ================================================= */
+
+        if(baixarRecibo){
+
+            const itensOriginais =
+                window.itensVenda;
+
+
+            window.itensVenda =
+                itensVendaRecibo;
+
+
+            try{
+
+                if(
+                    typeof window.gerarRecibo ===
+                    "function"
+                ){
+
+                    window.gerarRecibo(
+                        dados
+                    );
+
+                }
+
+            }
+            catch(error){
+
+                console.error(
+                    "Erro ao gerar recibo:",
+                    error
+                );
+
+                alert(
+                    "A venda foi realizada, mas houve erro ao gerar o recibo."
+                );
+
+            }
+
+
+            window.itensVenda =
+                itensOriginais;
+
+        }
+
+
+        /* =================================================
+           LIMPAR CARRINHO
+        ================================================= */
+
+        window.itensVenda = [];
+
+
+        if(
+            typeof window.mostrarCarrinho ===
+            "function"
+        ){
+
+            window.mostrarCarrinho();
+
+        }
+
+
+        /* =================================================
+           LIMPAR VALOR ENTREGUE
+        ================================================= */
+
+        campoValor.value = "";
+
+
+        /* =================================================
+           LIMPAR TROCO
+        ================================================= */
 
         const campoTroco =
             document.getElementById(
@@ -661,94 +793,661 @@ window.finalizarVenda = async function(){
         }
 
 
-        /* ============================================
-           RECARREGAR PRODUTOS
-        ============================================ */
+        /* =================================================
+           ATUALIZAR PRODUTOS
+        ================================================= */
 
-        await carregarProdutosVenda();
+        try{
+
+            if(
+                typeof window.carregarProdutosVenda ===
+                "function"
+            ){
+
+                console.log(
+                    "🔄 Atualizando produtos..."
+                );
 
 
-        /* ============================================
-           ATUALIZAR DASHBOARD
-        ============================================ */
+                await window.carregarProdutosVenda();
 
-        if(
-            typeof carregarDashboard ===
-            "function"
-        ){
 
-            await carregarDashboard();
+                console.log(
+                    "✅ Produtos atualizados."
+                );
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "Erro ao atualizar produtos:",
+                error
+            );
 
         }
 
 
-        /* ============================================
+        /* =================================================
+           ATUALIZAR DASHBOARD GERAL
+        ================================================= */
+
+        try{
+
+            if(
+                typeof window.carregarDashboard ===
+                "function"
+            ){
+
+                console.log(
+                    "🔄 Atualizando dashboard geral..."
+                );
+
+
+                await window.carregarDashboard();
+
+
+                console.log(
+                    "✅ Dashboard geral atualizado."
+                );
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "Erro ao atualizar dashboard:",
+                error
+            );
+
+        }
+
+
+        /* =================================================
+           ⭐ ATUALIZAR LUCROS E FATURAMENTO
+
+           IMPORTANTE:
+           Esta é a parte que atualiza:
+
+           - Faturamento
+           - Despesas
+           - Lucro bruto
+           - Lucro líquido
+           - Desempenho da loja
+
+        ================================================= */
+
+        try{
+
+            if(
+                typeof window.carregarLucrosDashboard ===
+                "function"
+            ){
+
+                console.log(
+                    "🔄 Atualizando lucros e faturamento..."
+                );
+
+
+                await window.carregarLucrosDashboard();
+
+
+                console.log(
+                    "✅ Lucros e faturamento atualizados."
+                );
+
+            }
+            else{
+
+                console.warn(
+                    "⚠️ carregarLucrosDashboard não está disponível."
+                );
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "❌ Erro ao atualizar lucros e faturamento:",
+                error
+            );
+
+        }
+
+
+        /* =================================================
            ATUALIZAR STOCK
-        ============================================ */
+        ================================================= */
 
-        if(
-            typeof carregarStock ===
-            "function"
-        ){
+        try{
 
-            await carregarStock();
+            if(
+                typeof window.carregarStock ===
+                "function"
+            ){
+
+                console.log(
+                    "🔄 Atualizando stock..."
+                );
+
+
+                await window.carregarStock();
+
+
+                console.log(
+                    "✅ Stock atualizado."
+                );
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "Erro ao atualizar stock:",
+                error
+            );
 
         }
 
 
-        /* ============================================
+        /* =================================================
            ATUALIZAR VENDAS DO DIA
-        ============================================ */
+        ================================================= */
 
-                /* ============================================
-                   ATUALIZAR VENDAS DO DIA
-                ============================================ */
+        try{
 
-                if(
-                    typeof carregarVendasDia ===
-                    "function"
-                ){
+            if(
+                typeof window.carregarVendasDia ===
+                "function"
+            ){
 
-                    await carregarVendasDia();
-
-                }
+                console.log(
+                    "🔄 Atualizando vendas do dia..."
+                );
 
 
-                /* ============================================
-                   ATUALIZAR SALDO DA CAIXA
-                ============================================ */
+                await window.carregarVendasDia();
 
-                if(
-                    typeof window.atualizarSaldoCaixaAgora ===
-                    "function"
-                ){
+
+                console.log(
+                    "✅ Vendas do dia atualizadas."
+                );
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "Erro ao atualizar vendas:",
+                error
+            );
+
+        }
+
+
+        /* =================================================
+           ATUALIZAR CAIXA
+        ================================================= */
+
+        try{
+
+            if(
+                typeof window.atualizarSaldoCaixaAgora ===
+                "function"
+            ){
+
+                console.log(
+                    "🔄 Atualizando caixa..."
+                );
+
+
+                await window.atualizarSaldoCaixaAgora();
+
+
+                console.log(
+                    "✅ Caixa atualizado."
+                );
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "Erro ao atualizar caixa:",
+                error
+            );
+
+        }
+
+
+        /* =================================================
+           AVISAR OUTRAS PARTES DO SISTEMA
+        ================================================= */
+
+        try{
+
+            window.dispatchEvent(
+                new CustomEvent(
+                    "vendaRealizada",
+                    {
+                        detail: {
+                            venda: dados
+                        }
+                    }
+                )
+            );
+
+        }
+        catch(error){
+
+            console.error(
+                "Erro ao disparar evento vendaRealizada:",
+                error
+            );
+
+        }
+
+
+        /* =================================================
+           ⭐ SEGUNDA ATUALIZAÇÃO FINANCEIRA
+
+           Pequeno atraso para garantir que o backend
+           terminou de processar todos os relacionamentos
+           da venda/lotes.
+        ================================================= */
+
+        setTimeout(
+            async function(){
+
+                try{
 
                     console.log(
-                        "🔄 Atualizando saldo da caixa após venda..."
+                        "🔄 Segunda atualização financeira..."
                     );
 
-                    await window.atualizarSaldoCaixaAgora();
+
+                    /* =====================================
+                       DASHBOARD GERAL
+                    ===================================== */
+
+                    if(
+                        typeof window.carregarDashboard ===
+                        "function"
+                    ){
+
+                        await window.carregarDashboard();
+
+                    }
+
+
+                    /* =====================================
+                       LUCROS + FATURAMENTO
+                    ===================================== */
+
+                    if(
+                        typeof window.carregarLucrosDashboard ===
+                        "function"
+                    ){
+
+                        await window.carregarLucrosDashboard();
+
+                    }
+
+
+                    console.log(
+                        "✅ Segunda atualização concluída."
+                    );
+
+                }
+                catch(error){
+
+                    console.error(
+                        "Erro na segunda atualização do dashboard:",
+                        error
+                    );
 
                 }
 
-            }
-            catch(error){
+            },
+            300
+        );
 
-                console.error(
-                    "ERRO VENDA:",
-                    error
+
+        /* =================================================
+           FINAL
+        ================================================= */
+
+        console.log(
+            "====================================="
+        );
+
+        console.log(
+            "✅ VENDA FINALIZADA COM SUCESSO"
+        );
+
+        console.log(
+            "💰 Faturamento atualizado"
+        );
+
+        console.log(
+            "📈 Lucros atualizados"
+        );
+
+        console.log(
+            "📦 Stock atualizado"
+        );
+
+        console.log(
+            "💵 Caixa atualizado"
+        );
+
+        console.log(
+            "=====================================");
+
+    }
+    catch(error){
+
+        console.error(
+            "====================================="
+        );
+
+        console.error(
+            "❌ ERRO AO FINALIZAR VENDA"
+        );
+
+        console.error(
+            error
+        );
+
+        console.error(
+            "=====================================");
+
+
+        alert(
+            "Erro ao finalizar venda."
+        );
+
+    }
+
+};
+/* =====================================================
+   MOSTRAR OPÇÃO DE RECIBO
+===================================================== */
+
+window.mostrarOpcaoRecibo = function(){
+
+    return new Promise(
+        resolve => {
+
+            /* ========================================
+               CRIAR FUNDO
+            ======================================== */
+
+            const fundo =
+                document.createElement(
+                    "div"
                 );
 
-                alert(
-                    "Erro ao finalizar venda."
+
+            fundo.id =
+                "modal-opcao-recibo";
+
+
+            fundo.style.position =
+                "fixed";
+
+            fundo.style.top =
+                "0";
+
+            fundo.style.left =
+                "0";
+
+            fundo.style.width =
+                "100%";
+
+            fundo.style.height =
+                "100%";
+
+            fundo.style.background =
+                "rgba(0,0,0,0.55)";
+
+            fundo.style.display =
+                "flex";
+
+            fundo.style.alignItems =
+                "center";
+
+            fundo.style.justifyContent =
+                "center";
+
+            fundo.style.zIndex =
+                "99999";
+
+
+            /* ========================================
+               CAIXA
+            ======================================== */
+
+            const caixa =
+                document.createElement(
+                    "div"
                 );
 
-            }
 
-        };
+            caixa.style.background =
+                "#ffffff";
+
+            caixa.style.padding =
+                "30px";
+
+            caixa.style.borderRadius =
+                "12px";
+
+            caixa.style.width =
+                "380px";
+
+            caixa.style.maxWidth =
+                "90%";
+
+            caixa.style.textAlign =
+                "center";
+
+            caixa.style.boxShadow =
+                "0 10px 40px rgba(0,0,0,0.3)";
 
 
+            /* ========================================
+               TÍTULO
+            ======================================== */
 
+            const titulo =
+                document.createElement(
+                    "h4"
+                );
+
+
+            titulo.innerText =
+                "Venda realizada com sucesso!";
+
+
+            titulo.style.marginBottom =
+                "10px";
+
+
+            /* ========================================
+               TEXTO
+            ======================================== */
+
+            const texto =
+                document.createElement(
+                    "p"
+                );
+
+
+            texto.innerText =
+                "Deseja baixar o recibo desta venda?";
+
+
+            texto.style.marginBottom =
+                "25px";
+
+
+            /* ========================================
+               ÁREA DOS BOTÕES
+            ======================================== */
+
+            const botoes =
+                document.createElement(
+                    "div"
+                );
+
+
+            botoes.style.display =
+                "flex";
+
+            botoes.style.gap =
+                "10px";
+
+            botoes.style.justifyContent =
+                "center";
+
+
+            /* ========================================
+               BOTÃO NÃO
+            ======================================== */
+
+            const botaoNao =
+                document.createElement(
+                    "button"
+                );
+
+
+            botaoNao.type =
+                "button";
+
+
+            botaoNao.className =
+                "btn btn-secondary";
+
+
+            botaoNao.innerText =
+                "Não";
+
+
+            botaoNao.style.minWidth =
+                "120px";
+
+
+            /* ========================================
+               BOTÃO BAIXAR
+            ======================================== */
+
+            const botaoBaixar =
+                document.createElement(
+                    "button"
+                );
+
+
+            botaoBaixar.type =
+                "button";
+
+
+            botaoBaixar.className =
+                "btn btn-primary";
+
+
+            botaoBaixar.innerText =
+                "Baixar recibo";
+
+
+            botaoBaixar.style.minWidth =
+                "120px";
+
+
+            /* ========================================
+               CLIQUE NÃO
+            ======================================== */
+
+            botaoNao.onclick =
+                function(){
+
+                    fundo.remove();
+
+                    resolve(
+                        false
+                    );
+
+                };
+
+
+            /* ========================================
+               CLIQUE BAIXAR
+            ======================================== */
+
+            botaoBaixar.onclick =
+                function(){
+
+                    fundo.remove();
+
+                    resolve(
+                        true
+                    );
+
+                };
+
+
+            /* ========================================
+               MONTAR MODAL
+            ======================================== */
+
+            botoes.appendChild(
+                botaoNao
+            );
+
+            botoes.appendChild(
+                botaoBaixar
+            );
+
+
+            caixa.appendChild(
+                titulo
+            );
+
+            caixa.appendChild(
+                texto
+            );
+
+            caixa.appendChild(
+                botoes
+            );
+
+
+            fundo.appendChild(
+                caixa
+            );
+
+
+            document.body.appendChild(
+                fundo
+            );
+
+
+            /* ========================================
+               FOCAR NO BOTÃO BAIXAR
+            ======================================== */
+
+            botaoBaixar.focus();
+
+        }
+    );
+
+};
 /* =====================================================
    ABRIR VENDA
 ===================================================== */

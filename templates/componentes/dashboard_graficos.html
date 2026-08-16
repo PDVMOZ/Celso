@@ -1,108 +1,101 @@
-<!-- =====================================
-     LINHA PRINCIPAL
-====================================== -->
+<<div class="dashboard-card">
 
-<section class="dashboard-grid">
+    <div class="card-header">
 
+        <h4>
+            Resumo de Vendas
+        </h4>
 
-    <!-- ESQUERDA -->
+        <select
+            id="filtro-grafico"
+            class="form-select"
+        >
 
-    <div class="left-column">
+            <option value="dia">
+                Hoje
+            </option>
 
+            <option value="semana">
+                Esta semana
+            </option>
 
-        <div class="dashboard-card">
+            <option value="mes">
+                Este mês
+            </option>
 
+            <option value="ano">
+                Este ano
+            </option>
 
-            <div class="card-header">
-
-
-                <h4>
-                    Resumo de Vendas
-                </h4>
-
-
-                <select class="form-select">
-
-
-                    <option>
-                        Últimos 7 dias
-                    </option>
-
-
-                </select>
-
-
-            </div>
-
-
-
-            <canvas id="salesChart" height="120"></canvas>
-
-
-
-            <div class="sales-footer">
-
-
-                <div>
-
-                    <small>
-                        TOTAL DE VENDAS
-                    </small>
-
-
-                    <h4>
-                        67.250,00 MT
-                    </h4>
-
-
-                </div>
-
-
-
-                <div>
-
-                    <small>
-                        TICKET MÉDIO
-                    </small>
-
-
-                    <h4>
-                        1.245,00 MT
-                    </h4>
-
-
-                </div>
-
-
-
-                <div>
-
-                    <small>
-                        Nº DE VENDAS
-                    </small>
-
-
-                    <h4>
-                        54
-                    </h4>
-
-
-                </div>
-
-
-            </div>
-
-
-        </div>
-
+        </select>
 
     </div>
 
 
+    <div
+        style="
+            position: relative;
+            width: 100%;
+            height: 300px;
+        "
+    >
+
+        <canvas
+            id="salesChart"
+        ></canvas>
+
+    </div>
 
 
-    <!-- DIREITA -->
+    <div class="sales-footer">
 
+        <div>
+
+            <small>
+                TOTAL DE VENDAS
+            </small>
+
+            <h4 id="grafico-total-vendas">
+                0,00 MT
+            </h4>
+
+        </div>
+
+
+        <div>
+
+            <small>
+                TICKET MÉDIO
+            </small>
+
+            <h4 id="grafico-ticket-medio">
+                0,00 MT
+            </h4>
+
+        </div>
+
+
+        <div>
+
+            <small>
+                Nº DE VENDAS
+            </small>
+
+            <h4 id="grafico-numero-vendas">
+                0
+            </h4>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+    <!-- =================================
+         DIREITA
+    ================================== -->
 
     <div class="right-column">
 
@@ -110,27 +103,30 @@
         <div class="dashboard-card">
 
 
-            <div class="card-header">
+            <!-- =================================
+                 CABEÇALHO
+            ================================== -->
 
+            <div class="card-header">
 
                 <h4>
                     Alertas de Produtos com Baixo Stock
                 </h4>
 
-
             </div>
 
 
+            <!-- =================================
+                 LISTA DE PRODUTOS
+            ================================== -->
 
             <div id="baixo-stock-list"></div>
-
 
 
         </div>
 
 
     </div>
-
 
 
 </section>
