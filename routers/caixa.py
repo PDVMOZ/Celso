@@ -1979,9 +1979,7 @@ async def dinheiro_recolhido(
 
     )
 
-@router.get(
-    "/dashboard/dinheiro-recolhido-gerentes"
-)
+@router.get("/dashboard/dinheiro-recolhido-gerentes")
 async def dinheiro_recolhido_gerentes(
     usuario_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1992,26 +1990,21 @@ async def dinheiro_recolhido_gerentes(
     # =====================================================
 
     resultado = await db.execute(
-
         select(Usuario)
         .where(
             Usuario.id == usuario_id
         )
-
     )
 
     usuario_logado = (
         resultado.scalar_one_or_none()
     )
 
-
     if not usuario_logado:
-
         raise HTTPException(
             status_code=404,
             detail="Usuário não encontrado"
         )
-
 
     tipo_logado = (
         str(usuario_logado.tipo or "")
@@ -2019,12 +2012,10 @@ async def dinheiro_recolhido_gerentes(
         .lower()
     )
 
-
     if tipo_logado not in [
         "admin",
         "administrador"
     ]:
-
         raise HTTPException(
             status_code=403,
             detail="Somente admin pode acessar"
@@ -2078,8 +2069,9 @@ async def dinheiro_recolhido_gerentes(
 
     # =====================================================
     # FUNÇÃO AUXILIAR
+    # CALCULAR SALDO DISPONÍVEL DO GERENTE
     #
-    # CALCULAR QUANTO O GERENTE TEM DISPONÍVEL
+    # NÃO ALTERAR ESTA PARTE
     # =====================================================
 
     async def calcular_gerente(
@@ -2162,27 +2154,15 @@ async def dinheiro_recolhido_gerentes(
 
 
         # =================================================
-        # QUANTO ESTE GERENTE JÁ ENTREGOU AO ADMIN
+        # QUANTO O GERENTE JÁ ENTREGOU AO ADMIN
         #
-        # IMPORTANTE:
-        #
-        # A RECOLHA_GERENTE é gravada:
-        #
-        # caixa_id       = caixa do ADMIN
-        # responsavel_id = ADMIN
-        #
-        # Portanto NÃO podemos usar:
-        #
-        # responsavel_id == gerente_id
-        #
-        # Usamos o marcador gravado na descrição.
+        # RECOLHA_GERENTE CONTINUA IGUAL
         # =================================================
 
         marcador_gerente = (
             f"RECOLHA_GERENTE|"
             f"gerente_id={gerente_id}|"
         )
-
 
         resultado = await db.execute(
 
@@ -2230,7 +2210,6 @@ async def dinheiro_recolhido_gerentes(
 
         )
 
-
         if disponivel < 0:
 
             disponivel = Decimal(
@@ -2256,7 +2235,7 @@ async def dinheiro_recolhido_gerentes(
 
 
     # =====================================================
-    # CALCULAR ADMIN
+    # VALORES DOS ADMINS
     # =====================================================
 
     admin_recolhido = Decimal(
@@ -2277,13 +2256,20 @@ async def dinheiro_recolhido_gerentes(
 
 
     # =====================================================
-    # MOVIMENTOS DOS ADMINS
+    # CALCULAR MOVIMENTOS DOS ADMINS
     # =====================================================
 
     for admin in admins:
 
+
         # =================================================
         # RECOLHAS NORMAIS FEITAS PELO ADMIN
+        #
+        # ADMIN -> VENDEDORES
+        #
+        # TIPO = RECOLHA
+        #
+        # ISSO AUMENTA O DINHEIRO RECOLHIDO
         # =================================================
 
         resultado = await db.execute(
@@ -2320,9 +2306,19 @@ async def dinheiro_recolhido_gerentes(
 
 
         # =================================================
-        # RETIRADAS FEITAS PELO ADMIN
+        # RETIRADAS DA PRÓPRIA CAIXA DO ADMIN
         #
-        # RETIRADA DIMINUI O DISPONÍVEL.
+        # IMPORTANTE:
+        #
+        # NÃO É RECOLHA_GERENTE
+        #
+        # É RETIRADA.
+        #
+        # O ADMIN ESTÁ TIRANDO DINHEIRO DA PRÓPRIA
+        # CAIXA DE VENDAS.
+        #
+        # ESSE VALOR DEVE AUMENTAR
+        # O DINHEIRO RECOLHIDO.
         # =================================================
 
         resultado = await db.execute(
@@ -2360,6 +2356,8 @@ async def dinheiro_recolhido_gerentes(
 
         # =================================================
         # DESPESAS DO ADMIN
+        #
+        # DESPESA DIMINUI O DINHEIRO DISPONÍVEL
         # =================================================
 
         resultado = await db.execute(
@@ -2400,14 +2398,10 @@ async def dinheiro_recolhido_gerentes(
     #
     # IMPORTANTE:
     #
-    # RECOLHA_GERENTE foi gravada na caixa do ADMIN.
+    # NÃO ALTERAR.
     #
-    # E a descrição contém:
-    #
-    # RECOLHA_GERENTE|gerente_id=X|
-    #
-    # Portanto somamos todas as RECOLHA_GERENTE
-    # pertencentes ao admin logado.
+    # RECOLHA_GERENTE É USADO SOMENTE PARA
+    # TRANSFERÊNCIA GERENTE -> ADMIN.
     # =====================================================
 
     resultado = await db.execute(
@@ -2452,19 +2446,25 @@ async def dinheiro_recolhido_gerentes(
     # =====================================================
     # DISPONÍVEL DO ADMIN
     #
-    # Fórmula:
+    # AQUI ESTÁ A CORREÇÃO
     #
-    # RECOLHIDO
-    # - RETIRADO
-    # - DESPESAS
-    # + RECEBIDO DOS GERENTES
+    # RECOLHA
+    #     +
+    # RETIRADA
+    #     -
+    # DESPESAS
+    #     +
+    # RECOLHA_GERENTE
+    #
+    # A RETIRADA DA PRÓPRIA CAIXA DO ADMIN
+    # AUMENTA O DINHEIRO RECOLHIDO.
     # =====================================================
 
     total_admin = (
 
         admin_recolhido
 
-        - admin_retirado
+        + admin_retirado
 
         - admin_despesas
 
@@ -2497,7 +2497,6 @@ async def dinheiro_recolhido_gerentes(
             gerente.id
         )
 
-
         total_gerentes += (
             dados["total"]
         )
@@ -2511,7 +2510,6 @@ async def dinheiro_recolhido_gerentes(
             "nome":
                 gerente.nome,
 
-            # DISPONÍVEL ATUAL
             "total_recolhido":
                 float(
                     dados["total"]
@@ -2538,21 +2536,9 @@ async def dinheiro_recolhido_gerentes(
     # =====================================================
     # TOTAL GERAL
     #
-    # REGRA PRINCIPAL:
-    #
-    # TOTAL =
-    #
-    #     DISPONÍVEL ADMIN
-    #     +
-    #     DISPONÍVEL GERENTES
-    #
-    # Uma transferência:
-    #
-    # GERENTE -> ADMIN
-    #
-    # diminui um lado e aumenta o outro.
-    #
-    # Portanto o TOTAL NÃO MUDA.
+    # ADMIN
+    # +
+    # GERENTES
     # =====================================================
 
     total_geral = (
@@ -2580,6 +2566,26 @@ async def dinheiro_recolhido_gerentes(
 
     print(
         " DINHEIRO RECOLHIDO - DETALHES"
+    )
+
+    print(
+        "ADMIN RECOLHIDO:",
+        admin_recolhido
+    )
+
+    print(
+        "ADMIN RETIRADO:",
+        admin_retirado
+    )
+
+    print(
+        "ADMIN DESPESAS:",
+        admin_despesas
+    )
+
+    print(
+        "ADMIN RECEBIDO GERENTES:",
+        admin_recebido_gerentes
     )
 
     print(
@@ -2656,7 +2662,6 @@ async def dinheiro_recolhido_gerentes(
             )
 
     }
-
 @router.get("/dashboard/vendas-dia")
 async def vendas_dia(
     usuario_id: int | None = None,
