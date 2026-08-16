@@ -396,13 +396,123 @@ window.calcularTroco = function(){
 
 };
 
+window.botaoAguarde = function(){
 
+    const botao = document.getElementById(
+        "btn-finalizar-venda"
+    );
+
+    if(!botao) return;
+
+    botao.disabled = true;
+
+    botao.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Aguarde...
+    `;
+};
+
+
+window.botaoNormal = function(){
+
+    const botao = document.getElementById(
+        "btn-finalizar-venda"
+    );
+
+    if(!botao) return;
+
+    botao.disabled = false;
+
+    botao.innerHTML = `
+        <i class="bi bi-check-circle"></i>
+        <span>Finalizar Venda</span>
+    `;
+};
 /* =====================================================
    FINALIZAR VENDA
    REGISTRA VENDA + ATUALIZA DASHBOARD FINANCEIRO
 ===================================================== */
 
 window.finalizarVenda = async function(){
+
+    /* =================================================
+       BOTÃO FINALIZAR VENDA
+    ================================================= */
+
+    const botaoFinalizar =
+        document.getElementById(
+            "btn-finalizar-venda"
+        );
+
+    let textoOriginalBotao = "";
+
+    if(botaoFinalizar){
+
+        textoOriginalBotao =
+            botaoFinalizar.innerHTML;
+
+        /* =============================================
+           MOSTRAR AGUARDE
+        ============================================= */
+
+        botaoFinalizar.disabled = true;
+
+        botaoFinalizar.classList.remove(
+            "btn-success"
+        );
+
+        botaoFinalizar.classList.add(
+            "btn-secondary"
+        );
+
+        botaoFinalizar.innerHTML = `
+            <span
+                class="spinner-border spinner-border-sm me-1"
+                role="status"
+                aria-hidden="true"
+            ></span>
+
+            <span>Aguarde...</span>
+        `;
+
+    }
+
+
+    /* =================================================
+       FUNÇÃO PARA RESTAURAR BOTÃO
+    ================================================= */
+
+    function restaurarBotaoFinalizar(){
+
+        if(!botaoFinalizar){
+
+            return;
+
+        }
+
+
+        botaoFinalizar.disabled = false;
+
+
+        botaoFinalizar.classList.remove(
+            "btn-secondary"
+        );
+
+
+        botaoFinalizar.classList.add(
+            "btn-success"
+        );
+
+
+        botaoFinalizar.innerHTML =
+            textoOriginalBotao ||
+            `
+                <i class="bi bi-check-circle"></i>
+                <span>Finalizar Venda</span>
+            `;
+
+    }
+
 
     /* =================================================
        VERIFICAR CARRINHO
@@ -416,6 +526,8 @@ window.finalizarVenda = async function(){
         alert(
             "Adicione produtos ao carrinho."
         );
+
+        restaurarBotaoFinalizar();
 
         return;
 
@@ -437,6 +549,8 @@ window.finalizarVenda = async function(){
             "Faça login."
         );
 
+        restaurarBotaoFinalizar();
+
         return;
 
     }
@@ -457,6 +571,8 @@ window.finalizarVenda = async function(){
         alert(
             "Campo de valor entregue não encontrado."
         );
+
+        restaurarBotaoFinalizar();
 
         return;
 
@@ -502,6 +618,8 @@ window.finalizarVenda = async function(){
             "Informe o valor entregue."
         );
 
+        restaurarBotaoFinalizar();
+
         return;
 
     }
@@ -512,6 +630,8 @@ window.finalizarVenda = async function(){
         alert(
             "Valor entregue insuficiente."
         );
+
+        restaurarBotaoFinalizar();
 
         return;
 
@@ -567,25 +687,101 @@ window.finalizarVenda = async function(){
         );
 
         console.log(
-            "====================================="
-        );
+            "=====================================");
 
 
-        const resposta =
-            await fetch(
-                API + "/vendas/",
-                {
-                    method: "POST",
+        /* =================================================
+           TIMEOUT DO FETCH
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+           Máximo de 30 segundos para o backend responder.
+        ================================================= */
 
-                    body:
-                        JSON.stringify(venda)
-                }
+        const controller =
+            new AbortController();
+
+
+        const timeoutVenda =
+            setTimeout(
+                function(){
+
+                    controller.abort();
+
+                },
+                30000
             );
+
+
+        let resposta;
+
+
+        try{
+
+            resposta =
+                await fetch(
+                    API + "/vendas/",
+                    {
+
+                        method:
+                            "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        body:
+                            JSON.stringify(venda),
+
+                        signal:
+                            controller.signal
+
+                    }
+                );
+
+        }
+        catch(error){
+
+            clearTimeout(
+                timeoutVenda
+            );
+
+
+            if(
+                error.name ===
+                "AbortError"
+            ){
+
+                alert(
+                    "O servidor demorou muito para responder. Tente novamente."
+                );
+
+            }
+            else{
+
+                console.error(
+                    "Erro ao enviar venda:",
+                    error
+                );
+
+                alert(
+                    "Não foi possível conectar ao servidor."
+                );
+
+            }
+
+
+            restaurarBotaoFinalizar();
+
+            return;
+
+        }
+
+
+        clearTimeout(
+            timeoutVenda
+        );
 
 
         /* =================================================
@@ -628,10 +824,23 @@ window.finalizarVenda = async function(){
                 "Erro ao realizar venda."
             );
 
+
+            restaurarBotaoFinalizar();
+
             return;
 
         }
 
+
+        /* =================================================
+           VENDA CONFIRMADA PELO BACKEND
+
+           IMPORTANTE:
+           LIBERAR O BOTÃO AGORA.
+
+           Não esperar dashboard,
+           stock, caixa, etc.
+        ================================================= */
 
         console.log(
             "====================================="
@@ -647,6 +856,9 @@ window.finalizarVenda = async function(){
 
         console.log(
             "=====================================");
+
+
+        restaurarBotaoFinalizar();
 
 
         /* =================================================
@@ -866,17 +1078,7 @@ window.finalizarVenda = async function(){
 
 
         /* =================================================
-           ⭐ ATUALIZAR LUCROS E FATURAMENTO
-
-           IMPORTANTE:
-           Esta é a parte que atualiza:
-
-           - Faturamento
-           - Despesas
-           - Lucro bruto
-           - Lucro líquido
-           - Desempenho da loja
-
+           ATUALIZAR LUCROS E FATURAMENTO
         ================================================= */
 
         try{
@@ -1037,7 +1239,10 @@ window.finalizarVenda = async function(){
                     "vendaRealizada",
                     {
                         detail: {
-                            venda: dados
+
+                            venda:
+                                dados
+
                         }
                     }
                 )
@@ -1055,11 +1260,7 @@ window.finalizarVenda = async function(){
 
 
         /* =================================================
-           ⭐ SEGUNDA ATUALIZAÇÃO FINANCEIRA
-
-           Pequeno atraso para garantir que o backend
-           terminou de processar todos os relacionamentos
-           da venda/lotes.
+           SEGUNDA ATUALIZAÇÃO FINANCEIRA
         ================================================= */
 
         setTimeout(
@@ -1150,6 +1351,7 @@ window.finalizarVenda = async function(){
         console.log(
             "=====================================");
 
+
     }
     catch(error){
 
@@ -1172,6 +1374,13 @@ window.finalizarVenda = async function(){
         alert(
             "Erro ao finalizar venda."
         );
+
+
+        /* =================================================
+           RESTAURAR BOTÃO EM CASO DE ERRO
+        ================================================= */
+
+        restaurarBotaoFinalizar();
 
     }
 
