@@ -1,12 +1,39 @@
 // =====================================================
-// STOCK
+// STOCK.JS
+// =====================================================
+//
+// ROTAS UTILIZADAS:
+//
+// GET  /produtos/
+// GET  /stock/
+// GET  /stock/lotes
+// POST /produtos/{id}/entrada-stock
+//
+// =====================================================
+
+
+// =====================================================
+// ABRIR STOCK
 // =====================================================
 
 window.abrirStock = async function(){
 
-    document.getElementById(
-        "stock-panel"
-    ).style.display = "flex";
+    const painel =
+        document.getElementById(
+            "stock-panel"
+        );
+
+    if(!painel){
+
+        console.warn(
+            "Elemento #stock-panel não encontrado."
+        );
+
+        return;
+
+    }
+
+    painel.style.display = "flex";
 
     await carregarStock();
 
@@ -19,9 +46,18 @@ window.abrirStock = async function(){
 
 window.fecharStock = function(){
 
-    document.getElementById(
-        "stock-panel"
-    ).style.display = "none";
+    const painel =
+        document.getElementById(
+            "stock-panel"
+        );
+
+    if(!painel){
+
+        return;
+
+    }
+
+    painel.style.display = "none";
 
 };
 
@@ -32,158 +68,338 @@ window.fecharStock = function(){
 
 window.carregarStock = async function(){
 
+    console.log(
+        "====================================="
+    );
+
+    console.log(
+        " CARREGANDO STOCK"
+    );
+
+    console.log(
+        "====================================="
+    );
+
+
     try{
 
-        const resposta = await fetch(
-            API + "/produtos/"
-        );
+        // =================================================
+        // 1. BUSCAR PRODUTOS
+        // =================================================
 
-        if(!resposta.ok){
+        const respostaProdutos =
+            await fetch(
+                API + "/produtos/",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if(!respostaProdutos.ok){
 
             throw new Error(
-                "Erro HTTP: " + resposta.status
+                "Erro ao buscar produtos: " +
+                respostaProdutos.status
             );
 
         }
 
-        const produtos = await resposta.json();
 
-        const tabela = document.getElementById(
-            "lista-stock"
+        const produtos =
+            await respostaProdutos.json();
+
+
+        console.log(
+            "PRODUTOS:",
+            produtos
         );
 
-        if(!tabela)
+
+        // =================================================
+        // 2. BUSCAR STOCK DO PRODUTO
+        // =================================================
+        //
+        // GET /stock/
+        //
+        // Esta rota usa Produto.quantidade.
+        //
+        // É mantida separada porque outros locais
+        // do sistema podem utilizar esta informação.
+        //
+        // =================================================
+
+        const respostaStock =
+            await fetch(
+                API + "/stock/",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if(!respostaStock.ok){
+
+            throw new Error(
+                "Erro ao buscar /stock/: " +
+                respostaStock.status
+            );
+
+        }
+
+
+        const stocks =
+            await respostaStock.json();
+
+
+        console.log(
+            "STOCK /stock/:",
+            stocks
+        );
+
+
+        // =================================================
+        // 3. BUSCAR STOCK DOS LOTES
+        // =================================================
+        //
+        // GET /stock/lotes
+        //
+        // Esta é a informação usada na tabela.
+        //
+        // Exemplo da API:
+        //
+        // {
+        //     "id": 2,
+        //     "produto_id": 2,
+        //     "nome": "Cerveja",
+        //     "stock_lotes": 11
+        // }
+        //
+        // =================================================
+
+        const respostaLotes =
+            await fetch(
+                API + "/stock/lotes",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if(!respostaLotes.ok){
+
+            throw new Error(
+                "Erro ao buscar /stock/lotes: " +
+                respostaLotes.status
+            );
+
+        }
+
+
+        const stocksLotes =
+            await respostaLotes.json();
+
+
+        console.log(
+            "STOCK DOS LOTES /stock/lotes:",
+            stocksLotes
+        );
+
+
+        // =================================================
+        // 4. CRIAR MAPA DO STOCK NORMAL
+        // =================================================
+
+        const mapaStock = {};
+
+
+        if(Array.isArray(stocks)){
+
+            stocks.forEach(
+                stock => {
+
+                    const produtoId =
+                        Number(
+                            stock.produto_id ??
+                            stock.product_id ??
+                            stock.produto?.id ??
+                            stock.id ??
+                            0
+                        );
+
+
+                    if(!produtoId){
+
+                        console.warn(
+                            "Stock sem produto_id:",
+                            stock
+                        );
+
+                        return;
+
+                    }
+
+
+                    mapaStock[produtoId] =
+                        Number(
+                            stock.stock_total ?? 0
+                        );
+
+                }
+            );
+
+        }
+
+
+        console.log(
+            "MAPA STOCK /stock/:",
+            mapaStock
+        );
+
+
+        // =================================================
+        // 5. CRIAR MAPA DO STOCK DOS LOTES
+        // =================================================
+        //
+        // IMPORTANTE:
+        //
+        // A API devolve:
+        //
+        // stock_lotes
+        //
+        // Portanto usamos EXATAMENTE:
+        //
+        // stock.stock_lotes
+        //
+        // =================================================
+
+        const mapaStockLotes = {};
+
+
+        if(Array.isArray(stocksLotes)){
+
+            stocksLotes.forEach(
+                stock => {
+
+                    const produtoId =
+                        Number(
+                            stock.produto_id ??
+                            stock.product_id ??
+                            stock.produto?.id ??
+                            stock.id ??
+                            0
+                        );
+
+
+                    if(!produtoId){
+
+                        console.warn(
+                            "Stock de lote sem produto_id:",
+                            stock
+                        );
+
+                        return;
+
+                    }
+
+
+                    mapaStockLotes[produtoId] =
+                        Number(
+                            stock.stock_lotes ?? 0
+                        );
+
+                }
+            );
+
+        }
+
+
+        console.log(
+            "MAPA STOCK DOS LOTES:",
+            mapaStockLotes
+        );
+
+
+        // =================================================
+        // 6. LOCALIZAR TABELA
+        // =================================================
+
+        const tabela =
+            document.getElementById(
+                "lista-stock"
+            );
+
+
+        if(!tabela){
+
+            console.warn(
+                "Elemento #lista-stock não encontrado."
+            );
+
             return;
+
+        }
+
 
         tabela.innerHTML = "";
 
-        const usuario = JSON.parse(
-            localStorage.getItem("usuario")
-        );
+
+        // =================================================
+        // 7. OBTER USUÁRIO
+        // =================================================
+
+        let usuario = null;
 
 
-        produtos.forEach(p => {
+        try{
 
-            let estado = "";
-            let classe = "";
+            const storage =
+                localStorage.getItem(
+                    "usuario"
+                );
 
 
-            // =================================================
-            // ESTADO DO STOCK
-            // =================================================
+            if(storage){
 
-            if(
-                Number(p.quantidade) === 0
-            ){
-
-                estado = "Sem Stock";
-
-                classe = "bg-danger";
-
-            }
-
-            else if(
-                Number(p.quantidade) <=
-                Number(p.stock_minimo)
-            ){
-
-                estado = "Baixo";
-
-                classe = "bg-warning text-dark";
+                usuario =
+                    JSON.parse(
+                        storage
+                    );
 
             }
 
-            else{
+        }
+        catch(error){
 
-                estado = "Normal";
+            console.error(
+                "ERRO AO LER USUÁRIO:",
+                error
+            );
 
-                classe = "bg-success";
+            usuario = null;
 
-            }
-
-
-            // =================================================
-            // BOTÃO ENTRADA
-            // =================================================
-
-            let botaoEntrada = "";
+        }
 
 
-            if(
-                usuario &&
-                (
-                    usuario.tipo === "admin" ||
-                    usuario.tipo === "gerente"
-                )
-            ){
+        // =================================================
+        // 8. VERIFICAR PRODUTOS
+        // =================================================
 
-                botaoEntrada = `
+        if(
+            !Array.isArray(produtos) ||
+            produtos.length === 0
+        ){
 
-                    <button
-
-                        class="btn btn-success btn-sm"
-
-                        onclick="abrirEntradaStock(
-                            ${p.id},
-                            '${String(p.nome).replace(/'/g, "\\'")}',
-                            ${Number(p.preco_compra || 0)},
-                            ${Number(p.preco_venda || 0)}
-                        )"
-
-                    >
-
-                        <i class="bi bi-plus-circle"></i>
-
-                        Entrada
-
-                    </button>
-
-                `;
-
-            }
-
-
-            // =================================================
-            // LINHA
-            // =================================================
-
-            tabela.innerHTML += `
+            tabela.innerHTML = `
 
                 <tr>
 
-                    <td>
-                        ${p.id}
-                    </td>
+                    <td
+                        colspan="7"
+                        class="text-center"
+                    >
 
-                    <td>
-                        ${p.nome}
-                    </td>
-
-                    <td>
-                        ${p.categoria_id}
-                    </td>
-
-                    <td>
-                        ${p.quantidade}
-                    </td>
-
-                    <td>
-                        ${p.stock_minimo}
-                    </td>
-
-                    <td>
-
-                        <span class="badge ${classe}">
-
-                            ${estado}
-
-                        </span>
-
-                    </td>
-
-                    <td>
-
-                        ${botaoEntrada}
+                        Nenhum produto encontrado.
 
                     </td>
 
@@ -191,16 +407,277 @@ window.carregarStock = async function(){
 
             `;
 
-        });
+            return;
+
+        }
+
+
+        // =================================================
+        // 9. PERCORRER PRODUTOS
+        // =================================================
+
+        produtos.forEach(
+            produto => {
+
+                // =================================================
+                // ID DO PRODUTO
+                // =================================================
+
+                const produtoId =
+                    Number(
+                        produto.id ?? 0
+                    );
+
+
+                // =================================================
+                // STOCK REAL DOS LOTES
+                // =================================================
+                //
+                // VEM DE:
+                //
+                // GET /stock/lotes
+                //
+                // stock_lotes
+                //
+                // =================================================
+
+                const stockTotal =
+                    Number(
+                        mapaStockLotes[produtoId] ?? 0
+                    );
+
+
+                // =================================================
+                // STOCK MÍNIMO
+                // =================================================
+
+                const stockMinimo =
+                    Number(
+                        produto.stock_minimo ?? 0
+                    );
+
+
+                // =================================================
+                // ESTADO DO STOCK
+                // =================================================
+
+                let estado = "";
+                let classe = "";
+
+
+                // =================================================
+                // SEM STOCK
+                // =================================================
+
+                if(stockTotal <= 0){
+
+                    estado =
+                        "Sem Stock";
+
+                    classe =
+                        "bg-danger";
+
+                }
+
+
+                // =================================================
+                // BAIXO STOCK
+                // =================================================
+
+                else if(
+                    stockTotal <=
+                    stockMinimo
+                ){
+
+                    estado =
+                        "Baixo";
+
+                    classe =
+                        "bg-warning text-dark";
+
+                }
+
+
+                // =================================================
+                // STOCK NORMAL
+                // =================================================
+
+                else{
+
+                    estado =
+                        "Normal";
+
+                    classe =
+                        "bg-success";
+
+                }
+
+
+                // =================================================
+                // BOTÃO ENTRADA
+                // =================================================
+
+                let botaoEntrada = "";
+
+
+                if(
+                    usuario &&
+                    (
+                        usuario.tipo === "admin" ||
+                        usuario.tipo === "gerente"
+                    )
+                ){
+
+                    // =============================================
+                    // PROTEGER NOME
+                    // =============================================
+
+                    const nomeSeguro =
+                        String(
+                            produto.nome ?? ""
+                        )
+                        .replace(
+                            /\\/g,
+                            "\\\\"
+                        )
+                        .replace(
+                            /'/g,
+                            "\\'"
+                        );
+
+
+                    // =============================================
+                    // PREÇO DE COMPRA
+                    // =============================================
+
+                    const precoCompra =
+                        Number(
+                            produto.preco_compra ?? 0
+                        );
+
+
+                    // =============================================
+                    // PREÇO DE VENDA
+                    // =============================================
+
+                    const precoVenda =
+                        Number(
+                            produto.preco_venda ?? 0
+                        );
+
+
+                    botaoEntrada = `
+
+                        <button
+
+                            type="button"
+
+                            class="btn btn-success btn-sm"
+
+                            onclick="abrirEntradaStock(
+                                ${produtoId},
+                                '${nomeSeguro}',
+                                ${precoCompra},
+                                ${precoVenda}
+                            )"
+
+                        >
+
+                            <i class="bi bi-plus-circle"></i>
+
+                            Entrada
+
+                        </button>
+
+                    `;
+
+                }
+
+
+                // =================================================
+                // LINHA DA TABELA
+                // =================================================
+
+                tabela.innerHTML += `
+
+                    <tr>
+
+                        <td>
+                            ${produtoId}
+                        </td>
+
+                        <td>
+                            ${produto.nome ?? ""}
+                        </td>
+
+                        <td>
+                            ${produto.categoria_id ?? ""}
+                        </td>
+
+                        <td>
+
+                            <strong>
+                                ${stockTotal}
+                            </strong>
+
+                        </td>
+
+                        <td>
+                            ${stockMinimo}
+                        </td>
+
+                        <td>
+
+                            <span
+                                class="badge ${classe}"
+                            >
+
+                                ${estado}
+
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            ${botaoEntrada}
+
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+
+        // =================================================
+        // FINAL
+        // =================================================
+
+        console.log(
+            "====================================="
+        );
+
+        console.log(
+            " STOCK CARREGADO COM SUCESSO"
+        );
+
+        console.log(
+            "====================================="
+        );
 
     }
+
 
     catch(error){
 
         console.error(
-            "Erro ao carregar stock:",
+            "ERRO AO CARREGAR STOCK:",
             error
         );
+
 
         alert(
             "Erro ao carregar stock."
@@ -222,33 +699,76 @@ window.abrirEntradaStock = function(
     precoVenda = 0
 ){
 
-    document.getElementById(
-        "entrada-produto-id"
-    ).value = id;
+    // =================================================
+    // ID
+    // =================================================
+
+    const campoId =
+        document.getElementById(
+            "entrada-produto-id"
+        );
 
 
-    document.getElementById(
-        "entrada-produto"
-    ).value = nome;
+    if(campoId){
+
+        campoId.value =
+            id;
+
+    }
 
 
-    document.getElementById(
-        "entrada-quantidade"
-    ).value = "";
+    // =================================================
+    // PRODUTO
+    // =================================================
+
+    const campoProduto =
+        document.getElementById(
+            "entrada-produto"
+        );
+
+
+    if(campoProduto){
+
+        campoProduto.value =
+            nome;
+
+    }
+
+
+    // =================================================
+    // QUANTIDADE
+    // =================================================
+
+    const campoQuantidade =
+        document.getElementById(
+            "entrada-quantidade"
+        );
+
+
+    if(campoQuantidade){
+
+        campoQuantidade.value =
+            "";
+
+    }
 
 
     // =================================================
     // PREÇO DE COMPRA
     // =================================================
 
-    const campoCompra = document.getElementById(
-        "entrada-preco-compra"
-    );
+    const campoCompra =
+        document.getElementById(
+            "entrada-preco-compra"
+        );
+
 
     if(campoCompra){
 
         campoCompra.value =
-            precoCompra || "";
+            precoCompra > 0
+                ? precoCompra
+                : "";
 
     }
 
@@ -257,21 +777,38 @@ window.abrirEntradaStock = function(
     // PREÇO DE VENDA
     // =================================================
 
-    const campoVenda = document.getElementById(
-        "entrada-preco-venda"
-    );
+    const campoVenda =
+        document.getElementById(
+            "entrada-preco-venda"
+        );
+
 
     if(campoVenda){
 
         campoVenda.value =
-            precoVenda || "";
+            precoVenda > 0
+                ? precoVenda
+                : "";
 
     }
 
 
-    document.getElementById(
-        "entrada-stock-panel"
-    ).style.display = "flex";
+    // =================================================
+    // ABRIR PAINEL
+    // =================================================
+
+    const painel =
+        document.getElementById(
+            "entrada-stock-panel"
+        );
+
+
+    if(painel){
+
+        painel.style.display =
+            "flex";
+
+    }
 
 };
 
@@ -282,9 +819,18 @@ window.abrirEntradaStock = function(
 
 window.fecharEntradaStock = function(){
 
-    document.getElementById(
-        "entrada-stock-panel"
-    ).style.display = "none";
+    const painel =
+        document.getElementById(
+            "entrada-stock-panel"
+        );
+
+
+    if(painel){
+
+        painel.style.display =
+            "none";
+
+    }
 
 };
 
@@ -293,11 +839,11 @@ window.fecharEntradaStock = function(){
 // SALVAR ENTRADA DE STOCK
 // =====================================================
 //
-// AGORA USA:
+// ROTA:
 //
 // POST /produtos/{id}/entrada-stock
 //
-// JSON:
+// BODY:
 //
 // {
 //     quantidade: 3,
@@ -309,42 +855,91 @@ window.fecharEntradaStock = function(){
 
 window.salvarEntradaStock = async function(){
 
+    console.log(
+        "====================================="
+    );
+
+    console.log(
+        " SALVANDO ENTRADA DE STOCK"
+    );
+
+    console.log(
+        "====================================="
+    );
+
+
     try{
 
-        const id = document.getElementById(
-            "entrada-produto-id"
-        ).value;
+        // =================================================
+        // ID DO PRODUTO
+        // =================================================
+
+        const campoId =
+            document.getElementById(
+                "entrada-produto-id"
+            );
 
 
-        const quantidade = Number(
+        const id =
+            campoId
+                ? String(
+                    campoId.value
+                ).trim()
+                : "";
+
+
+        // =================================================
+        // QUANTIDADE
+        // =================================================
+
+        const campoQuantidade =
             document.getElementById(
                 "entrada-quantidade"
-            ).value
-        );
+            );
 
 
-        const campoCompra = document.getElementById(
-            "entrada-preco-compra"
-        );
+        const quantidade =
+            Number(
+                campoQuantidade
+                    ? campoQuantidade.value
+                    : 0
+            );
 
 
-        const campoVenda = document.getElementById(
-            "entrada-preco-venda"
-        );
+        // =================================================
+        // PREÇO DE COMPRA
+        // =================================================
+
+        const campoCompra =
+            document.getElementById(
+                "entrada-preco-compra"
+            );
 
 
-        const precoCompra = Number(
-            campoCompra ?
-            campoCompra.value :
-            0
-        );
+        const precoCompra =
+            Number(
+                campoCompra
+                    ? campoCompra.value
+                    : 0
+            );
 
 
-        const precoVenda = Number(
-            campoVenda ?
-            campoVenda.value :
-            0
-        );
+        // =================================================
+        // PREÇO DE VENDA
+        // =================================================
+
+        const campoVenda =
+            document.getElementById(
+                "entrada-preco-venda"
+            );
+
+
+        const precoVenda =
+            Number(
+                campoVenda
+                    ? campoVenda.value
+                    : 0
+            );
 
 
         // =================================================
@@ -367,7 +962,9 @@ window.salvarEntradaStock = async function(){
         // =================================================
 
         if(
-            !quantidade ||
+            !Number.isFinite(
+                quantidade
+            ) ||
             quantidade <= 0
         ){
 
@@ -385,7 +982,9 @@ window.salvarEntradaStock = async function(){
         // =================================================
 
         if(
-            !precoCompra ||
+            !Number.isFinite(
+                precoCompra
+            ) ||
             precoCompra <= 0
         ){
 
@@ -403,7 +1002,9 @@ window.salvarEntradaStock = async function(){
         // =================================================
 
         if(
-            !precoVenda ||
+            !Number.isFinite(
+                precoVenda
+            ) ||
             precoVenda <= 0
         ){
 
@@ -422,61 +1023,107 @@ window.salvarEntradaStock = async function(){
 
         const dados = {
 
-            quantidade: quantidade,
+            quantidade:
+                quantidade,
 
-            preco_compra: precoCompra,
+            preco_compra:
+                precoCompra,
 
-            preco_venda: precoVenda
+            preco_venda:
+                precoVenda
 
         };
 
 
         console.log(
-            "Enviando entrada de stock:",
+            "PRODUTO:",
+            id
+        );
+
+
+        console.log(
+            "DADOS ENVIADOS:",
             dados
         );
 
 
         // =================================================
-        // NOVA ROTA
+        // URL
         // =================================================
 
-        const resposta = await fetch(
-
+        const url =
             API +
             "/produtos/" +
-            id +
-            "/entrada-stock",
+            encodeURIComponent(
+                id
+            ) +
+            "/entrada-stock";
 
-            {
 
-                method: "POST",
-
-                headers: {
-
-                    "accept":
-                        "application/json",
-
-                    "Content-Type":
-                        "application/json"
-
-                },
-
-                body: JSON.stringify(
-                    dados
-                )
-
-            }
-
+        console.log(
+            "URL:",
+            url
         );
+
+
+        // =================================================
+        // ENVIAR
+        // =================================================
+
+        const resposta =
+            await fetch(
+                url,
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "accept":
+                            "application/json",
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify(
+                            dados
+                        )
+
+                }
+            );
 
 
         // =================================================
         // LER RESPOSTA
         // =================================================
 
-        const resultado =
-            await resposta.json();
+        let resultado =
+            null;
+
+
+        try{
+
+            resultado =
+                await resposta.json();
+
+        }
+        catch(error){
+
+            console.warn(
+                "Resposta não é JSON."
+            );
+
+        }
+
+
+        console.log(
+            "RESPOSTA API:",
+            resultado
+        );
 
 
         // =================================================
@@ -486,60 +1133,109 @@ window.salvarEntradaStock = async function(){
         if(resposta.ok){
 
             alert(
-                resultado.mensagem ||
+                resultado?.mensagem ||
                 "Stock adicionado com sucesso."
             );
 
 
+            // =================================================
+            // FECHAR PAINEL
+            // =================================================
+
             fecharEntradaStock();
 
 
-            // Atualizar tabela de stock
+            // =================================================
+            // ATUALIZAR STOCK
+            // =================================================
+
             await carregarStock();
 
 
-            // Atualizar dashboard
+            // =================================================
+            // ATUALIZAR DASHBOARD
+            // =================================================
+
             if(
-                typeof carregarDashboard ===
+                typeof window.carregarDashboard ===
                 "function"
             ){
 
-                await carregarDashboard();
+                await window.carregarDashboard();
+
+            }
+
+
+            return;
+
+        }
+
+
+        // =================================================
+        // ERRO DA API
+        // =================================================
+
+        console.error(
+            "ERRO DA API:",
+            resultado
+        );
+
+
+        let mensagemErro =
+            "Erro ao adicionar stock.";
+
+
+        if(
+            resultado &&
+            resultado.detail
+        ){
+
+            if(
+                typeof resultado.detail ===
+                "string"
+            ){
+
+                mensagemErro =
+                    resultado.detail;
+
+            }
+
+            else if(
+                Array.isArray(
+                    resultado.detail
+                )
+            ){
+
+                mensagemErro =
+                    resultado.detail
+                        .map(
+                            erro =>
+                                erro.msg ||
+                                "Erro de validação"
+                        )
+                        .join(
+                            "\n"
+                        );
 
             }
 
         }
 
-        // =================================================
-        // ERRO
-        // =================================================
 
-        else{
-
-            console.error(
-                "Erro da API:",
-                resultado
-            );
-
-
-            alert(
-
-                resultado.detail ||
-
-                "Erro ao adicionar stock."
-
-            );
-
-        }
+        alert(
+            mensagemErro
+        );
 
     }
+
 
     catch(error){
 
         console.error(
-            "Erro ao adicionar stock:",
+            "ERRO AO ADICIONAR STOCK:",
             error
         );
+
 
         alert(
             "Erro de conexão com o servidor."
@@ -554,7 +1250,9 @@ window.salvarEntradaStock = async function(){
 // CONTROLAR MENU STOCK
 // =====================================================
 
-window.mostrarStock = function(valor){
+window.mostrarStock = function(
+    valor
+){
 
     const menuStock =
         document.getElementById(
@@ -562,13 +1260,17 @@ window.mostrarStock = function(valor){
         );
 
 
-    if(!menuStock)
+    if(!menuStock){
+
         return;
+
+    }
 
 
     if(valor){
 
-        menuStock.style.display = "flex";
+        menuStock.style.display =
+            "flex";
 
         menuStock.style.visibility =
             "visible";

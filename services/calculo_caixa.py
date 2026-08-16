@@ -7,6 +7,7 @@ from models.usuario import Usuario
 from models.venda import Venda
 from models.despesa import Despesa
 from models.caixa import Caixa, MovimentoCaixa
+from models.lucro_saque import LucroSaque
 
 
 async def calcular_saldo_caixa(
@@ -66,16 +67,13 @@ async def calcular_saldo_caixa(
     # =====================================
     # SOMAR DESPESAS NORMAIS
     #
-    # IMPORTANTE:
-    #
     # Somente despesas com
     # valor_aprovado preenchido entram
     # aqui.
     #
     # Despesas pagas com dinheiro
-    # recolhido ficam com valor_aprovado
-    # NULL e não entram na caixa
-    # do vendedor.
+    # recolhido ficam com
+    # valor_aprovado NULL.
     # =====================================
 
     resultado = await db.execute(
@@ -278,11 +276,10 @@ async def calcular_saldo_caixa(
 
 
     # =====================================
-    # SALDO FINAL
+    # SALDO FINAL ANTES DOS LUCROS SACADOS
     #
-    # Mantemos vendas/despesas próprias
-    # e adicionamos o dinheiro recebido
-    # das recolhas.
+    # Mantemos exatamente a lógica
+    # que já existia.
     # =====================================
 
     saldo_caixa = (
@@ -293,6 +290,80 @@ async def calcular_saldo_caixa(
         - retirado
     )
 
+
+    # =====================================================
+    # DESCONTAR LUCROS DE SAQUE JÁ LEVANTADOS
+    #
+    # IMPORTANTE:
+    #
+    # Isto NÃO cria movimento na Caixa.
+    #
+    # O levantamento de LucroSaque é separado.
+    #
+    # Apenas descontamos do dinheiro total aquilo
+    # que o Admin já levantou através do sistema
+    # de LucroSaque.
+    #
+    # Assim:
+    #
+    # Vendas próprias = 1.000
+    # Recebido gerente =   500
+    # Total            = 1.500
+    #
+    # Levantou lucro 300
+    #
+    # Saldo disponível = 1.200
+    #
+    # E os 300 não voltam a aparecer.
+    # =====================================================
+
+    if usuario.tipo == "admin":
+
+        resultado = await db.execute(
+
+            select(
+                func.coalesce(
+                    func.sum(
+                        LucroSaque.valor_sacado
+                    ),
+                    0
+                )
+            )
+            .where(
+                LucroSaque.usuario_id == usuario_id
+            )
+
+        )
+
+        lucros_sacados = Decimal(
+            str(
+                resultado.scalar() or 0
+            )
+        )
+
+        # =============================================
+        # DESCONTAR DO DINHEIRO TOTAL
+        # =============================================
+
+        saldo_caixa = (
+            saldo_caixa
+            - lucros_sacados
+        )
+
+        # =============================================
+        # PROTEÇÃO
+        #
+        # Nunca apresentar saldo negativo.
+        # =============================================
+
+        if saldo_caixa < Decimal("0.00"):
+
+            saldo_caixa = Decimal("0.00")
+
+
+    # =====================================
+    # RETORNO
+    # =====================================
 
     return {
 

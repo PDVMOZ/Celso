@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from database import get_db
 
 from models.produto import Produto
+from models.lote_produto import LoteProduto
 
 
 router = APIRouter(
@@ -14,9 +15,17 @@ router = APIRouter(
 )
 
 
-# ==========================
+# =====================================================
 # LISTAR STOCK
-# ==========================
+# =====================================================
+#
+# AQUI O STOCK VEM DE:
+#
+# Produto.quantidade
+#
+# NÃO usar LoteProduto para o stock apresentado.
+#
+# =====================================================
 
 @router.get("/")
 async def listar_stock(
@@ -24,18 +33,151 @@ async def listar_stock(
 ):
 
     resultado = await db.execute(
-        select(Produto)
+
+        select(
+            Produto.id,
+            Produto.nome,
+            Produto.categoria_id,
+            Produto.stock_minimo,
+            Produto.preco_compra,
+            Produto.preco_venda,
+            Produto.quantidade
+        )
+
+        .order_by(
+            Produto.id.asc()
+        )
     )
 
-    produtos = resultado.scalars().all()
 
-    return produtos
-
+    resultados = resultado.all()
 
 
-# ==========================
+    return [
+
+        {
+            "id": id,
+
+            "produto_id": id,
+
+            "nome": nome,
+
+            "categoria_id": categoria_id,
+
+            "stock_minimo":
+                int(stock_minimo or 0),
+
+            "preco_compra":
+                float(preco_compra or 0),
+
+            "preco_venda":
+                float(preco_venda or 0),
+
+            "stock_total":
+                int(quantidade or 0)
+
+        }
+
+        for (
+            id,
+            nome,
+            categoria_id,
+            stock_minimo,
+            preco_compra,
+            preco_venda,
+            quantidade
+        ) in resultados
+
+    ]
+
+# =====================================================
+# STOCK DOS LOTES
+# =====================================================
+#
+# Esta rota retorna a soma de:
+#
+# LoteProduto.quantidade_atual
+#
+# agrupada por produto.
+#
+# O FRONT DEVE USAR ESTA ROTA PARA MOSTRAR
+# A QUANTIDADE DOS LOTES.
+#
+# =====================================================
+
+@router.get("/lotes")
+async def listar_stock_lotes(
+    db: AsyncSession = Depends(get_db)
+):
+
+    resultado = await db.execute(
+
+        select(
+
+            Produto.id,
+
+            Produto.nome,
+
+            func.coalesce(
+                func.sum(
+                    LoteProduto.quantidade_atual
+                ),
+                0
+            ).label(
+                "stock_lotes"
+            )
+
+        )
+
+        .outerjoin(
+            LoteProduto,
+            LoteProduto.produto_id == Produto.id
+        )
+
+        .group_by(
+            Produto.id,
+            Produto.nome
+        )
+
+        .order_by(
+            Produto.id.asc()
+        )
+
+    )
+
+    resultados = resultado.all()
+
+
+    return [
+
+        {
+            "id": id,
+
+            "produto_id": id,
+
+            "nome": nome,
+
+            "stock_lotes":
+                int(stock_lotes or 0)
+
+        }
+
+        for (
+            id,
+            nome,
+            stock_lotes
+        ) in resultados
+
+    ]
+# =====================================================
 # STOCK BAIXO
-# ==========================
+# =====================================================
+#
+# AQUI usamos LoteProduto.quantidade_atual.
+#
+# NÃO usamos Produto.quantidade.
+#
+# =====================================================
 
 @router.get("/baixo")
 async def stock_baixo(
@@ -43,156 +185,75 @@ async def stock_baixo(
 ):
 
     resultado = await db.execute(
-        select(Produto)
-        .where(
-            Produto.quantidade <= Produto.stock_minimo
-        )
-    )
 
+        select(
+            Produto.id,
+            Produto.nome,
+            Produto.stock_minimo,
 
-    produtos = resultado.scalars().all()
-
-
-    return produtos
-
-
-
-
-# ==========================
-# ENTRADA STOCK
-# ==========================
-
-@router.put("/entrada/{produto_id}")
-async def entrada_stock(
-    produto_id:int,
-    quantidade:int,
-    db:AsyncSession = Depends(get_db)
-):
-
-
-    if quantidade <= 0:
-
-        raise HTTPException(
-            400,
-            "Quantidade inválida"
+            func.coalesce(
+                func.sum(
+                    LoteProduto.quantidade_atual
+                ),
+                0
+            ).label(
+                "stock_total"
+            )
         )
 
-
-    resultado = await db.execute(
-
-        select(Produto)
-        .where(
-            Produto.id == produto_id
+        .outerjoin(
+            LoteProduto,
+            LoteProduto.produto_id == Produto.id
         )
 
-    )
-
-
-    produto = resultado.scalar_one_or_none()
-
-
-
-    if not produto:
-
-        raise HTTPException(
-            404,
-            "Produto não encontrado"
+        .group_by(
+            Produto.id,
+            Produto.nome,
+            Produto.stock_minimo
         )
 
+        .having(
 
+            func.coalesce(
+                func.sum(
+                    LoteProduto.quantidade_atual
+                ),
+                0
+            )
 
-    produto.quantidade += quantidade
+            <=
 
+            Produto.stock_minimo
 
-    await db.commit()
-
-    await db.refresh(produto)
-
-
-
-    return {
-
-        "mensagem":"Stock atualizado",
-
-        "produto":produto.nome,
-
-        "quantidade_actual":produto.quantidade
-
-    }
-
-
-
-
-
-# ==========================
-# SAÍDA STOCK
-# ==========================
-
-@router.put("/saida/{produto_id}")
-async def saida_stock(
-    produto_id:int,
-    quantidade:int,
-    db:AsyncSession = Depends(get_db)
-):
-
-
-    if quantidade <= 0:
-
-        raise HTTPException(
-            400,
-            "Quantidade inválida"
-        )
-
-
-
-    resultado = await db.execute(
-
-        select(Produto)
-        .where(
-            Produto.id == produto_id
         )
 
     )
 
 
-    produto = resultado.scalar_one_or_none()
+    resultados = resultado.all()
 
 
+    return [
 
-    if not produto:
+        {
+            "id": id,
 
-        raise HTTPException(
-            404,
-            "Produto não encontrado"
-        )
+            "produto_id": id,
 
+            "nome": nome,
 
+            "stock_minimo":
+                int(stock_minimo or 0),
 
-    if produto.quantidade < quantidade:
+            "stock_total":
+                int(stock_total or 0)
+        }
 
-        raise HTTPException(
-            400,
-            "Stock insuficiente"
-        )
+        for (
+            id,
+            nome,
+            stock_minimo,
+            stock_total
+        ) in resultados
 
-
-
-    produto.quantidade -= quantidade
-
-
-
-    await db.commit()
-
-    await db.refresh(produto)
-
-
-
-    return {
-
-        "mensagem":"Stock reduzido",
-
-        "produto":produto.nome,
-
-        "quantidade_actual":produto.quantidade
-
-    }
+    ]

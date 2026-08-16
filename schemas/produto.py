@@ -65,6 +65,7 @@ class ProdutoResponse(BaseModel):
     ativo: bool
 
     criado_em: datetime
+    stock_total: int = 0
 
 
     class Config:

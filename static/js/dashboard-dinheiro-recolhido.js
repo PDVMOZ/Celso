@@ -1,5 +1,120 @@
 // ============================================================
-// ABRIR DETALHES DINHEIRO RECOLHIDO
+// DASHBOARD
+// DINHEIRO RECOLHIDO
+// + RECOLHA DOS GERENTES
+// + LUCRO DE SAQUE
+// + LEVANTAMENTO
+// ============================================================
+
+
+
+// ============================================================
+// OBTER USUÁRIO
+// ============================================================
+
+function obterUsuarioDashboard(){
+
+    const usuarioStorage =
+        localStorage.getItem("usuario");
+
+
+    if(!usuarioStorage){
+
+        console.warn(
+            "Usuário não encontrado no localStorage."
+        );
+
+        return null;
+
+    }
+
+
+    try{
+
+        return JSON.parse(
+            usuarioStorage
+        );
+
+    }
+    catch(erro){
+
+        console.error(
+            "Erro ao ler usuário:",
+            erro
+        );
+
+        return null;
+
+    }
+
+}
+
+
+// ============================================================
+// VERIFICAR ADMIN
+// ============================================================
+
+function usuarioEhAdmin(usuario){
+
+    if(!usuario){
+
+        return false;
+
+    }
+
+
+    const tipo =
+        String(
+            usuario.tipo || ""
+        )
+        .trim()
+        .toLowerCase();
+
+
+    return (
+        tipo === "admin" ||
+        tipo === "administrador"
+    );
+
+}
+
+
+// ============================================================
+// ESCAPAR HTML
+// ============================================================
+
+function escaparHtml(valor){
+
+    if(
+        valor === null ||
+        valor === undefined
+    ){
+
+        return "";
+
+    }
+
+
+    return String(valor)
+
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
+
+
+// ============================================================
+// ============================================================
+// DINHEIRO RECOLHIDO
+// ============================================================
+// ============================================================
+
+
+// ============================================================
+// ABRIR DETALHES
 // ============================================================
 
 async function abrirDetalhesDinheiroRecolhido(){
@@ -7,10 +122,6 @@ async function abrirDetalhesDinheiroRecolhido(){
     const usuario =
         obterUsuarioDashboard();
 
-
-    // ========================================================
-    // SEGURANÇA
-    // ========================================================
 
     if(!usuario){
 
@@ -23,27 +134,16 @@ async function abrirDetalhesDinheiroRecolhido(){
     }
 
 
-    // ========================================================
-    // SOMENTE ADMIN
-    // ========================================================
-
-    if(
-        usuario.tipo !== "admin" &&
-        usuario.tipo !== "administrador"
-    ){
+    if(!usuarioEhAdmin(usuario)){
 
         console.warn(
-            "Somente o admin pode visualizar estes detalhes."
+            "Somente admin pode visualizar."
         );
 
         return;
 
     }
 
-
-    // ========================================================
-    // ELEMENTOS
-    // ========================================================
 
     const modal =
         document.getElementById(
@@ -63,14 +163,10 @@ async function abrirDetalhesDinheiroRecolhido(){
         );
 
 
-    if(
-        !modal ||
-        !lista ||
-        !totalElemento
-    ){
+    if(!modal){
 
         console.error(
-            "Elementos do modal de detalhes não encontrados."
+            "Modal de detalhes não encontrado."
         );
 
         return;
@@ -78,16 +174,31 @@ async function abrirDetalhesDinheiroRecolhido(){
     }
 
 
-    // ========================================================
-    // ABRIR MODAL
-    // ========================================================
+    if(!lista){
 
-    modal.style.display = "flex";
+        console.error(
+            "Lista de detalhes não encontrada."
+        );
+
+        return;
+
+    }
 
 
-    // ========================================================
-    // CARREGANDO
-    // ========================================================
+    if(!totalElemento){
+
+        console.error(
+            "Total de detalhes não encontrado."
+        );
+
+        return;
+
+    }
+
+
+    modal.style.display =
+        "flex";
+
 
     lista.innerHTML = `
 
@@ -107,12 +218,14 @@ async function abrirDetalhesDinheiroRecolhido(){
     try{
 
         // ====================================================
-        // CHAMAR ENDPOINT
+        // BUSCAR DINHEIRO RECOLHIDO
         // ====================================================
 
         const resposta =
             await fetch(
+
                 `/caixa/dashboard/dinheiro-recolhido-gerentes?usuario_id=${usuario.id}`,
+
                 {
                     method: "GET",
 
@@ -121,12 +234,9 @@ async function abrirDetalhesDinheiroRecolhido(){
                             "application/json"
                     }
                 }
+
             );
 
-
-        // ====================================================
-        // ERRO HTTP
-        // ====================================================
 
         if(!resposta.ok){
 
@@ -154,22 +264,18 @@ async function abrirDetalhesDinheiroRecolhido(){
         }
 
 
-        // ====================================================
-        // JSON
-        // ====================================================
-
         const dados =
             await resposta.json();
 
 
         console.log(
-            "DETALHES DINHEIRO RECOLHIDO:",
+            "DINHEIRO RECOLHIDO:",
             dados
         );
 
 
         // ====================================================
-        // DADOS DO ADMIN
+        // ADMIN
         // ====================================================
 
         const admin =
@@ -224,7 +330,8 @@ async function abrirDetalhesDinheiroRecolhido(){
         // LIMPAR
         // ====================================================
 
-        lista.innerHTML = "";
+        lista.innerHTML =
+            "";
 
 
         // ====================================================
@@ -259,19 +366,19 @@ async function abrirDetalhesDinheiroRecolhido(){
                 >
 
                     <span>
+
                         Recolhido pelo admin
+
                     </span>
 
                     <strong>
+
                         ${recolhidoAdmin.toFixed(2)} MT
+
                     </strong>
 
                 </div>
 
-
-                <!-- =========================================
-                     RECEBIDO DOS GERENTES
-                ========================================== -->
 
                 <div
                     style="
@@ -282,7 +389,9 @@ async function abrirDetalhesDinheiroRecolhido(){
                 >
 
                     <span>
+
                         Recebido dos gerentes
+
                     </span>
 
                     <strong
@@ -307,11 +416,15 @@ async function abrirDetalhesDinheiroRecolhido(){
                 >
 
                     <span>
+
                         Retirado pelo admin
+
                     </span>
 
                     <strong>
+
                         ${retiradoAdmin.toFixed(2)} MT
+
                     </strong>
 
                 </div>
@@ -326,10 +439,16 @@ async function abrirDetalhesDinheiroRecolhido(){
                 >
 
                     <span>
+
                         Despesas aprovadas
+
                     </span>
 
-                    <strong style="color:#dc3545;">
+                    <strong
+                        style="
+                            color:#dc3545;
+                        "
+                    >
 
                         - ${despesasAdmin.toFixed(2)} MT
 
@@ -350,10 +469,16 @@ async function abrirDetalhesDinheiroRecolhido(){
                 >
 
                     <span>
+
                         Disponível do admin
+
                     </span>
 
-                    <strong style="color:#198754;">
+                    <strong
+                        style="
+                            color:#198754;
+                        "
+                    >
 
                         ${totalAdmin.toFixed(2)} MT
 
@@ -364,6 +489,22 @@ async function abrirDetalhesDinheiroRecolhido(){
             </div>
 
         `;
+
+
+        // ====================================================
+        // ÁREA LUCRO SAQUE
+        // ====================================================
+
+        criarAreaLucroSaqueNoModal(
+            modal
+        );
+
+
+        // ====================================================
+        // CARREGAR LUCRO
+        // ====================================================
+
+        await carregarLucroSaqueDisponivel();
 
 
         // ====================================================
@@ -402,16 +543,8 @@ async function abrirDetalhesDinheiroRecolhido(){
         }
         else{
 
-            // =================================================
-            // GERENTES
-            // =================================================
-
             gerentes.forEach(
                 gerente => {
-
-                    // =========================================
-                    // RECOLHIDO
-                    // =========================================
 
                     const recolhido =
                         Number(
@@ -419,19 +552,11 @@ async function abrirDetalhesDinheiroRecolhido(){
                         );
 
 
-                    // =========================================
-                    // DESPESAS
-                    // =========================================
-
                     const despesas =
                         Number(
                             gerente.despesas ?? 0
                         );
 
-
-                    // =========================================
-                    // ENTREGUE AO ADMIN
-                    // =========================================
 
                     const entregue =
                         Number(
@@ -439,27 +564,11 @@ async function abrirDetalhesDinheiroRecolhido(){
                         );
 
 
-                    // =========================================
-                    // DISPONÍVEL
-                    //
-                    // O backend já calcula:
-                    //
-                    // recolhido
-                    // - despesas
-                    // - entregue
-                    //
-                    // em total_recolhido.
-                    // =========================================
-
                     const disponivel =
                         Number(
                             gerente.total_recolhido ?? 0
                         );
 
-
-                    // =========================================
-                    // ID
-                    // =========================================
 
                     const gerenteId =
                         Number(
@@ -470,60 +579,14 @@ async function abrirDetalhesDinheiroRecolhido(){
                         );
 
 
-                    // =========================================
-                    // NOME
-                    // =========================================
-
                     const nomeGerente =
                         String(
                             gerente.nome ?? "-"
                         );
 
 
-                    // =========================================
-                    // LOG
-                    // =========================================
-
-                    console.log(
-                        "================"
-                    );
-
-                    console.log(
-                        "GERENTE ID:",
-                        gerenteId
-                    );
-
-                    console.log(
-                        "GERENTE:",
-                        nomeGerente
-                    );
-
-                    console.log(
-                        "RECOLHIDO:",
-                        recolhido
-                    );
-
-                    console.log(
-                        "DESPESAS:",
-                        despesas
-                    );
-
-                    console.log(
-                        "ENTREGUE AO ADMIN:",
-                        entregue
-                    );
-
-                    console.log(
-                        "DISPONÍVEL:",
-                        disponivel
-                    );
-
-
-                    // =================================================
-                    // BOTÃO RECOLHER
-                    // =================================================
-
-                    let botaoRecolher = "";
+                    let botaoRecolher =
+                        "";
 
 
                     if(
@@ -579,10 +642,6 @@ async function abrirDetalhesDinheiroRecolhido(){
                     }
 
 
-                    // =================================================
-                    // MOSTRAR GERENTE
-                    // =================================================
-
                     lista.innerHTML += `
 
                         <div
@@ -592,16 +651,11 @@ async function abrirDetalhesDinheiroRecolhido(){
                             "
                         >
 
-                            <!-- =====================================
-                                 NOME + DISPONÍVEL
-                            ====================================== -->
-
                             <div
                                 style="
                                     display:flex;
                                     justify-content:space-between;
                                     align-items:center;
-                                    gap:10px;
                                 "
                             >
 
@@ -626,10 +680,6 @@ async function abrirDetalhesDinheiroRecolhido(){
 
                             </div>
 
-
-                            <!-- =====================================
-                                 RECOLHIDO + DESPESAS
-                            ====================================== -->
 
                             <div
                                 style="
@@ -663,15 +713,10 @@ async function abrirDetalhesDinheiroRecolhido(){
                             </div>
 
 
-                            <!-- =====================================
-                                 ENTREGUE AO ADMIN
-                            ====================================== -->
-
                             <div
                                 style="
                                     display:flex;
                                     justify-content:space-between;
-                                    align-items:center;
                                     font-size:13px;
                                     margin-top:5px;
                                 "
@@ -697,15 +742,10 @@ async function abrirDetalhesDinheiroRecolhido(){
                             </div>
 
 
-                            <!-- =====================================
-                                 DISPONÍVEL
-                            ====================================== -->
-
                             <div
                                 style="
                                     display:flex;
                                     justify-content:space-between;
-                                    font-size:13px;
                                     font-weight:bold;
                                     margin-top:6px;
                                     padding-top:5px;
@@ -733,10 +773,6 @@ async function abrirDetalhesDinheiroRecolhido(){
                             </div>
 
 
-                            <!-- =====================================
-                                 BOTÃO
-                            ====================================== -->
-
                             ${botaoRecolher}
 
                         </div>
@@ -750,7 +786,7 @@ async function abrirDetalhesDinheiroRecolhido(){
 
 
         // ====================================================
-        // TOTAL DOS GERENTES
+        // TOTAL GERENTES
         // ====================================================
 
         const totalGerentes =
@@ -778,6 +814,7 @@ async function abrirDetalhesDinheiroRecolhido(){
 
                 </span>
 
+
                 <span
                     style="
                         color:#198754;
@@ -795,22 +832,6 @@ async function abrirDetalhesDinheiroRecolhido(){
 
         // ====================================================
         // TOTAL GERAL
-        //
-        // IMPORTANTE:
-        //
-        // Este valor deve ser:
-        //
-        // Disponível Admin
-        // +
-        // Disponível Gerentes
-        //
-        // Uma recolha:
-        //
-        // Gerente  -> Admin
-        //
-        // diminui um lado e aumenta o outro.
-        //
-        // Portanto o total não muda.
         // ====================================================
 
         const totalGeral =
@@ -823,36 +844,11 @@ async function abrirDetalhesDinheiroRecolhido(){
             totalGeral.toFixed(2) +
             " MT";
 
-
-        console.log(
-            "====================================="
-        );
-
-        console.log(
-            "TOTAL ADMIN:",
-            totalAdmin
-        );
-
-        console.log(
-            "TOTAL GERENTES:",
-            totalGerentes
-        );
-
-        console.log(
-            "TOTAL GERAL DISPONÍVEL:",
-            totalGeral
-        );
-
-        console.log(
-            "====================================="
-
-        );
-
     }
     catch(erro){
 
         console.error(
-            "Erro ao carregar os detalhes:",
+            "Erro ao carregar detalhes:",
             erro
         );
 
@@ -873,7 +869,1323 @@ async function abrirDetalhesDinheiroRecolhido(){
 
 
 // ============================================================
-// ABRIR RECOLHA DO GERENTE
+// ============================================================
+// LUCRO DE SAQUE
+// ============================================================
+// ============================================================
+
+
+// ============================================================
+// CRIAR ÁREA DO LUCRO DE SAQUE
+// ============================================================
+
+function criarAreaLucroSaqueNoModal(modal){
+
+    if(!modal){
+
+        return;
+
+    }
+
+
+    let area =
+        document.getElementById(
+            "area-lucro-saque-dashboard"
+        );
+
+
+    if(area){
+
+        return;
+
+    }
+
+
+    area =
+        document.createElement(
+            "div"
+        );
+
+
+    area.id =
+        "area-lucro-saque-dashboard";
+
+
+    area.style.cssText = `
+
+        margin-top:15px;
+        margin-bottom:15px;
+        padding:14px;
+        border-radius:10px;
+        background:#f8f9fa;
+        border:1px solid #dee2e6;
+
+    `;
+
+
+    area.innerHTML = `
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:8px;
+            "
+        >
+
+            <span>
+
+                Dinheiro disponível para levantamento.
+
+            </span>
+
+
+            <strong
+                id="valor-disponivel-lucro-saque"
+                style="
+                    color:#198754;
+                    font-size:18px;
+                "
+            >
+
+                0.00 MT
+
+            </strong>
+
+        </div>
+
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                padding-top:8px;
+                border-top:1px solid #ddd;
+            "
+        >
+
+            <span>
+
+                Dinheiro já levantado
+
+            </span>
+
+
+            <strong
+                id="valor-ja-levantado-lucro-saque"
+                style="
+                    color:#dc3545;
+                "
+            >
+
+                0.00 MT
+
+            </strong>
+
+        </div>
+
+
+        <button
+            type="button"
+            id="btn-levantar-lucro-saque"
+            class="btn btn-success btn-sm"
+            style="
+                width:100%;
+                margin-top:10px;
+            "
+            onclick="abrirLevantamentoLucroSaque()"
+            disabled
+        >
+
+            Levantar
+
+        </button>
+
+    `;
+
+
+    const lista =
+        document.getElementById(
+            "lista-dinheiro-recolhido-gerentes"
+        );
+
+
+    if(lista){
+
+        lista.parentNode.insertBefore(
+            area,
+            lista
+        );
+
+    }
+    else{
+
+        modal.appendChild(
+            area
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// LER VALOR JÁ LEVANTADO
+// ============================================================
+//
+// Aceita vários nomes para facilitar a integração com o backend.
+// Se o backend devolver:
+//
+// valor_sacado
+// total_sacado
+// valor_levantado_total
+// total_levantado
+//
+// será usado diretamente.
+//
+// Se devolver total enviado + disponível,
+// calcula:
+//
+// já levantado = total enviado - disponível
+// ============================================================
+
+function obterValorJaLevantado(dados){
+
+    if(!dados){
+
+        return 0;
+
+    }
+
+
+    const valoresDiretos = [
+
+        dados.valor_sacado,
+
+        dados.total_sacado,
+
+        dados.valor_levantado_total,
+
+        dados.total_levantado,
+
+        dados.ja_levantado,
+
+        dados.levantado
+
+    ];
+
+
+    for(
+        const valor of valoresDiretos
+    ){
+
+        if(
+            valor !== null &&
+            valor !== undefined
+        ){
+
+            const numero =
+                Number(valor);
+
+
+            if(
+                Number.isFinite(numero) &&
+                numero >= 0
+            ){
+
+                return numero;
+
+            }
+
+        }
+
+    }
+
+
+    // ========================================================
+    // TENTAR CALCULAR PELO TOTAL ENVIADO
+    // ========================================================
+
+    const totalEnviado =
+        Number(
+            dados.total_enviado ??
+            dados.valor_total ??
+            dados.total_lucro_saque ??
+            dados.lucro_saque_total ??
+            NaN
+        );
+
+
+    const disponivel =
+        Number(
+            dados.valor_disponivel ??
+            dados.disponivel ??
+            dados.total_disponivel ??
+            dados.lucro_saque_disponivel ??
+            NaN
+        );
+
+
+    if(
+        Number.isFinite(totalEnviado) &&
+        Number.isFinite(disponivel)
+    ){
+
+        return Math.max(
+            totalEnviado - disponivel,
+            0
+        );
+
+    }
+
+
+    return 0;
+
+}
+
+
+// ============================================================
+// CARREGAR LUCRO DE SAQUE
+// ============================================================
+
+async function carregarLucroSaqueDisponivel(){
+
+    const usuario =
+        obterUsuarioDashboard();
+
+
+    if(!usuario){
+
+        return;
+
+    }
+
+
+    if(!usuarioEhAdmin(usuario)){
+
+        return;
+
+    }
+
+
+    const modal =
+        document.getElementById(
+            "modal-detalhes-dinheiro-recolhido"
+        );
+
+
+    if(modal){
+
+        criarAreaLucroSaqueNoModal(
+            modal
+        );
+
+    }
+
+
+    const elemento =
+        document.getElementById(
+            "valor-disponivel-lucro-saque"
+        );
+
+
+    const elementoLevantado =
+        document.getElementById(
+            "valor-ja-levantado-lucro-saque"
+        );
+
+
+    const botao =
+        document.getElementById(
+            "btn-levantar-lucro-saque"
+        );
+
+
+    if(!elemento){
+
+        console.warn(
+            "Área do lucro de saque não encontrada."
+        );
+
+        return;
+
+    }
+
+
+    elemento.innerText =
+        "Carregando...";
+
+
+    if(elementoLevantado){
+
+        elementoLevantado.innerText =
+            "Carregando...";
+
+    }
+
+
+    if(botao){
+
+        botao.disabled =
+            true;
+
+    }
+
+
+    try{
+
+        // ====================================================
+        // CONSULTAR BACKEND
+        // ====================================================
+
+        const resposta =
+            await fetch(
+
+                `/vendas/lucro-saque/disponivel?usuario_id=${usuario.id}`,
+
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+
+            );
+
+
+        if(!resposta.ok){
+
+            const erro =
+                await resposta.text();
+
+            console.error(
+                "Erro ao consultar lucro de saque:",
+                erro
+            );
+
+
+            elemento.innerText =
+                "0.00 MT";
+
+
+            if(elementoLevantado){
+
+                elementoLevantado.innerText =
+                    "0.00 MT";
+
+            }
+
+
+            return;
+
+        }
+
+
+        const dados =
+            await resposta.json();
+
+
+        console.log(
+            "LUCRO SAQUE:",
+            dados
+        );
+
+
+        // ====================================================
+        // DISPONÍVEL
+        // ====================================================
+
+        const disponivel =
+            Number(
+                dados.valor_disponivel ??
+                dados.disponivel ??
+                dados.total_disponivel ??
+                dados.lucro_saque_disponivel ??
+                0
+            );
+
+
+        const valorDisponivel =
+            Number.isFinite(disponivel)
+            ?
+            Math.max(
+                disponivel,
+                0
+            )
+            :
+            0;
+
+
+        // ====================================================
+        // JÁ LEVANTADO
+        // ====================================================
+
+        const jaLevantado =
+            obterValorJaLevantado(
+                dados
+            );
+
+
+        const valorJaLevantado =
+            Number.isFinite(
+                jaLevantado
+            )
+            ?
+            Math.max(
+                jaLevantado,
+                0
+            )
+            :
+            0;
+
+
+        // ====================================================
+        // MOSTRAR DISPONÍVEL
+        // ====================================================
+
+        elemento.innerText =
+            valorDisponivel.toFixed(2) +
+            " MT";
+
+
+        elemento.dataset.valor =
+            valorDisponivel;
+
+
+        // ====================================================
+        // MOSTRAR JÁ LEVANTADO
+        // ====================================================
+
+        if(elementoLevantado){
+
+            elementoLevantado.innerText =
+                valorJaLevantado.toFixed(2) +
+                " MT";
+
+        }
+
+
+        // ====================================================
+        // BOTÃO
+        // ====================================================
+
+        if(botao){
+
+            botao.disabled =
+                valorDisponivel <= 0;
+
+        }
+
+    }
+    catch(erro){
+
+        console.error(
+            "Erro ao carregar lucro de saque:",
+            erro
+        );
+
+
+        elemento.innerText =
+            "0.00 MT";
+
+
+        if(elementoLevantado){
+
+            elementoLevantado.innerText =
+                "0.00 MT";
+
+        }
+
+
+        if(botao){
+
+            botao.disabled =
+                true;
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// ============================================================
+// MODAL DE LEVANTAMENTO
+// ============================================================
+// ============================================================
+
+
+// ============================================================
+// CRIAR MODAL AUTOMATICAMENTE
+// ============================================================
+
+function criarModalLevantamentoLucroSaque(){
+
+    let modal =
+        document.getElementById(
+            "modal-levantar-lucro-saque"
+        );
+
+
+    if(modal){
+
+        return modal;
+
+    }
+
+
+    modal =
+        document.createElement(
+            "div"
+        );
+
+
+    modal.id =
+        "modal-levantar-lucro-saque";
+
+
+    modal.style.cssText = `
+
+        display:none;
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.55);
+        z-index:10000;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+
+    `;
+
+
+    modal.innerHTML = `
+
+        <div
+            style="
+                background:#fff;
+                width:100%;
+                max-width:420px;
+                border-radius:12px;
+                padding:20px;
+                box-shadow:0 10px 40px rgba(0,0,0,.25);
+            "
+        >
+
+            <div
+                style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    margin-bottom:15px;
+                "
+            >
+
+                <h5
+                    style="
+                        margin:0;
+                    "
+                >
+
+                    Levantamento
+
+                </h5>
+
+
+                <button
+                    type="button"
+                    onclick="fecharLevantamentoLucroSaque()"
+                    style="
+                        border:none;
+                        background:none;
+                        color:#dc3545;
+                        font-size:26px;
+                        font-weight:bold;
+                        cursor:pointer;
+                    "
+                >
+
+                    &times;
+
+                </button>
+
+            </div>
+
+
+            <div
+                style="
+                    background:#f8f9fa;
+                    border:1px solid #dee2e6;
+                    border-radius:8px;
+                    padding:12px;
+                    margin-bottom:15px;
+                "
+            >
+
+                <div
+                    style="
+                        display:flex;
+                        justify-content:space-between;
+                        margin-bottom:7px;
+                    "
+                >
+
+                    <span>
+
+                        Disponível
+
+                    </span>
+
+
+                    <strong
+                        id="valor-disponivel-modal-lucro-saque"
+                        style="
+                            color:#198754;
+                        "
+                    >
+
+                        0.00 MT
+
+                    </strong>
+
+                </div>
+
+
+                <div
+                    style="
+                        display:flex;
+                        justify-content:space-between;
+                    "
+                >
+
+                    <span>
+
+                        Já levantado
+
+                    </span>
+
+
+                    <strong
+                        id="valor-ja-levantado-modal-lucro-saque"
+                        style="
+                            color:#dc3545;
+                        "
+                    >
+
+                        0.00 MT
+
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <label
+                for="valor-levantar-lucro-saque"
+                style="
+                    display:block;
+                    margin-bottom:6px;
+                    font-weight:600;
+                "
+            >
+
+                Valor a levantar
+
+            </label>
+
+
+            <input
+                type="number"
+                id="valor-levantar-lucro-saque"
+                class="form-control"
+                min="0.01"
+                step="0.01"
+                placeholder="Digite o valor"
+                style="
+                    width:100%;
+                    margin-bottom:15px;
+                "
+            >
+
+
+            <div
+                style="
+                    display:flex;
+                    gap:10px;
+                "
+            >
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    style="
+                        flex:1;
+                    "
+                    onclick="fecharLevantamentoLucroSaque()"
+                >
+
+                    Cancelar
+
+                </button>
+
+
+                <button
+                    type="button"
+                    id="btn-confirmar-levantamento-lucro-saque"
+                    class="btn btn-success"
+                    style="
+                        flex:1;
+                    "
+                    onclick="confirmarLevantamentoLucroSaque()"
+                >
+
+                    Levantar
+
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(
+        modal
+    );
+
+
+    return modal;
+
+}
+
+
+// ============================================================
+// ABRIR MODAL DE LEVANTAMENTO
+// ============================================================
+
+function abrirLevantamentoLucroSaque(){
+
+    const usuario =
+        obterUsuarioDashboard();
+
+
+    if(!usuario){
+
+        console.warn(
+            "Usuário não encontrado."
+        );
+
+        return;
+
+    }
+
+
+    if(!usuarioEhAdmin(usuario)){
+
+        console.warn(
+            "Somente admin pode levantar."
+        );
+
+        return;
+
+    }
+
+
+    const elemento =
+        document.getElementById(
+            "valor-disponivel-lucro-saque"
+        );
+
+
+    const disponivel =
+        Number(
+            elemento?.dataset?.valor ?? 0
+        );
+
+
+    if(
+        !Number.isFinite(disponivel) ||
+        disponivel <= 0
+    ){
+
+        return;
+
+    }
+
+
+    const modal =
+        criarModalLevantamentoLucroSaque();
+
+
+    const disponivelModal =
+        document.getElementById(
+            "valor-disponivel-modal-lucro-saque"
+        );
+
+
+    const levantadoPrincipal =
+        document.getElementById(
+            "valor-ja-levantado-lucro-saque"
+        );
+
+
+    const levantadoModal =
+        document.getElementById(
+            "valor-ja-levantado-modal-lucro-saque"
+        );
+
+
+    const input =
+        document.getElementById(
+            "valor-levantar-lucro-saque"
+        );
+
+
+    if(disponivelModal){
+
+        disponivelModal.innerText =
+            disponivel.toFixed(2) +
+            " MT";
+
+    }
+
+
+    if(levantadoModal && levantadoPrincipal){
+
+        levantadoModal.innerText =
+            levantadoPrincipal.innerText;
+
+    }
+
+
+    if(input){
+
+        input.value =
+            "";
+
+        input.max =
+            disponivel.toFixed(2);
+
+    }
+
+
+    modal.style.display =
+        "flex";
+
+
+    setTimeout(
+        () => {
+
+            if(input){
+
+                input.focus();
+
+            }
+
+        },
+        100
+    );
+
+}
+
+
+// ============================================================
+// FECHAR MODAL
+// ============================================================
+
+function fecharLevantamentoLucroSaque(){
+
+    const modal =
+        document.getElementById(
+            "modal-levantar-lucro-saque"
+        );
+
+
+    if(modal){
+
+        modal.style.display =
+            "none";
+
+    }
+
+}
+
+
+// ============================================================
+// CONFIRMAR LEVANTAMENTO
+// ============================================================
+
+async function confirmarLevantamentoLucroSaque(){
+
+    const usuario =
+        obterUsuarioDashboard();
+
+
+    if(!usuario){
+
+        return;
+
+    }
+
+
+    if(!usuarioEhAdmin(usuario)){
+
+        return;
+
+    }
+
+
+    const input =
+        document.getElementById(
+            "valor-levantar-lucro-saque"
+        );
+
+
+    const elementoDisponivel =
+        document.getElementById(
+            "valor-disponivel-lucro-saque"
+        );
+
+
+    const botao =
+        document.getElementById(
+            "btn-confirmar-levantamento-lucro-saque"
+        );
+
+
+    if(!input){
+
+        return;
+
+    }
+
+
+    const valor =
+        Number(
+            String(
+                input.value
+            )
+            .replace(",", ".")
+        );
+
+
+    const disponivel =
+        Number(
+            elementoDisponivel?.dataset?.valor ?? 0
+        );
+
+
+    // ========================================================
+    // VALIDAÇÃO SEM ALERT
+    // ========================================================
+
+    if(
+        !Number.isFinite(valor) ||
+        valor <= 0
+    ){
+
+        input.classList.add(
+            "is-invalid"
+        );
+
+        input.focus();
+
+        return;
+
+    }
+
+
+    if(
+        valor > disponivel
+    ){
+
+        input.classList.add(
+            "is-invalid"
+        );
+
+        input.focus();
+
+        return;
+
+    }
+
+
+    input.classList.remove(
+        "is-invalid"
+    );
+
+
+    // ========================================================
+    // DESABILITAR
+    // ========================================================
+
+    if(botao){
+
+        botao.disabled =
+            true;
+
+        botao.innerText =
+            "A processar...";
+
+    }
+
+
+    try{
+
+        // ====================================================
+        // ROTA REAL
+        // ====================================================
+
+        const resposta =
+            await fetch(
+
+                `/vendas/lucro-saque/levantar?` +
+                `usuario_id=${usuario.id}` +
+                `&valor=${encodeURIComponent(
+                    valor.toFixed(2)
+                )}`,
+
+                {
+                    method: "POST",
+
+                    headers: {
+
+                        "Accept":
+                            "application/json"
+
+                    }
+
+                }
+
+            );
+
+
+        let dados = {};
+
+
+        try{
+
+            dados =
+                await resposta.json();
+
+        }
+        catch(erro){
+
+            console.error(
+                "Resposta não é JSON:",
+                erro
+            );
+
+        }
+
+
+        if(!resposta.ok){
+
+            console.error(
+                "Erro no levantamento:",
+                dados
+            );
+
+
+            // =================================================
+            // MOSTRAR ERRO DENTRO DO MODAL
+            // SEM ALERT
+            // =================================================
+
+            mostrarErroLevantamento(
+                dados.detail ||
+                "Não foi possível realizar o levantamento."
+            );
+
+
+            return;
+
+        }
+
+
+        console.log(
+            "LEVANTAMENTO REALIZADO:",
+            dados
+        );
+
+
+        // ====================================================
+        // FECHAR MODAL
+        // ====================================================
+
+        fecharLevantamentoLucroSaque();
+
+
+        // ====================================================
+        // ATUALIZAR DADOS
+        // ====================================================
+
+        await carregarLucroSaqueDisponivel();
+
+
+        // ====================================================
+        // SE O MODAL DE DETALHES ESTIVER ABERTO
+        // ATUALIZAR TUDO
+        // ====================================================
+
+        const modalDetalhes =
+            document.getElementById(
+                "modal-detalhes-dinheiro-recolhido"
+            );
+
+
+        if(
+            modalDetalhes &&
+            modalDetalhes.style.display !== "none"
+        ){
+
+            await abrirDetalhesDinheiroRecolhido();
+
+        }
+
+
+        // ====================================================
+        // ATUALIZAR DASHBOARD
+        // ====================================================
+
+        if(
+            typeof window.atualizarDadosCaixaDashboard ===
+            "function"
+        ){
+
+            await window.atualizarDadosCaixaDashboard();
+
+        }
+
+
+        if(
+            typeof window.atualizarDinheiroRecolhido ===
+            "function"
+        ){
+
+            await window.atualizarDinheiroRecolhido();
+
+        }
+
+    }
+    catch(erro){
+
+        console.error(
+            "Erro ao realizar levantamento:",
+            erro
+        );
+
+
+        mostrarErroLevantamento(
+            "Erro de comunicação com o servidor."
+        );
+
+    }
+    finally{
+
+        if(botao){
+
+            botao.disabled =
+                false;
+
+            botao.innerText =
+                "Levantar";
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// MOSTRAR ERRO NO MODAL
+// ============================================================
+
+function mostrarErroLevantamento(mensagem){
+
+    const input =
+        document.getElementById(
+            "valor-levantar-lucro-saque"
+        );
+
+
+    if(!input){
+
+        return;
+
+    }
+
+
+    let erro =
+        document.getElementById(
+            "erro-levantamento-lucro-saque"
+        );
+
+
+    if(!erro){
+
+        erro =
+            document.createElement(
+                "div"
+            );
+
+
+        erro.id =
+            "erro-levantamento-lucro-saque";
+
+
+        erro.className =
+            "alert alert-danger";
+
+
+        erro.style.marginTop =
+            "10px";
+
+
+        input.parentNode.insertBefore(
+            erro,
+            input.nextSibling
+        );
+
+    }
+
+
+    erro.innerText =
+        mensagem;
+
+
+    setTimeout(
+        () => {
+
+            if(erro){
+
+                erro.remove();
+
+            }
+
+        },
+        5000
+    );
+
+}
+
+
+// ============================================================
+// ============================================================
+// RECOLHA DO GERENTE
+// ============================================================
+// ============================================================
+
+
+// ============================================================
+// ABRIR RECOLHA
 // ============================================================
 
 function abrirRecolhaGerente(
@@ -882,45 +2194,11 @@ function abrirRecolhaGerente(
     disponivel
 ){
 
-    console.log(
-        "====================================="
-    );
-
-    console.log(
-        "ABRIR RECOLHA DO GERENTE"
-    );
-
-    console.log(
-        "GERENTE ID:",
-        gerenteId
-    );
-
-    console.log(
-        "GERENTE:",
-        nome
-    );
-
-    console.log(
-        "DISPONÍVEL:",
-        disponivel
-    );
-
-    console.log(
-        "====================================="
-    );
-
-
-    // ========================================================
-    // GUARDAR GERENTE
-    // ========================================================
-
     gerenteSelecionadoRecolha =
-        Number(gerenteId);
+        Number(
+            gerenteId
+        );
 
-
-    // ========================================================
-    // ELEMENTOS
-    // ========================================================
 
     const modal =
         document.getElementById(
@@ -952,24 +2230,16 @@ function abrirRecolhaGerente(
         );
 
 
-    // ========================================================
-    // VALIDAR HTML
-    // ========================================================
-
     if(!modal){
 
         console.error(
-            "Modal #modal-recolha-gerente não encontrado."
+            "Modal de recolha do gerente não encontrado."
         );
 
         return;
 
     }
 
-
-    // ========================================================
-    // NOME
-    // ========================================================
 
     if(nomeElemento){
 
@@ -979,62 +2249,47 @@ function abrirRecolhaGerente(
     }
 
 
-    // ========================================================
-    // DISPONÍVEL
-    // ========================================================
-
     if(disponivelElemento){
 
         disponivelElemento.innerText =
-            Number(disponivel).toFixed(2) +
+            Number(
+                disponivel
+            ).toFixed(2) +
             " MT";
 
     }
 
 
-    // ========================================================
-    // VALOR
-    // ========================================================
-
     if(valorElemento){
 
-        valorElemento.value = "";
+        valorElemento.value =
+            "";
 
         valorElemento.max =
-            Number(disponivel).toFixed(2);
+            Number(
+                disponivel
+            ).toFixed(2);
 
     }
 
-
-    // ========================================================
-    // OBSERVAÇÃO
-    // ========================================================
 
     if(observacaoElemento){
 
-        observacaoElemento.value = "";
+        observacaoElemento.value =
+            "";
 
     }
 
 
-    // ========================================================
-    // GUARDAR DISPONÍVEL NO MODAL
-    // ========================================================
-
     modal.dataset.disponivel =
-        Number(disponivel);
+        Number(
+            disponivel
+        );
 
 
-    // ========================================================
-    // ABRIR
-    // ========================================================
+    modal.style.display =
+        "flex";
 
-    modal.style.display = "flex";
-
-
-    // ========================================================
-    // FOCAR VALOR
-    // ========================================================
 
     setTimeout(
         () => {
@@ -1053,7 +2308,7 @@ function abrirRecolhaGerente(
 
 
 // ============================================================
-// FECHAR RECOLHA DO GERENTE
+// FECHAR RECOLHA
 // ============================================================
 
 function fecharRecolhaGerente(){
@@ -1079,14 +2334,10 @@ function fecharRecolhaGerente(){
 
 
 // ============================================================
-// CONFIRMAR RECOLHA DO GERENTE
+// RECOLHER DINHEIRO GERENTE
 // ============================================================
 
 async function recolherDinheiroGerente(){
-
-    // ========================================================
-    // USUÁRIO
-    // ========================================================
 
     const usuario =
         obterUsuarioDashboard();
@@ -1094,53 +2345,24 @@ async function recolherDinheiroGerente(){
 
     if(!usuario){
 
-        alert(
-            "Usuário não encontrado."
-        );
+        return;
+
+    }
+
+
+    if(!usuarioEhAdmin(usuario)){
 
         return;
 
     }
 
 
-    // ========================================================
-    // SOMENTE ADMIN
-    // ========================================================
-
-    if(
-        usuario.tipo !== "admin" &&
-        usuario.tipo !== "administrador"
-    ){
-
-        alert(
-            "Somente o admin pode recolher dinheiro do gerente."
-        );
+    if(!gerenteSelecionadoRecolha){
 
         return;
 
     }
 
-
-    // ========================================================
-    // GERENTE
-    // ========================================================
-
-    if(
-        !gerenteSelecionadoRecolha
-    ){
-
-        alert(
-            "Nenhum gerente selecionado."
-        );
-
-        return;
-
-    }
-
-
-    // ========================================================
-    // ELEMENTOS
-    // ========================================================
 
     const valorElemento =
         document.getElementById(
@@ -1162,40 +2384,25 @@ async function recolherDinheiroGerente(){
 
     if(!valorElemento){
 
-        alert(
-            "Campo de valor não encontrado."
-        );
-
         return;
 
     }
 
 
-    // ========================================================
-    // VALOR
-    // ========================================================
-
     const valor =
         Number(
             String(
                 valorElemento.value
-            ).replace(",", ".")
+            )
+            .replace(",", ".")
         );
 
-
-    // ========================================================
-    // DISPONÍVEL
-    // ========================================================
 
     const disponivel =
         Number(
             modal?.dataset?.disponivel ?? 0
         );
 
-
-    // ========================================================
-    // OBSERVAÇÃO
-    // ========================================================
 
     const observacao =
         observacaoElemento
@@ -1205,75 +2412,41 @@ async function recolherDinheiroGerente(){
         "";
 
 
-    // ========================================================
-    // VALIDAR VALOR
-    // ========================================================
-
     if(
         !Number.isFinite(valor) ||
         valor <= 0
     ){
 
-        alert(
-            "Informe um valor maior que zero."
+        valorElemento.classList.add(
+            "is-invalid"
         );
+
+        valorElemento.focus();
 
         return;
 
     }
 
-
-    // ========================================================
-    // NÃO PERMITIR MAIS QUE O DISPONÍVEL
-    // ========================================================
 
     if(
         valor > disponivel
     ){
 
-        alert(
-            "O valor informado é maior que o disponível do gerente.\n\n" +
-            "Disponível: " +
-            disponivel.toFixed(2) +
-            " MT"
+        valorElemento.classList.add(
+            "is-invalid"
         );
+
+        valorElemento.focus();
 
         return;
 
     }
 
 
-    // ========================================================
-    // CONFIRMAÇÃO
-    // ========================================================
+    valorElemento.classList.remove(
+        "is-invalid"
+    );
 
-    const confirmar =
-        confirm(
-            "Confirmar recolha?\n\n" +
-
-            "Gerente ID: " +
-            gerenteSelecionadoRecolha +
-            "\n" +
-
-            "Valor: " +
-            valor.toFixed(2) +
-            " MT\n\n" +
-
-            "O valor será retirado do disponível do gerente " +
-            "e ficará disponível para o admin."
-        );
-
-
-    if(!confirmar){
-
-        return;
-
-    }
-
-
-    // ========================================================
-    // DESABILITAR BOTÃO
-    // ========================================================
 
     const botoes =
         modal
@@ -1288,7 +2461,8 @@ async function recolherDinheiroGerente(){
     botoes.forEach(
         botao => {
 
-            botao.disabled = true;
+            botao.disabled =
+                true;
 
         }
     );
@@ -1296,50 +2470,23 @@ async function recolherDinheiroGerente(){
 
     try{
 
-        console.log(
-            "====================================="
-        );
-
-        console.log(
-            "RECOLHENDO DINHEIRO DO GERENTE"
-        );
-
-        console.log(
-            "ADMIN ID:",
-            usuario.id
-        );
-
-        console.log(
-            "GERENTE ID:",
-            gerenteSelecionadoRecolha
-        );
-
-        console.log(
-            "VALOR:",
-            valor
-        );
-
-        console.log(
-            "====================================="
-        );
-
-
-        // ====================================================
-        // CHAMAR ROTA
-        // ====================================================
-
         const resposta =
             await fetch(
+
                 `/caixa/recolher?usuario_id=${usuario.id}`,
+
                 {
+
                     method: "POST",
 
                     headers: {
+
                         "Content-Type":
                             "application/json",
 
                         "Accept":
                             "application/json"
+
                     },
 
                     body:
@@ -1355,15 +2502,14 @@ async function recolherDinheiroGerente(){
                                 observacao
 
                         })
+
                 }
+
             );
 
 
-        // ====================================================
-        // LER RESPOSTA
-        // ====================================================
-
         let dados = {};
+
 
         try{
 
@@ -1374,28 +2520,18 @@ async function recolherDinheiroGerente(){
         catch(erro){
 
             console.error(
-                "Resposta não é JSON:",
+                "Resposta inválida:",
                 erro
             );
 
         }
 
 
-        // ====================================================
-        // ERRO
-        // ====================================================
-
         if(!resposta.ok){
 
             console.error(
-                "ERRO AO RECOLHER:",
+                "Erro ao recolher:",
                 dados
-            );
-
-
-            alert(
-                dados.detail ||
-                "Erro ao realizar recolha."
             );
 
 
@@ -1404,47 +2540,11 @@ async function recolherDinheiroGerente(){
         }
 
 
-        // ====================================================
-        // SUCESSO
-        // ====================================================
-
-        console.log(
-            "RECOLHA REALIZADA:",
-            dados
-        );
-
-
-        alert(
-            "Recolha realizada com sucesso!\n\n" +
-
-            "Valor recolhido: " +
-
-            Number(
-                dados.valor_recolhido ??
-                valor
-            ).toFixed(2) +
-
-            " MT"
-        );
-
-
-        // ====================================================
-        // FECHAR POPUP
-        // ====================================================
-
         fecharRecolhaGerente();
 
 
-        // ====================================================
-        // ATUALIZAR DETALHES
-        // ====================================================
-
         await abrirDetalhesDinheiroRecolhido();
 
-
-        // ====================================================
-        // ATUALIZAR DASHBOARD
-        // ====================================================
 
         if(
             typeof window.atualizarDinheiroRecolhido ===
@@ -1469,26 +2569,18 @@ async function recolherDinheiroGerente(){
     catch(erro){
 
         console.error(
-            "Erro ao realizar recolha do gerente:",
+            "Erro ao recolher dinheiro:",
             erro
-        );
-
-
-        alert(
-            "Erro ao realizar a recolha."
         );
 
     }
     finally{
 
-        // ====================================================
-        // REATIVAR BOTÕES
-        // ====================================================
-
         botoes.forEach(
             botao => {
 
-                botao.disabled = false;
+                botao.disabled =
+                    false;
 
             }
         );
@@ -1499,7 +2591,7 @@ async function recolherDinheiroGerente(){
 
 
 // ============================================================
-// FECHAR DETALHES DINHEIRO RECOLHIDO
+// FECHAR DETALHES
 // ============================================================
 
 function fecharDetalhesDinheiroRecolhido(){
@@ -1521,78 +2613,30 @@ function fecharDetalhesDinheiroRecolhido(){
 
 
 // ============================================================
-// ESCAPAR HTML
+// INICIALIZAÇÃO
 // ============================================================
 
-function escaparHtml(valor){
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
 
-    if(
-        valor === null ||
-        valor === undefined
-    ){
-
-        return "";
+        criarModalLevantamentoLucroSaque();
 
     }
-
-
-    return String(valor)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-
-}
+);
 
 
 // ============================================================
-// OBTER USUÁRIO DO DASHBOARD
+// FUNÇÕES GLOBAIS
 // ============================================================
 
-function obterUsuarioDashboard(){
-
-    const usuarioStorage =
-        localStorage.getItem(
-            "usuario"
-        );
+window.obterUsuarioDashboard =
+    obterUsuarioDashboard;
 
 
-    if(!usuarioStorage){
+window.escaparHtml =
+    escaparHtml;
 
-        return null;
-
-    }
-
-
-    try{
-
-        return JSON.parse(
-            usuarioStorage
-        );
-
-    }
-    catch(erro){
-
-        console.error(
-            "Erro ao ler usuário:",
-            erro
-        );
-
-        return null;
-
-    }
-
-}
-
-
-// ============================================================
-// EXPOR FUNÇÕES GLOBALMENTE
-// ============================================================
-//
-// Isso garante que os onclick="" criados dinamicamente
-// consigam encontrar as funções.
-// ============================================================
 
 window.abrirDetalhesDinheiroRecolhido =
     abrirDetalhesDinheiroRecolhido;
@@ -1614,9 +2658,25 @@ window.recolherDinheiroGerente =
     recolherDinheiroGerente;
 
 
-window.obterUsuarioDashboard =
-    obterUsuarioDashboard;
+window.criarAreaLucroSaqueNoModal =
+    criarAreaLucroSaqueNoModal;
 
 
-window.escaparHtml =
-    escaparHtml;
+window.carregarLucroSaqueDisponivel =
+    carregarLucroSaqueDisponivel;
+
+
+window.abrirLevantamentoLucroSaque =
+    abrirLevantamentoLucroSaque;
+
+
+window.fecharLevantamentoLucroSaque =
+    fecharLevantamentoLucroSaque;
+
+
+window.confirmarLevantamentoLucroSaque =
+    confirmarLevantamentoLucroSaque;
+
+
+window.mostrarErroLevantamento =
+    mostrarErroLevantamento;

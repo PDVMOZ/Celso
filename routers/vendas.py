@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -8,13 +8,14 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from database import get_db
-
+from models.caixa import Caixa, MovimentoCaixa
 from models.usuario import Usuario
 from models.venda import Venda, ItemVenda
 from models.produto import Produto
 from models.lote_produto import LoteProduto
 from models.item_venda_lote import ItemVendaLote
-
+from models.lucro_saque import LucroSaque
+from models.configuracao import Configuracao
 from schemas.venda import VendaCreate, VendaResponse
 
 
@@ -33,27 +34,7 @@ async def sincronizar_produto_com_lotes(
     db: AsyncSession
 ):
     """
-    Produto representa SOMENTE o primeiro lote disponível.
-
-    Exemplo:
-
-    Lote 1 -> 5 unidades -> preço 15
-    Lote 2 -> 10 unidades -> preço 18
-
-    Produto:
-        quantidade = 5
-        preco_venda = 15
-
-    Quando Lote 1 chegar a zero:
-
-    Produto:
-        quantidade = 10
-        preco_venda = 18
-
-    Se não existir mais nenhum lote:
-
-    Produto:
-        quantidade = 0
+    Produto representa somente o primeiro lote disponível.
     """
 
     resultado = await db.execute(
@@ -104,6 +85,136 @@ async def sincronizar_produto_com_lotes(
 
 
 # ==========================================================
+# REGISTRAR LUCRO DA VENDA
+# ==========================================================
+
+async def registrar_lucro_venda(
+    usuario_id: int,
+    venda_id: int,
+    total_venda: Decimal,
+    custo_total: Decimal,
+    db: AsyncSession
+):
+
+    """
+    Registra o lucro gerado pela venda.
+
+    A percentagem destinada ao saque é buscada
+    automaticamente na tabela configuracoes.
+
+    Exemplo:
+
+        lucro = 30 MT
+        percentual = 50%
+
+        valor_enviado = 15 MT
+    """
+
+    # ======================================================
+    # CALCULAR LUCRO
+    # ======================================================
+
+    lucro_gerado = (
+        total_venda
+        -
+        custo_total
+    )
+
+    lucro_gerado = lucro_gerado.quantize(
+        Decimal("0.01")
+    )
+
+    # ======================================================
+    # PROTEÇÃO
+    # ======================================================
+
+    if lucro_gerado <= Decimal("0.00"):
+
+        return None
+
+    # ======================================================
+    # BUSCAR CONFIGURAÇÃO
+    # ======================================================
+
+    resultado = await db.execute(
+        select(Configuracao)
+        .order_by(
+            Configuracao.id.asc()
+        )
+        .limit(1)
+    )
+
+    configuracao = (
+        resultado
+        .scalar_one_or_none()
+    )
+
+    # ======================================================
+    # SE NÃO EXISTIR CONFIGURAÇÃO
+    # USAR 50%
+    # ======================================================
+
+    if configuracao is None:
+
+        configuracao = Configuracao(
+            percentual_saque=Decimal("50.00")
+        )
+
+        db.add(configuracao)
+
+        await db.flush()
+
+    # ======================================================
+    # PERCENTUAL
+    # ======================================================
+
+    percentual_saque = Decimal(
+        str(
+            configuracao.percentual_saque or 0
+        )
+    )
+
+    # ======================================================
+    # CALCULAR VALOR ENVIADO
+    # ======================================================
+
+    valor_enviado = (
+        lucro_gerado
+        *
+        percentual_saque
+        /
+        Decimal("100")
+    )
+
+    valor_enviado = valor_enviado.quantize(
+        Decimal("0.01")
+    )
+
+    # ======================================================
+    # CRIAR REGISTRO
+    # ======================================================
+
+    registro = LucroSaque(
+
+        usuario_id=usuario_id,
+
+        venda_id=venda_id,
+
+        lucro_gerado=lucro_gerado,
+
+        percentual_saque=percentual_saque,
+
+        valor_enviado=valor_enviado,
+
+        valor_sacado=Decimal("0.00")
+    )
+
+    db.add(registro)
+
+    await db.flush()
+
+    return registro
+# ==========================================================
 # CRIAR VENDA
 # ==========================================================
 
@@ -149,7 +260,13 @@ async def criar_venda(
                 detail="Adicione produtos ao carrinho."
             )
 
+        # ==================================================
+        # TOTAIS
+        # ==================================================
+
         total = Decimal("0.00")
+
+        custo_total_venda = Decimal("0.00")
 
         itens_processados = []
 
@@ -197,7 +314,6 @@ async def criar_venda(
 
             # ==================================================
             # BUSCAR LOTES DISPONÍVEIS
-            #
             # FIFO
             # ==================================================
 
@@ -210,6 +326,7 @@ async def criar_venda(
                 .order_by(
                     LoteProduto.id.asc()
                 )
+                .with_for_update()
             )
 
             lotes = resultado.scalars().all()
@@ -219,7 +336,9 @@ async def criar_venda(
             # ==================================================
 
             quantidade_disponivel = sum(
-                int(lote.quantidade_atual or 0)
+                int(
+                    lote.quantidade_atual or 0
+                )
                 for lote in lotes
             )
 
@@ -242,11 +361,7 @@ async def criar_venda(
                 )
 
             # ==================================================
-            # PREÇO DO LOTE ATUAL
-            #
-            # O produto representa o primeiro lote FIFO.
-            #
-            # Este é o preço mostrado ao cliente.
+            # VERIFICAR LOTE
             # ==================================================
 
             if not lotes:
@@ -259,6 +374,10 @@ async def criar_venda(
                         f"não possui stock disponível."
                     )
                 )
+
+            # ==================================================
+            # PRIMEIRO LOTE
+            # ==================================================
 
             lote_atual = lotes[0]
 
@@ -286,7 +405,9 @@ async def criar_venda(
                 preco_venda
                 *
                 Decimal(
-                    str(quantidade_pedida)
+                    str(
+                        quantidade_pedida
+                    )
                 )
             )
 
@@ -328,21 +449,23 @@ async def criar_venda(
                 )
 
                 # ------------------------------------------
-                # CUSTO
+                # CUSTO DO LOTE
                 # ------------------------------------------
 
                 custo_lote = (
                     preco_compra
                     *
                     Decimal(
-                        str(quantidade_lote)
+                        str(
+                            quantidade_lote
+                        )
                     )
                 )
 
                 custo_item += custo_lote
 
                 # ------------------------------------------
-                # REDUZIR LOTE
+                # REDUZIR QUANTIDADE DO LOTE
                 # ------------------------------------------
 
                 lote.quantidade_atual = (
@@ -365,8 +488,6 @@ async def criar_venda(
                         "preco_compra":
                             preco_compra,
 
-                        # Guarda o preço efetivamente
-                        # utilizado na venda.
                         "preco_venda":
                             preco_venda
                     }
@@ -390,34 +511,7 @@ async def criar_venda(
                 )
 
             # ==================================================
-            # IMPORTANTE
-            #
-            # NÃO fazemos mais:
-            #
-            # produto.quantidade -= quantidade_pedida
-            #
-            # porque Produto.quantidade representa somente
-            # o lote FIFO atual.
-            #
-            # Os lotes são a fonte real do stock.
-            # ==================================================
-
-            # ==================================================
             # SINCRONIZAR PRODUTO
-            #
-            # Se o lote atual acabou:
-            #
-            # Lote 1 = 0
-            # Lote 2 = 10
-            #
-            # Produto passa automaticamente para:
-            #
-            # quantidade = 10
-            # preço = preço do Lote 2
-            #
-            # Se não houver Lote 2:
-            #
-            # quantidade = 0
             # ==================================================
 
             await sincronizar_produto_com_lotes(
@@ -452,10 +546,16 @@ async def criar_venda(
             )
 
             # ==================================================
-            # TOTAL
+            # TOTAL DA VENDA
             # ==================================================
 
             total += subtotal_item
+
+            # ==================================================
+            # CUSTO TOTAL DA VENDA
+            # ==================================================
+
+            custo_total_venda += custo_item
 
         # ==================================================
         # VALOR ENTREGUE
@@ -491,7 +591,7 @@ async def criar_venda(
             )
 
         # ==================================================
-        # TROCO
+        # CALCULAR TROCO
         # ==================================================
 
         troco = (
@@ -512,6 +612,10 @@ async def criar_venda(
         )
 
         db.add(venda)
+
+        # IMPORTANTE:
+        # Precisamos do ID da venda antes de criar
+        # o registro em lucros_saque.
 
         await db.flush()
 
@@ -567,6 +671,18 @@ async def criar_venda(
                 )
 
                 db.add(movimento_lote)
+
+        # ==================================================
+        # REGISTRAR LUCRO
+        # ==================================================
+
+        await registrar_lucro_venda(
+            usuario_id=dados.usuario_id,
+            venda_id=venda.id,
+            total_venda=total,
+            custo_total=custo_total_venda,
+            db=db
+        )
 
         # ==================================================
         # COMMIT
@@ -910,11 +1026,11 @@ async def debug_vendas(
 
     vendas = resultado.scalars().all()
 
-    resultado = []
+    resultado_final = []
 
     for venda in vendas:
 
-        resultado.append(
+        resultado_final.append(
             {
                 "id":
                     venda.id,
@@ -941,7 +1057,7 @@ async def debug_vendas(
             }
         )
 
-    return resultado
+    return resultado_final
 
 
 # ==========================================================
@@ -1025,6 +1141,7 @@ async def buscar_venda(
 
     return venda
 
+
 # ==========================================================
 # DEBUG - LOTES UTILIZADOS NAS VENDAS
 # ==========================================================
@@ -1088,3 +1205,668 @@ async def debug_lotes_vendas(
 
     return resultado_final
 
+# ==========================================================
+# LEVANTAR LUCROS DE SAQUE DO ADMIN
+# ==========================================================
+
+@router.post(
+    "/lucro-saque/levantar"
+)
+async def levantar_lucros_saque(
+
+    usuario_id: int,
+
+    valor: Decimal,
+
+    db: AsyncSession = Depends(get_db)
+
+):
+    """
+    Levantamento independente da Caixa.
+
+    O Admin pode levantar somente o valor que
+    ainda está disponível em LucroSaque.
+
+    IMPORTANTE:
+
+    Este levantamento NÃO cria movimento na Caixa.
+
+    Apenas atualiza:
+
+        LucroSaque.valor_sacado
+
+    O valor levantado posteriormente será descontado
+    do dinheiro total disponível do Admin.
+    """
+
+    # ======================================================
+    # VALIDAR VALOR
+    # ======================================================
+
+    valor = Decimal(
+        str(
+            valor or 0
+        )
+    ).quantize(
+        Decimal("0.01")
+    )
+
+    if valor <= Decimal("0.00"):
+
+        raise HTTPException(
+            status_code=400,
+            detail="O valor do levantamento deve ser maior que zero."
+        )
+
+    # ======================================================
+    # BUSCAR USUÁRIO
+    # ======================================================
+
+    resultado = await db.execute(
+
+        select(Usuario)
+        .where(
+            Usuario.id == usuario_id
+        )
+
+    )
+
+    usuario = (
+        resultado
+        .scalar_one_or_none()
+    )
+
+    if usuario is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Usuário não encontrado."
+        )
+
+    # ======================================================
+    # SOMENTE ADMIN
+    # ======================================================
+
+    if usuario.tipo != "admin":
+
+        raise HTTPException(
+            status_code=403,
+            detail="Somente o Admin pode realizar este levantamento."
+        )
+
+    # ======================================================
+    # BUSCAR LUCROS DE SAQUE DO ADMIN
+    # ======================================================
+
+    resultado = await db.execute(
+
+        select(LucroSaque)
+        .where(
+            LucroSaque.usuario_id == usuario_id
+        )
+        .with_for_update()
+
+    )
+
+    registros = (
+        resultado
+        .scalars()
+        .all()
+    )
+
+    # ======================================================
+    # CALCULAR TOTAL DISPONÍVEL PARA SAQUE
+    # ======================================================
+
+    total_disponivel = Decimal("0.00")
+
+    for registro in registros:
+
+        valor_enviado = Decimal(
+            str(
+                registro.valor_enviado or 0
+            )
+        )
+
+        valor_sacado = Decimal(
+            str(
+                registro.valor_sacado or 0
+            )
+        )
+
+        restante = (
+            valor_enviado
+            -
+            valor_sacado
+        )
+
+        if restante > Decimal("0.00"):
+
+            total_disponivel += restante
+
+    total_disponivel = total_disponivel.quantize(
+        Decimal("0.01")
+    )
+
+    # ======================================================
+    # LIMITAR PELO LUCRO DE SAQUE
+    # ======================================================
+
+    if valor > total_disponivel:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Valor superior ao lucro disponível para saque. "
+                f"Disponível: {total_disponivel:.2f} MT."
+            )
+        )
+
+    # ======================================================
+    # DISTRIBUIR O LEVANTAMENTO PELOS REGISTROS
+    #
+    # Primeiro consome os lucros mais antigos.
+    # ======================================================
+
+    valor_restante_levantar = valor
+
+    registros_ordenados = sorted(
+        registros,
+        key=lambda x: x.id
+    )
+
+    for registro in registros_ordenados:
+
+        if valor_restante_levantar <= Decimal("0.00"):
+            break
+
+        valor_enviado = Decimal(
+            str(
+                registro.valor_enviado or 0
+            )
+        )
+
+        valor_sacado_atual = Decimal(
+            str(
+                registro.valor_sacado or 0
+            )
+        )
+
+        disponivel_registro = (
+            valor_enviado
+            -
+            valor_sacado_atual
+        )
+
+        if disponivel_registro <= Decimal("0.00"):
+            continue
+
+        valor_deste_registro = min(
+            disponivel_registro,
+            valor_restante_levantar
+        )
+
+        registro.valor_sacado = (
+            valor_sacado_atual
+            +
+            valor_deste_registro
+        ).quantize(
+            Decimal("0.01")
+        )
+
+        valor_restante_levantar -= (
+            valor_deste_registro
+        )
+
+    # ======================================================
+    # SEGURANÇA
+    # ======================================================
+
+    if valor_restante_levantar > Decimal("0.00"):
+
+        await db.rollback()
+
+        raise HTTPException(
+            status_code=400,
+            detail="Não foi possível completar o levantamento."
+        )
+
+    # ======================================================
+    # COMMIT
+    # ======================================================
+
+    await db.commit()
+
+    # ======================================================
+    # NOVO TOTAL DISPONÍVEL
+    # ======================================================
+
+    resultado = await db.execute(
+
+        select(LucroSaque)
+        .where(
+            LucroSaque.usuario_id == usuario_id
+        )
+
+    )
+
+    registros_atualizados = (
+        resultado
+        .scalars()
+        .all()
+    )
+
+    novo_disponivel = Decimal("0.00")
+
+    for registro in registros_atualizados:
+
+        valor_enviado = Decimal(
+            str(
+                registro.valor_enviado or 0
+            )
+        )
+
+        valor_sacado = Decimal(
+            str(
+                registro.valor_sacado or 0
+            )
+        )
+
+        restante = (
+            valor_enviado
+            -
+            valor_sacado
+        )
+
+        if restante > Decimal("0.00"):
+
+            novo_disponivel += restante
+
+    novo_disponivel = novo_disponivel.quantize(
+        Decimal("0.01")
+    )
+
+    # ======================================================
+    # RETORNAR
+    # ======================================================
+
+    return {
+
+        "mensagem":
+            "Levantamento realizado com sucesso.",
+
+        "valor_levantado":
+            valor,
+
+        "lucro_saque_anterior":
+            total_disponivel,
+
+        "lucro_saque_restante":
+            novo_disponivel
+
+    }
+
+# ==========================================================
+# CONSULTAR LUCRO DE SAQUE DISPONÍVEL
+# ==========================================================
+
+@router.get(
+    "/lucro-saque/disponivel"
+)
+async def consultar_lucro_saque_disponivel(
+
+    usuario_id: int,
+
+    db: AsyncSession = Depends(get_db)
+
+):
+
+    # ======================================================
+    # BUSCAR USUÁRIO QUE ESTÁ CONSULTANDO
+    # ======================================================
+
+    resultado = await db.execute(
+
+        select(Usuario)
+
+        .where(
+            Usuario.id == usuario_id
+        )
+
+    )
+
+    usuario = (
+        resultado
+        .scalar_one_or_none()
+    )
+
+
+    # ======================================================
+    # USUÁRIO NÃO ENCONTRADO
+    # ======================================================
+
+    if usuario is None:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail=
+                "Usuário não encontrado."
+
+        )
+
+
+    # ======================================================
+    # VERIFICAR TIPO DO USUÁRIO
+    # ======================================================
+
+    tipo_usuario = str(
+
+        usuario.tipo or ""
+
+    ).strip().lower()
+
+
+    # ======================================================
+    # SOMENTE ADMIN
+    #
+    # IMPORTANTE:
+    #
+    # O usuario_id serve apenas para verificar
+    # quem está fazendo a consulta.
+    #
+    # Depois disso, os LucroSaque serão somados
+    # de TODOS os usuários.
+    # ======================================================
+
+    if tipo_usuario not in [
+
+        "admin",
+        "administrador"
+
+    ]:
+
+        raise HTTPException(
+
+            status_code=403,
+
+            detail=(
+                "Somente o Admin pode "
+                "consultar o lucro de saque."
+            )
+
+        )
+
+
+    # ======================================================
+    # BUSCAR TODOS OS LUCROS DE SAQUE
+    #
+    # IMPORTANTE:
+    #
+    # NÃO colocar:
+    #
+    # LucroSaque.usuario_id == usuario_id
+    #
+    # porque queremos somar os lucros de todos.
+    # ======================================================
+
+    resultado = await db.execute(
+
+        select(LucroSaque)
+
+    )
+
+
+    registros = (
+
+        resultado
+        .scalars()
+        .all()
+
+    )
+
+
+    # ======================================================
+    # TOTAIS
+    # ======================================================
+
+    total_enviado = Decimal(
+        "0.00"
+    )
+
+    total_sacado = Decimal(
+        "0.00"
+    )
+
+    total_disponivel = Decimal(
+        "0.00"
+    )
+
+
+    # ======================================================
+    # SOMAR TODOS OS REGISTROS
+    # ======================================================
+
+    for registro in registros:
+
+        # ==================================================
+        # VALOR ENVIADO
+        # ==================================================
+
+        valor_enviado = Decimal(
+
+            str(
+                registro.valor_enviado or 0
+            )
+
+        ).quantize(
+
+            Decimal("0.01")
+
+        )
+
+
+        # ==================================================
+        # VALOR JÁ SACADO
+        # ==================================================
+
+        valor_sacado = Decimal(
+
+            str(
+                registro.valor_sacado or 0
+            )
+
+        ).quantize(
+
+            Decimal("0.01")
+
+        )
+
+
+        # ==================================================
+        # RESTANTE DESTE REGISTRO
+        # ==================================================
+
+        restante = (
+
+            valor_enviado
+            -
+            valor_sacado
+
+        )
+
+
+        # ==================================================
+        # SOMAR TOTAL ENVIADO
+        # ==================================================
+
+        total_enviado += (
+
+            valor_enviado
+
+        )
+
+
+        # ==================================================
+        # SOMAR TOTAL JÁ SACADO
+        # ==================================================
+
+        total_sacado += (
+
+            valor_sacado
+
+        )
+
+
+        # ==================================================
+        # SOMAR DISPONÍVEL
+        # ==================================================
+
+        if restante > Decimal("0.00"):
+
+            total_disponivel += (
+
+                restante
+
+            )
+
+
+    # ======================================================
+    # GARANTIR 2 CASAS DECIMAIS
+    # ======================================================
+
+    total_enviado = (
+
+        total_enviado
+        .quantize(
+            Decimal("0.01")
+        )
+
+    )
+
+
+    total_sacado = (
+
+        total_sacado
+        .quantize(
+            Decimal("0.01")
+        )
+
+    )
+
+
+    total_disponivel = (
+
+        total_disponivel
+        .quantize(
+            Decimal("0.01")
+        )
+
+    )
+
+
+    # ======================================================
+    # SEGURANÇA
+    # ======================================================
+
+    if total_enviado < Decimal("0.00"):
+
+        total_enviado = Decimal(
+            "0.00"
+        )
+
+
+    if total_sacado < Decimal("0.00"):
+
+        total_sacado = Decimal(
+            "0.00"
+        )
+
+
+    if total_disponivel < Decimal("0.00"):
+
+        total_disponivel = Decimal(
+            "0.00"
+        )
+
+
+    # ======================================================
+    # LOG
+    # ======================================================
+
+    print(
+        "=========================================="
+    )
+
+    print(
+        " LUCRO DE SAQUE - TOTAL GERAL"
+    )
+
+    print(
+        "ADMIN CONSULTANDO:",
+        usuario.id
+    )
+
+    print(
+        "NOME ADMIN:",
+        usuario.nome
+    )
+
+    print(
+        "TIPO:",
+        usuario.tipo
+    )
+
+    print(
+        "REGISTROS:",
+        len(registros)
+    )
+
+    print(
+        "TOTAL ENVIADO:",
+        total_enviado
+    )
+
+    print(
+        "TOTAL SACADO:",
+        total_sacado
+    )
+
+    print(
+        "TOTAL DISPONÍVEL:",
+        total_disponivel
+    )
+
+    print(
+        "=========================================="
+    )
+
+
+    # ======================================================
+    # RETORNO
+    #
+    # O FRONT RECEBE O TOTAL DE TODOS OS USUÁRIOS.
+    #
+    # total_sacado:
+    # quanto já foi levantado anteriormente.
+    #
+    # valor_disponivel:
+    # quanto ainda pode ser levantado.
+    # ======================================================
+
+    return {
+
+        "usuario_id":
+            usuario_id,
+
+        "total_enviado":
+            total_enviado,
+
+        "total_sacado":
+            total_sacado,
+
+        "valor_disponivel":
+            total_disponivel
+
+    }

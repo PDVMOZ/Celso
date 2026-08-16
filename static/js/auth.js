@@ -312,13 +312,10 @@ function atualizarVisibilidadeDetalhesVendas(){
 
 function carregarUsuario(usuario){
 
-
-
     const nome =
     document.getElementById(
         "user-name"
     );
-
 
     if(nome){
 
@@ -328,25 +325,10 @@ function carregarUsuario(usuario){
     }
 
 
-
-
-
-
-    // ==========================
-    // BOTÃO LOGIN / SAIR
-    // ==========================
-
-
-    // ==========================
-    // ESCONDER BOTÃO LOGIN APÓS ENTRAR
-    // ==========================
-
-
     const botaoLogin =
     document.getElementById(
         "login-button"
     );
-
 
     if(botaoLogin){
 
@@ -355,18 +337,15 @@ function carregarUsuario(usuario){
     }
 
 
-
     const nomePerfil =
     document.getElementById(
         "profile-name"
     );
 
-
     const emailPerfil =
     document.getElementById(
         "profile-email"
     );
-
 
 
     if(nomePerfil){
@@ -377,17 +356,10 @@ function carregarUsuario(usuario){
     }
 
 
-
-
-
-
-
-
     const verDetalhes =
     document.getElementById(
         "ver-detalhes-stock"
     );
-
 
     if(verDetalhes){
 
@@ -396,119 +368,104 @@ function carregarUsuario(usuario){
     }
 
 
-
-
-
-
-
-
     const menuUsuarios =
     document.getElementById(
         "menu-usuarios"
     );
-
 
     const menuCategorias =
     document.getElementById(
         "menu-categorias"
     );
 
-
     const menuProdutos =
     document.getElementById(
         "menu-produtos"
     );
-
 
     const menuDespesas =
     document.getElementById(
         "menu-despesas"
     );
 
+    // =========================================
+    // MENU CONFIGURAÇÕES
+    // =========================================
+
+    const menuConfiguracoes =
+    document.getElementById(
+        "menu-configuracoes"
+    );
 
 
+    // =========================================
+    // ADMIN
+    // =========================================
 
-
-
-
-
-
-    if(usuario.tipo==="admin"){
-
-
+    if(usuario.tipo === "admin"){
 
         if(menuUsuarios)
             menuUsuarios.style.display="flex";
 
-
         if(menuCategorias)
             menuCategorias.style.display="flex";
-
 
         if(menuProdutos)
             menuProdutos.style.display="flex";
 
+        if(menuConfiguracoes)
+            menuConfiguracoes.style.display="flex";
 
     }
 
 
+    // =========================================
+    // GERENTE
+    // =========================================
 
-
-
-    else if(usuario.tipo==="gerente"){
-
-
+    else if(usuario.tipo === "gerente"){
 
         if(menuUsuarios)
             menuUsuarios.style.display="none";
 
-
         if(menuCategorias)
             menuCategorias.style.display="flex";
-
 
         if(menuProdutos)
             menuProdutos.style.display="flex";
 
+        if(menuConfiguracoes)
+            menuConfiguracoes.style.display="none";
 
     }
 
 
-
-
+    // =========================================
+    // VENDEDOR / OUTROS
+    // =========================================
 
     else{
 
-
         if(menuUsuarios)
             menuUsuarios.style.display="none";
-
 
         if(menuCategorias)
             menuCategorias.style.display="none";
 
-
         if(menuProdutos)
             menuProdutos.style.display="none";
 
+        if(menuConfiguracoes)
+            menuConfiguracoes.style.display="none";
 
     }
 
 
-
     atualizarMenuDespesas();
+
     atualizarVisibilidadeDetalhesVendas();
 
-
-
-
 }
-
-
-
-
-
-
 
 
 

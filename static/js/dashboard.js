@@ -290,16 +290,19 @@ function configurarVisibilidadeDashboard(){
 // CARREGAR DASHBOARD
 // =====================================================
 
+
+// =====================================================
+// CARREGAR DASHBOARD
+// =====================================================
+
 window.carregarDashboard = async function(){
 
     console.log("=====================================");
     console.log(" CARREGANDO DASHBOARD");
     console.log("=====================================");
 
-
     const usuario =
         obterUsuarioDashboard();
-
 
     if(!usuario){
 
@@ -313,7 +316,7 @@ window.carregarDashboard = async function(){
 
 
     // =================================================
-    // URL
+    // URL DASHBOARD
     // =================================================
 
     let urlDashboard =
@@ -342,10 +345,10 @@ window.carregarDashboard = async function(){
     try{
 
         // =================================================
-        // DASHBOARD PRINCIPAL
+        // 1. DASHBOARD PRINCIPAL
         // =================================================
 
-        const resposta =
+        const respostaDashboard =
             await fetch(
                 urlDashboard,
                 {
@@ -354,10 +357,10 @@ window.carregarDashboard = async function(){
             );
 
 
-        if(!resposta.ok){
+        if(!respostaDashboard.ok){
 
             const erroTexto =
-                await resposta.text();
+                await respostaDashboard.text();
 
             console.error(
                 "ERRO DASHBOARD:",
@@ -366,14 +369,14 @@ window.carregarDashboard = async function(){
 
             throw new Error(
                 "Erro HTTP " +
-                resposta.status
+                respostaDashboard.status
             );
 
         }
 
 
         const dados =
-            await resposta.json();
+            await respostaDashboard.json();
 
 
         console.log(
@@ -383,104 +386,99 @@ window.carregarDashboard = async function(){
 
 
         // =================================================
-        // STOCK
+        // 2. BUSCAR STOCK TOTAL
+        // =================================================
+        //
+        // /stock/
+        //
+        // ESTE ENDPOINT SERVE PARA:
+        //
+        // - listar stock
+        // - calcular total de stock
+        //
+        // NÃO usar este endpoint para descobrir
+        // quais produtos estão em baixo stock.
+        //
         // =================================================
 
-        let stock =
-            dados.stock || {};
+        let produtosStock = [];
 
 
-        let produtosStock =
-            Array.isArray(
-                stock.produtos
-            )
-                ? stock.produtos
-                : null;
+        try{
 
-
-        // =================================================
-        // SE NÃO EXISTIR STOCK,
-        // BUSCAR SEM BLOQUEAR OUTRAS PARTES
-        // =================================================
-
-        if(!produtosStock){
-
-            try{
-
-                const respostaStock =
-                    await fetch(
-                        API + "/stock/",
-                        {
-                            cache: "no-store"
-                        }
-                    );
-
-
-                if(respostaStock.ok){
-
-                    produtosStock =
-                        await respostaStock.json();
-
-                }
-
-            }
-            catch(error){
-
-                console.error(
-                    "ERRO AO BUSCAR STOCK:",
-                    error
-                );
-
-            }
-
-        }
-
-
-        // =================================================
-        // BAIXO STOCK
-        // =================================================
-
-        let baixoStockProdutos =
-            Array.isArray(
-                stock.baixo_stock
-            )
-                ? stock.baixo_stock
-                : [];
-
-
-        if(
-            baixoStockProdutos.length === 0 &&
-            Array.isArray(produtosStock)
-        ){
-
-            baixoStockProdutos =
-                produtosStock.filter(
-                    produto => {
-
-                        const quantidade =
-                            Number(
-                                produto.quantidade ?? 0
-                            );
-
-
-                        const minimo =
-                            Number(
-                                produto.stock_minimo ?? 0
-                            );
-
-
-                        return (
-                            quantidade <= minimo
-                        );
-
+            const respostaStock =
+                await fetch(
+                    API + "/stock/",
+                    {
+                        cache: "no-store"
                     }
                 );
 
+
+            if(!respostaStock.ok){
+
+                throw new Error(
+                    "Erro HTTP " +
+                    respostaStock.status
+                );
+
+            }
+
+
+            const resultadoStock =
+                await respostaStock.json();
+
+
+            console.log(
+                "RESPOSTA /stock/:",
+                resultadoStock
+            );
+
+
+            if(
+                Array.isArray(
+                    resultadoStock
+                )
+            ){
+
+                produtosStock =
+                    resultadoStock;
+
+            }
+            else{
+
+                console.warn(
+                    "Resposta /stock/ não é uma lista:",
+                    resultadoStock
+                );
+
+                produtosStock = [];
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "ERRO AO BUSCAR /stock/:",
+                error
+            );
+
+            produtosStock = [];
+
         }
 
 
         // =================================================
-        // TOTAL STOCK
+        // 3. TOTAL STOCK
+        // =================================================
+        //
+        // Aqui usamos exclusivamente:
+        //
+        // stock_total
+        //
+        // vindo de /stock/
+        //
         // =================================================
 
         const totalStock =
@@ -491,60 +489,119 @@ window.carregarDashboard = async function(){
 
         if(totalStock){
 
-            let total =
-                stock.total;
+            const total =
+                produtosStock.reduce(
+                    (
+                        soma,
+                        produto
+                    ) => {
+
+                        return soma +
+                            Number(
+                                produto.stock_total ?? 0
+                            );
+
+                    },
+                    0
+                );
 
 
-            if(
-                total === undefined &&
-                Array.isArray(produtosStock)
-            ){
+            totalStock.innerText =
+                total;
 
-                total =
-                    produtosStock.reduce(
-                        (
-                            soma,
-                            produto
-                        ) => {
 
-                            return soma +
-                                Number(
-                                    produto.quantidade ?? 0
-                                );
+            console.log(
+                "TOTAL STOCK:",
+                total
+            );
 
-                        },
-                        0
-                    );
+        }
+
+
+        // =================================================
+        // 4. BUSCAR BAIXO STOCK
+        // =================================================
+        //
+        // /stock/baixo
+        //
+        // ESTE É O ENDPOINT RESPONSÁVEL
+        // POR DIZER QUAIS PRODUTOS ESTÃO
+        // EM BAIXO STOCK.
+        //
+        // NÃO fazer filter() usando /stock/.
+        //
+        // =================================================
+
+        let baixoStockProdutos = [];
+
+
+        try{
+
+            const respostaBaixoStock =
+                await fetch(
+                    API + "/stock/baixo",
+                    {
+                        cache: "no-store"
+                    }
+                );
+
+
+            if(!respostaBaixoStock.ok){
+
+                throw new Error(
+                    "Erro HTTP " +
+                    respostaBaixoStock.status
+                );
 
             }
 
 
-            totalStock.innerText =
-                total ?? 0;
-
-        }
+            const resultadoBaixoStock =
+                await respostaBaixoStock.json();
 
 
-        // =================================================
-        // PRODUTOS NOVOS
-        // =================================================
-
-        const produtosNovos =
-            document.getElementById(
-                "produtos-novos"
+            console.log(
+                "RESPOSTA /stock/baixo:",
+                resultadoBaixoStock
             );
 
 
-        if(produtosNovos){
+            if(
+                Array.isArray(
+                    resultadoBaixoStock
+                )
+            ){
 
-            produtosNovos.innerText =
-                stock.produtos_novos ?? 0;
+                baixoStockProdutos =
+                    resultadoBaixoStock;
+
+            }
+            else{
+
+                console.warn(
+                    "Resposta /stock/baixo não é uma lista:",
+                    resultadoBaixoStock
+                );
+
+                baixoStockProdutos = [];
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "ERRO AO BUSCAR /stock/baixo:",
+                error
+            );
+
+            baixoStockProdutos = [];
 
         }
 
 
         // =================================================
-        // BAIXO STOCK
+        // 5. CONTADOR BAIXO STOCK
         // =================================================
 
         const baixoStock =
@@ -561,8 +618,14 @@ window.carregarDashboard = async function(){
         }
 
 
+        console.log(
+            "TOTAL PRODUTOS BAIXO STOCK:",
+            baixoStockProdutos.length
+        );
+
+
         // =================================================
-        // LISTA BAIXO STOCK
+        // 6. LISTA DE BAIXO STOCK
         // =================================================
 
         const lista =
@@ -577,24 +640,15 @@ window.carregarDashboard = async function(){
 
 
             if(
-                Array.isArray(
-                    baixoStockProdutos
-                ) &&
                 baixoStockProdutos.length > 0
             ){
 
                 baixoStockProdutos.forEach(
                     produto => {
 
-                        const nome =
-                            produto.nome ??
-                            produto.produto ??
-                            "Produto";
-
-
                         const quantidade =
                             Number(
-                                produto.quantidade ?? 0
+                                produto.stock_total ?? 0
                             );
 
 
@@ -611,7 +665,7 @@ window.carregarDashboard = async function(){
                                 <div>
 
                                     <strong>
-                                        ${nome}
+                                        ${produto.nome}
                                     </strong>
 
                                     <br>
@@ -633,7 +687,9 @@ window.carregarDashboard = async function(){
                                 <span
                                     class="badge bg-danger"
                                 >
+
                                     Baixo Stock
+
                                 </span>
 
                             </div>
@@ -663,9 +719,50 @@ window.carregarDashboard = async function(){
         }
 
 
+        // =================================================
+        // 7. PRODUTOS NOVOS
+        // =================================================
+
+        const produtosNovos =
+            document.getElementById(
+                "produtos-novos"
+            );
+
+
+        if(produtosNovos){
+
+            produtosNovos.innerText =
+                dados.stock?.produtos_novos ?? 0;
+
+        }
+
+
+        // =================================================
+        // LOG FINAL
+        // =================================================
+
+        console.log(
+            "====================================="
+        );
+
+        console.log(
+            "STOCK TOTAL (/stock/):",
+            produtosStock
+        );
+
+        console.log(
+            "BAIXO STOCK (/stock/baixo):",
+            baixoStockProdutos
+        );
+
         console.log(
             "DASHBOARD PRINCIPAL CARREGADO"
         );
+
+        console.log(
+            "====================================="
+        );
+
 
     }
     catch(error){
@@ -678,8 +775,6 @@ window.carregarDashboard = async function(){
     }
 
 };
-
-
 // =====================================================
 // VENDAS DE HOJE
 // =====================================================

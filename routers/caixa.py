@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, HTTPException
 from decimal import Decimal
 from models.despesa_fora_caixa import DespesaForaCaixa
-
+from models.lucro_saque import LucroSaque
 from database import get_db
 
 from models.usuario import Usuario
@@ -2071,7 +2071,7 @@ async def dinheiro_recolhido_gerentes(
     # FUNÇÃO AUXILIAR
     # CALCULAR SALDO DISPONÍVEL DO GERENTE
     #
-    # NÃO ALTERAR ESTA PARTE
+    # NÃO ALTERAR A LÓGICA EXISTENTE
     # =====================================================
 
     async def calcular_gerente(
@@ -2261,7 +2261,6 @@ async def dinheiro_recolhido_gerentes(
 
     for admin in admins:
 
-
         # =================================================
         # RECOLHAS NORMAIS FEITAS PELO ADMIN
         #
@@ -2308,8 +2307,6 @@ async def dinheiro_recolhido_gerentes(
         # =================================================
         # RETIRADAS DA PRÓPRIA CAIXA DO ADMIN
         #
-        # IMPORTANTE:
-        #
         # NÃO É RECOLHA_GERENTE
         #
         # É RETIRADA.
@@ -2317,8 +2314,7 @@ async def dinheiro_recolhido_gerentes(
         # O ADMIN ESTÁ TIRANDO DINHEIRO DA PRÓPRIA
         # CAIXA DE VENDAS.
         #
-        # ESSE VALOR DEVE AUMENTAR
-        # O DINHEIRO RECOLHIDO.
+        # ESSE VALOR AUMENTA O DINHEIRO RECOLHIDO
         # =================================================
 
         resultado = await db.execute(
@@ -2396,11 +2392,7 @@ async def dinheiro_recolhido_gerentes(
     # =====================================================
     # DINHEIRO RECEBIDO DOS GERENTES
     #
-    # IMPORTANTE:
-    #
-    # NÃO ALTERAR.
-    #
-    # RECOLHA_GERENTE É USADO SOMENTE PARA
+    # RECOLHA_GERENTE É USADO PARA
     # TRANSFERÊNCIA GERENTE -> ADMIN.
     # =====================================================
 
@@ -2444,9 +2436,56 @@ async def dinheiro_recolhido_gerentes(
 
 
     # =====================================================
-    # DISPONÍVEL DO ADMIN
+    # LUCROS JÁ LEVANTADOS
     #
-    # AQUI ESTÁ A CORREÇÃO
+    # IMPORTANTE:
+    #
+    # O LEVANTAMENTO DOS LUCROS NÃO CONTROLA A CAIXA
+    # DO ADMIN.
+    #
+    # ELE ACONTECE DEPOIS QUE O ADMIN JÁ TEM
+    # O DINHEIRO TOTAL.
+    #
+    # POR ISSO SOMENTE DESCONTAMOS AQUI O QUE
+    # JÁ FOI EFETIVAMENTE SACADO.
+    #
+    # NÃO USAMOS valor_enviado.
+    #
+    # USAMOS SOMENTE:
+    #
+    # LucroSaque.valor_sacado
+    # =====================================================
+
+    resultado = await db.execute(
+
+        select(
+            func.coalesce(
+                func.sum(
+                    LucroSaque.valor_sacado
+                ),
+                0
+            )
+        )
+
+        .where(
+            LucroSaque.usuario_id
+            == usuario_logado.id
+        )
+
+    )
+
+    admin_lucros_sacados = (
+        resultado.scalar()
+        or Decimal("0.00")
+    )
+
+    admin_lucros_sacados = Decimal(
+        str(admin_lucros_sacados)
+    )
+
+
+    # =====================================================
+    # DISPONÍVEL DO ADMIN
     #
     # RECOLHA
     #     +
@@ -2455,9 +2494,8 @@ async def dinheiro_recolhido_gerentes(
     # DESPESAS
     #     +
     # RECOLHA_GERENTE
-    #
-    # A RETIRADA DA PRÓPRIA CAIXA DO ADMIN
-    # AUMENTA O DINHEIRO RECOLHIDO.
+    #     -
+    # LUCROS JÁ SACADOS
     # =====================================================
 
     total_admin = (
@@ -2469,6 +2507,8 @@ async def dinheiro_recolhido_gerentes(
         - admin_despesas
 
         + admin_recebido_gerentes
+
+        - admin_lucros_sacados
 
     )
 
@@ -2539,6 +2579,9 @@ async def dinheiro_recolhido_gerentes(
     # ADMIN
     # +
     # GERENTES
+    #
+    # O TOTAL DO ADMIN JÁ TEM O DESCONTO DOS
+    # LUCROS SACADOS.
     # =====================================================
 
     total_geral = (
@@ -2586,6 +2629,11 @@ async def dinheiro_recolhido_gerentes(
     print(
         "ADMIN RECEBIDO GERENTES:",
         admin_recebido_gerentes
+    )
+
+    print(
+        "ADMIN LUCROS SACADOS:",
+        admin_lucros_sacados
     )
 
     print(
@@ -2639,6 +2687,11 @@ async def dinheiro_recolhido_gerentes(
             "despesas":
                 float(
                     admin_despesas
+                ),
+
+            "lucros_sacados":
+                float(
+                    admin_lucros_sacados
                 ),
 
             "total":
