@@ -1,14 +1,8 @@
-[
-  {
-    "relation": [
-      "delegate_permission/common.handle_all_urls"
-    ],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "com.celsobar.vendas",
-      "sha256_cert_fingerprints": [
-        "TEU_SHA256_AQUI"
-      ]
-    }
-  }
-]
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.onrender.celso.twa",
+        "sha256_cert_fingerprints": ["4B:46:35:A0:75:BB:22:03:F9:3E:68:EE:CD:64:9A:B7:E9:0B:8F:5B:F6:82:AA:19:F5:14:BC:6F:8B:BB:09:45"]
+      }
+    }]
