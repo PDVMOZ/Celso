@@ -1,23 +1,33 @@
-// =====================================================
-// SERVICE WORKER
-// BAR DO CELSO
-// =====================================================
+const CACHE_NAME = "bar-do-celso-v1";
 
-const CACHE_NAME = "bar-do-celso-v2";
-
-
-// =====================================================
-// ARQUIVOS PRINCIPAIS
-// =====================================================
-
-const ARQUIVOS_CACHE = [
-
+const ARQUIVOS = [
     "/dashboard",
+    "/static/manifest.json",
 
     "/static/css/dashboard.css",
 
-    "/static/js/pwa.js"
+    "/static/js/app.js",
+    "/static/js/auth.js",
+    "/static/js/dashboard.js",
+    "/static/js/vendas.js",
+    "/static/js/stock.js",
+    "/static/js/historico.js",
+    "/static/js/despesas.js",
+    "/static/js/caixa.js",
+    "/static/js/configuracoes.js",
+    "/static/js/lucros-dashboard.js",
+    "/static/js/grafico.js",
+    "/static/js/dashboard-dinheiro-recolhido.js",
+    "/static/js/recolha-gerente.js",
+    "/static/js/usuarios.js",
+    "/static/js/categorias.js",
+    "/static/js/produtos.js",
+    "/static/js/sidebar_mobile.js",
+    "/static/js/notificacoes.js",
 
+    "/static/assets/img/icon-192.png",
+    "/static/assets/img/icon-512.png",
+    "/static/assets/img/icon-512-maskable.png"
 ];
 
 
@@ -25,767 +35,132 @@ const ARQUIVOS_CACHE = [
 // INSTALAÇÃO
 // =====================================================
 
-self.addEventListener(
-    "install",
-    event => {
+self.addEventListener("install", event => {
 
-        console.log(
-            "PWA: instalando Service Worker..."
-        );
+    console.log(
+        "Service Worker: instalando..."
+    );
 
-        event.waitUntil(
+    event.waitUntil(
 
-            caches
-                .open(CACHE_NAME)
-                .then(
-                    cache => {
+        caches.open(CACHE_NAME)
+            .then(cache => {
 
-                        return cache.addAll(
-                            ARQUIVOS_CACHE
-                        );
+                return cache.addAll(
+                    ARQUIVOS
+                );
 
-                    }
-                )
+            })
 
-        );
+    );
 
-        self.skipWaiting();
+    self.skipWaiting();
 
-    }
-);
+});
 
 
 // =====================================================
 // ATIVAÇÃO
 // =====================================================
 
-self.addEventListener(
-    "activate",
-    event => {
+self.addEventListener("activate", event => {
 
-        console.log(
-            "PWA: Service Worker ativado."
-        );
+    console.log(
+        "Service Worker: ativado."
+    );
 
-        event.waitUntil(
+    event.waitUntil(
 
-            caches
-                .keys()
-                .then(
-                    cacheNames => {
+        caches.keys()
+            .then(keys => {
 
-                        return Promise.all(
+                return Promise.all(
 
-                            cacheNames
-                                .filter(
-                                    cacheName =>
-                                        cacheName !==
-                                        CACHE_NAME
-                                )
-                                .map(
-                                    cacheName =>
-                                        caches.delete(
-                                            cacheName
-                                        )
-                                )
+                    keys
+                        .filter(key =>
+                            key !== CACHE_NAME
+                        )
+                        .map(key =>
+                            caches.delete(key)
+                        )
 
-                        );
+                );
 
-                    }
-                )
+            })
 
-        );
+    );
 
-        self.clients.claim();
+    self.clients.claim();
 
+});
+
+
+// =====================================================
+// PEDIDOS
+// =====================================================
+
+self.addEventListener("fetch", event => {
+
+    const request = event.request;
+
+    // Apenas GET
+    if(request.method !== "GET"){
+        return;
     }
-);
 
 
-// =====================================================
-// FETCH
-// =====================================================
+    event.respondWith(
 
-self.addEventListener(
-    "fetch",
-    event => {
+        fetch(request)
 
-        const request =
-            event.request;
+            .then(response => {
 
+                // Guardar cópia atualizada
+                const copia = response.clone();
 
-        // -------------------------------------------------
-        // SOMENTE GET
-        // -------------------------------------------------
+                caches.open(CACHE_NAME)
+                    .then(cache => {
 
-        if(
-            request.method !== "GET"
-        ){
-
-            return;
-
-        }
-
-
-        event.respondWith(
-
-            fetch(request)
-
-                .then(
-                    response => {
-
-                        // -------------------------------------------------
-                        // GUARDAR RESPOSTA NO CACHE
-                        // -------------------------------------------------
-
-                        if(
-                            response &&
-                            response.status === 200 &&
-                            response.type === "basic"
-                        ){
-
-                            const copia =
-                                response.clone();
-
-
-                            caches
-                                .open(CACHE_NAME)
-                                .then(
-                                    cache => {
-
-                                        cache.put(
-                                            request,
-                                            copia
-                                        );
-
-                                    }
-                                );
-
-                        }
-
-
-                        return response;
-
-                    }
-                )
-
-                .catch(
-                    async () => {
-
-                        console.log(
-                            "PWA: sem conexão:",
-                            request.url
+                        cache.put(
+                            request,
+                            copia
                         );
 
+                    });
 
-                        // -------------------------------------------------
-                        // TENTAR CACHE
-                        // -------------------------------------------------
+                return response;
 
-                        const cached =
-                            await caches.match(
-                                request
-                            );
+            })
 
+            .catch(() => {
+
+                // Sem internet
+                return caches.match(request)
+                    .then(cached => {
 
                         if(cached){
-
                             return cached;
-
                         }
 
-
-                        // -------------------------------------------------
-                        // SE FOR NAVEGAÇÃO
-                        // -------------------------------------------------
-
+                        // Se for página
                         if(
-                            request.mode ===
-                            "navigate"
+                            request.headers.get(
+                                "accept"
+                            )?.includes(
+                                "text/html"
+                            )
                         ){
 
-                            return new Response(
-
-                                `
-                                <!DOCTYPE html>
-
-                                <html lang="pt">
-
-                                <head>
-
-                                    <meta charset="UTF-8">
-
-                                    <meta
-                                        name="viewport"
-                                        content="width=device-width, initial-scale=1.0"
-                                    >
-
-                                    <meta
-                                        name="theme-color"
-                                        content="#212529"
-                                    >
-
-                                    <title>
-                                        Bar do Celso
-                                    </title>
-
-                                    <style>
-
-                                        *{
-                                            box-sizing:border-box;
-                                        }
-
-                                        body{
-
-                                            margin:0;
-
-                                            min-height:100vh;
-
-                                            display:flex;
-
-                                            align-items:center;
-
-                                            justify-content:center;
-
-                                            background:#212529;
-
-                                            color:white;
-
-                                            font-family:
-                                                Arial,
-                                                sans-serif;
-
-                                            text-align:center;
-
-                                            padding:25px;
-
-                                        }
-
-                                        .offline{
-
-                                            max-width:400px;
-
-                                            width:100%;
-
-                                        }
-
-                                        .icon{
-
-                                            width:90px;
-
-                                            height:90px;
-
-                                            margin:0 auto 25px;
-
-                                            border-radius:20px;
-
-                                            object-fit:cover;
-
-                                        }
-
-                                        h1{
-
-                                            margin-bottom:12px;
-
-                                            font-size:28px;
-
-                                        }
-
-                                        p{
-
-                                            color:#adb5bd;
-
-                                            line-height:1.6;
-
-                                        }
-
-                                        button{
-
-                                            margin-top:20px;
-
-                                            border:0;
-
-                                            padding:13px 25px;
-
-                                            border-radius:8px;
-
-                                            background:#198754;
-
-                                            color:white;
-
-                                            font-size:16px;
-
-                                            cursor:pointer;
-
-                                        }
-
-                                    </style>
-
-                                </head>
-
-                                <body>
-
-                                    <div class="offline">
-
-                                        <img
-                                            class="icon"
-                                            src="/static/assets/img/icon-192.png"
-                                            alt="Bar do Celso"
-                                        >
-
-                                        <h1>
-                                            Sem conexão
-                                        </h1>
-
-                                        <p>
-                                            Não foi possível
-                                            conectar ao servidor.
-                                        </p>
-
-                                        <p>
-                                            Verifique a sua
-                                            ligação à internet
-                                            e tente novamente.
-                                        </p>
-
-                                        <button
-                                            onclick="location.reload()"
-                                        >
-                                            Tentar novamente
-                                        </button>
-
-                                    </div>
-
-                                </body>
-
-                                </html>
-                                `,
-
-                                {
-                                    status: 503,
-
-                                    headers: {
-                                        "Content-Type":
-                                            "text/html; charset=UTF-8"
-                                    }
-
-                                }
-
+                            return caches.match(
+                                "/dashboard"
                             );
 
                         }
 
+                    });
 
-                        // -------------------------------------------------
-                        // OUTROS PEDIDOS
-                        // -------------------------------------------------
+            })
 
-                        return new Response(
-                            "Offline",
-                            {
-                                status: 503
-                            }
-                        );
+    );
 
-                    }
-                )
-
-        );
-
-    }
-);// =====================================================
-// SERVICE WORKER
-// BAR DO CELSO
-// =====================================================
-
-const CACHE_NAME = "bar-do-celso-v2";
-
-
-// =====================================================
-// ARQUIVOS PRINCIPAIS
-// =====================================================
-
-const ARQUIVOS_CACHE = [
-
-    "/dashboard",
-
-    "/static/css/dashboard.css",
-
-    "/static/js/pwa.js"
-
-];
-
-
-// =====================================================
-// INSTALAÇÃO
-// =====================================================
-
-self.addEventListener(
-    "install",
-    event => {
-
-        console.log(
-            "PWA: instalando Service Worker..."
-        );
-
-        event.waitUntil(
-
-            caches
-                .open(CACHE_NAME)
-                .then(
-                    cache => {
-
-                        return cache.addAll(
-                            ARQUIVOS_CACHE
-                        );
-
-                    }
-                )
-
-        );
-
-        self.skipWaiting();
-
-    }
-);
-
-
-// =====================================================
-// ATIVAÇÃO
-// =====================================================
-
-self.addEventListener(
-    "activate",
-    event => {
-
-        console.log(
-            "PWA: Service Worker ativado."
-        );
-
-        event.waitUntil(
-
-            caches
-                .keys()
-                .then(
-                    cacheNames => {
-
-                        return Promise.all(
-
-                            cacheNames
-                                .filter(
-                                    cacheName =>
-                                        cacheName !==
-                                        CACHE_NAME
-                                )
-                                .map(
-                                    cacheName =>
-                                        caches.delete(
-                                            cacheName
-                                        )
-                                )
-
-                        );
-
-                    }
-                )
-
-        );
-
-        self.clients.claim();
-
-    }
-);
-
-
-// =====================================================
-// FETCH
-// =====================================================
-
-self.addEventListener(
-    "fetch",
-    event => {
-
-        const request =
-            event.request;
-
-
-        // -------------------------------------------------
-        // SOMENTE GET
-        // -------------------------------------------------
-
-        if(
-            request.method !== "GET"
-        ){
-
-            return;
-
-        }
-
-
-        event.respondWith(
-
-            fetch(request)
-
-                .then(
-                    response => {
-
-                        // -------------------------------------------------
-                        // GUARDAR RESPOSTA NO CACHE
-                        // -------------------------------------------------
-
-                        if(
-                            response &&
-                            response.status === 200 &&
-                            response.type === "basic"
-                        ){
-
-                            const copia =
-                                response.clone();
-
-
-                            caches
-                                .open(CACHE_NAME)
-                                .then(
-                                    cache => {
-
-                                        cache.put(
-                                            request,
-                                            copia
-                                        );
-
-                                    }
-                                );
-
-                        }
-
-
-                        return response;
-
-                    }
-                )
-
-                .catch(
-                    async () => {
-
-                        console.log(
-                            "PWA: sem conexão:",
-                            request.url
-                        );
-
-
-                        // -------------------------------------------------
-                        // TENTAR CACHE
-                        // -------------------------------------------------
-
-                        const cached =
-                            await caches.match(
-                                request
-                            );
-
-
-                        if(cached){
-
-                            return cached;
-
-                        }
-
-
-                        // -------------------------------------------------
-                        // SE FOR NAVEGAÇÃO
-                        // -------------------------------------------------
-
-                        if(
-                            request.mode ===
-                            "navigate"
-                        ){
-
-                            return new Response(
-
-                                `
-                                <!DOCTYPE html>
-
-                                <html lang="pt">
-
-                                <head>
-
-                                    <meta charset="UTF-8">
-
-                                    <meta
-                                        name="viewport"
-                                        content="width=device-width, initial-scale=1.0"
-                                    >
-
-                                    <meta
-                                        name="theme-color"
-                                        content="#212529"
-                                    >
-
-                                    <title>
-                                        Bar do Celso
-                                    </title>
-
-                                    <style>
-
-                                        *{
-                                            box-sizing:border-box;
-                                        }
-
-                                        body{
-
-                                            margin:0;
-
-                                            min-height:100vh;
-
-                                            display:flex;
-
-                                            align-items:center;
-
-                                            justify-content:center;
-
-                                            background:#212529;
-
-                                            color:white;
-
-                                            font-family:
-                                                Arial,
-                                                sans-serif;
-
-                                            text-align:center;
-
-                                            padding:25px;
-
-                                        }
-
-                                        .offline{
-
-                                            max-width:400px;
-
-                                            width:100%;
-
-                                        }
-
-                                        .icon{
-
-                                            width:90px;
-
-                                            height:90px;
-
-                                            margin:0 auto 25px;
-
-                                            border-radius:20px;
-
-                                            object-fit:cover;
-
-                                        }
-
-                                        h1{
-
-                                            margin-bottom:12px;
-
-                                            font-size:28px;
-
-                                        }
-
-                                        p{
-
-                                            color:#adb5bd;
-
-                                            line-height:1.6;
-
-                                        }
-
-                                        button{
-
-                                            margin-top:20px;
-
-                                            border:0;
-
-                                            padding:13px 25px;
-
-                                            border-radius:8px;
-
-                                            background:#198754;
-
-                                            color:white;
-
-                                            font-size:16px;
-
-                                            cursor:pointer;
-
-                                        }
-
-                                    </style>
-
-                                </head>
-
-                                <body>
-
-                                    <div class="offline">
-
-                                        <img
-                                            class="icon"
-                                            src="/static/assets/img/icon-192.png"
-                                            alt="Bar do Celso"
-                                        >
-
-                                        <h1>
-                                            Sem conexão
-                                        </h1>
-
-                                        <p>
-                                            Não foi possível
-                                            conectar ao servidor.
-                                        </p>
-
-                                        <p>
-                                            Verifique a sua
-                                            ligação à internet
-                                            e tente novamente.
-                                        </p>
-
-                                        <button
-                                            onclick="location.reload()"
-                                        >
-                                            Tentar novamente
-                                        </button>
-
-                                    </div>
-
-                                </body>
-
-                                </html>
-                                `,
-
-                                {
-                                    status: 503,
-
-                                    headers: {
-                                        "Content-Type":
-                                            "text/html; charset=UTF-8"
-                                    }
-
-                                }
-
-                            );
-
-                        }
-
-
-                        // -------------------------------------------------
-                        // OUTROS PEDIDOS
-                        // -------------------------------------------------
-
-                        return new Response(
-                            "Offline",
-                            {
-                                status: 503
-                            }
-                        );
-
-                    }
-                )
-
-        );
-
-    }
-);
+});
