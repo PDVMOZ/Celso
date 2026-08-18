@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import FileResponse
 
 from database import Base, engine
 
@@ -39,6 +40,8 @@ STATIC_DIR = BASE_DIR / "static"
 
 TEMPLATES_DIR = BASE_DIR / "templates"
 
+SERVICE_WORKER_FILE = BASE_DIR / "service-worker.js"
+
 
 # =====================================================
 # TEMPLATES
@@ -62,9 +65,17 @@ app = FastAPI(
     title="Bar do Celso - Sistema de Gestão",
     version="1.0.0",
 
-    docs_url=None if is_production else "/docs",
+    docs_url=(
+        None
+        if is_production
+        else "/docs"
+    ),
 
-    redoc_url=None if is_production else "/redoc"
+    redoc_url=(
+        None
+        if is_production
+        else "/redoc"
+    )
 )
 
 
@@ -82,6 +93,36 @@ app.mount(
 
 
 # =====================================================
+# SERVICE WORKER
+# =====================================================
+#
+# O arquivo físico está na raiz:
+#
+# service-worker.js
+#
+# Mas será disponibilizado pelo navegador em:
+#
+# /service-worker.js
+#
+# Isso permite que o Service Worker tenha scope "/".
+# =====================================================
+
+@app.get(
+    "/service-worker.js",
+    include_in_schema=False
+)
+async def service_worker():
+
+    return FileResponse(
+        path=SERVICE_WORKER_FILE,
+        media_type="application/javascript",
+        headers={
+            "Service-Worker-Allowed": "/"
+        }
+    )
+
+
+# =====================================================
 # CORS
 # =====================================================
 
@@ -89,7 +130,7 @@ app.add_middleware(
     CORSMiddleware,
 
     allow_origins=[
-        "https://celso.onrender.com"
+        "*"
     ],
 
     allow_credentials=True,
