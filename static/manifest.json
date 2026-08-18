@@ -1,15 +1,14 @@
 {
-    "name": "PVD - Sistema de Vendas",
-    "short_name": "PVD",
-    "description": "Plataforma de vendas e gestão de stock",
+    "name": "Bar do Celso - Sistema de Gestão",
+    "short_name": "Bar do Celso",
+    "description": "Sistema de vendas, stock e gestão do Bar do Celso",
     "lang": "pt",
-    "start_url": "/dashboard",
+    "start_url": "/",
     "scope": "/",
     "display": "standalone",
     "orientation": "portrait",
-    "background_color": "#0d6efd",
-    "theme_color": "#0d6efd",
-
+    "background_color": "#212529",
+    "theme_color": "#212529",
     "icons": [
         {
             "src": "/static/assets/img/icon-192.png",

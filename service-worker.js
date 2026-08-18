@@ -1,67 +1,35 @@
-// =====================================================
-// SERVICE WORKER - PVD / BAR DO CELSO
-// =====================================================
+const CACHE_NAME = "bar-do-celso-v1";
 
-const CACHE_NAME = "bar-do-celso-v3";
+self.addEventListener("install", (event) => {
 
+    console.log("PWA: Service Worker instalado.");
 
-// =====================================================
-// INSTALAÇÃO
-// =====================================================
-
-self.addEventListener("install", function (event) {
-
-    console.log(
-        "PWA: Service Worker instalando..."
-    );
-
-    // Não bloquear a instalação
     self.skipWaiting();
 
 });
 
 
-// =====================================================
-// ATIVAÇÃO
-// =====================================================
+self.addEventListener("activate", (event) => {
 
-self.addEventListener("activate", function (event) {
-
-    console.log(
-        "PWA: Service Worker ativado."
-    );
-
+    console.log("PWA: Service Worker ativado.");
 
     event.waitUntil(
 
-        caches.keys().then(function (cacheNames) {
+        caches.keys().then((keys) => {
 
             return Promise.all(
 
-                cacheNames.map(function (cacheName) {
+                keys.map((key) => {
 
-                    if (
-                        cacheName !== CACHE_NAME
-                    ) {
-
-                        console.log(
-                            "PWA: removendo cache antigo:",
-                            cacheName
-                        );
-
-                        return caches.delete(
-                            cacheName
-                        );
-
+                    if (key !== CACHE_NAME) {
+                        return caches.delete(key);
                     }
-
-                    return null;
 
                 })
 
             );
 
-        }).then(function () {
+        }).then(() => {
 
             return self.clients.claim();
 
@@ -72,22 +40,15 @@ self.addEventListener("activate", function (event) {
 });
 
 
-// =====================================================
-// FETCH
-// =====================================================
-//
-// IMPORTANTE:
-//
-// Neste momento não vamos interceptar os pedidos.
-// O site será carregado diretamente do Render.
-//
-// Isso evita que o Service Worker impeça o APK
-// de abrir https://celso.onrender.com
-// =====================================================
+self.addEventListener("fetch", (event) => {
 
-self.addEventListener("fetch", function (event) {
-
-    // Não interferir no carregamento do site.
+    /*
+     * Nesta primeira versão não vamos
+     * interferir nos pedidos da aplicação.
+     *
+     * O site continuará a carregar
+     * diretamente do servidor.
+     */
 
     return;
 

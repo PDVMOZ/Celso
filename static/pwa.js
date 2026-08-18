@@ -1,59 +1,47 @@
-// =====================================================
-// PWA - BAR DO CELSO
-// =====================================================
-
 (function () {
 
     "use strict";
 
 
-    // =================================================
+    // =====================================================
     // SERVICE WORKER
-    // =================================================
+    // =====================================================
 
     if ("serviceWorker" in navigator) {
 
-        window.addEventListener(
-            "load",
-            function () {
+        window.addEventListener("load", function () {
 
-                navigator.serviceWorker
-                    .register(
-                        "/service-worker.js",
-                        {
-                            scope: "/"
-                        }
-                    )
-                    .then(
-                        function (registration) {
+            navigator.serviceWorker.register(
+                "/service-worker.js",
+                {
+                    scope: "/"
+                }
+            )
+            .then(function (registration) {
 
-                            console.log(
-                                "PWA: Service Worker registado.",
-                                registration.scope
-                            );
+                console.log(
+                    "PWA: Service Worker registado:",
+                    registration.scope
+                );
 
-                        }
-                    )
-                    .catch(
-                        function (error) {
+            })
+            .catch(function (error) {
 
-                            console.error(
-                                "PWA: erro ao registar Service Worker:",
-                                error
-                            );
+                console.error(
+                    "PWA: erro ao registar Service Worker:",
+                    error
+                );
 
-                        }
-                    );
+            });
 
-            }
-        );
+        });
 
     }
 
 
-    // =================================================
-    // INSTALAÇÃO DA PWA
-    // =================================================
+    // =====================================================
+    // INSTALAÇÃO
+    // =====================================================
 
     let eventoInstalacao = null;
 
@@ -66,21 +54,20 @@
 
             eventoInstalacao = event;
 
+            window.eventoInstalacaoPWA =
+                event;
+
             console.log(
                 "PWA: aplicação pronta para instalação."
             );
-
-
-            window.eventoInstalacaoPWA =
-                eventoInstalacao;
 
         }
     );
 
 
-    // =================================================
-    // FUNÇÃO PARA INSTALAR
-    // =================================================
+    // =====================================================
+    // FUNÇÃO DE INSTALAÇÃO
+    // =====================================================
 
     window.instalarPWA = async function () {
 
@@ -103,7 +90,7 @@
 
 
         console.log(
-            "Resultado instalação PWA:",
+            "PWA: resultado da instalação:",
             resultado.outcome
         );
 
@@ -116,16 +103,16 @@
     };
 
 
-    // =================================================
+    // =====================================================
     // DETECTAR INSTALAÇÃO
-    // =================================================
+    // =====================================================
 
     window.addEventListener(
         "appinstalled",
         function () {
 
             console.log(
-                "PWA: aplicação instalada com sucesso."
+                "PWA: aplicação instalada."
             );
 
             eventoInstalacao = null;
@@ -137,9 +124,9 @@
     );
 
 
-    // =================================================
-    // DETECTAR MODO PWA
-    // =================================================
+    // =====================================================
+    // DETECTAR MODO STANDALONE
+    // =====================================================
 
     function verificarModoPWA() {
 
@@ -164,7 +151,7 @@
 
 
             console.log(
-                "PWA: aplicação aberta em modo standalone."
+                "PWA: aberto em modo standalone."
             );
 
         }
