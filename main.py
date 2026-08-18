@@ -40,7 +40,15 @@ STATIC_DIR = BASE_DIR / "static"
 
 TEMPLATES_DIR = BASE_DIR / "templates"
 
+# Service Worker está na raiz do projeto
 SERVICE_WORKER_FILE = BASE_DIR / "service-worker.js"
+
+# Asset Links está dentro de static/.well-known/
+ASSETLINKS_FILE = (
+    STATIC_DIR
+    / ".well-known"
+    / "assetlinks.json"
+)
 
 
 # =====================================================
@@ -96,15 +104,19 @@ app.mount(
 # SERVICE WORKER
 # =====================================================
 #
-# O arquivo físico está na raiz:
+# Arquivo físico:
 #
 # service-worker.js
 #
-# Mas será disponibilizado pelo navegador em:
+# Localização:
 #
-# /service-worker.js
+# BASE_DIR / service-worker.js
 #
-# Isso permite que o Service Worker tenha scope "/".
+# URL pública:
+#
+# https://celso.onrender.com/service-worker.js
+#
+# O scope será "/".
 # =====================================================
 
 @app.get(
@@ -119,6 +131,34 @@ async def service_worker():
         headers={
             "Service-Worker-Allowed": "/"
         }
+    )
+
+
+# =====================================================
+# ANDROID DIGITAL ASSET LINKS
+# =====================================================
+#
+# Arquivo físico:
+#
+# static/.well-known/assetlinks.json
+#
+# URL pública:
+#
+# https://celso.onrender.com/.well-known/assetlinks.json
+#
+# Esta rota é necessária para a associação
+# entre o site e o APK Android/TWA.
+# =====================================================
+
+@app.get(
+    "/.well-known/assetlinks.json",
+    include_in_schema=False
+)
+async def assetlinks():
+
+    return FileResponse(
+        path=ASSETLINKS_FILE,
+        media_type="application/json"
     )
 
 
