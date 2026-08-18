@@ -1,12 +1,4 @@
 // =====================================================
-// PVD - SISTEMA DE VENDAS
-// APP.JS
-// =====================================================
-
-"use strict";
-
-
-// =====================================================
 // CONFIGURAÇÃO GLOBAL DA APLICAÇÃO
 // =====================================================
 
@@ -27,231 +19,172 @@ let usuarioLogado = null;
 
 
 // =====================================================
-// SERVICE WORKER
-// =====================================================
-//
-// IMPORTANTE:
-// O Service Worker é registado, mas não interfere
-// no carregamento inicial do dashboard.
+// FUNÇÕES AUXILIARES
 // =====================================================
 
-if ("serviceWorker" in navigator) {
+function obterElemento(id) {
+    return document.getElementById(id);
+}
 
-    window.addEventListener("load", function () {
 
-        navigator.serviceWorker
-            .register(
-                "/static/service-worker.js",
-                {
-                    scope: "/"
-                }
-            )
-            .then(function (registration) {
+function esconderElemento(id) {
+    const elemento = obterElemento(id);
 
-                console.log(
-                    "PWA: Service Worker registado:",
-                    registration.scope
-                );
+    if (elemento) {
+        elemento.style.display = "none";
+    }
+}
 
-            })
-            .catch(function (error) {
 
-                console.error(
-                    "PWA: erro no Service Worker:",
-                    error
-                );
+function mostrarElemento(id, display = "block") {
+    const elemento = obterElemento(id);
 
-            });
-
-    });
-
+    if (elemento) {
+        elemento.style.display = display;
+    }
 }
 
 
 // =====================================================
-// INSTALAÇÃO DA PWA
+// CARREGAR UTILIZADOR AO INICIAR SISTEMA
 // =====================================================
 
-let eventoInstalacao = null;
+document.addEventListener("DOMContentLoaded", function () {
+
+    console.log("PVD: Dashboard carregado.");
 
 
-window.addEventListener(
-    "beforeinstallprompt",
-    function (event) {
+    // -------------------------------------------------
+    // ESTADO INICIAL DOS MENUS
+    // -------------------------------------------------
 
-        event.preventDefault();
+    mostrarNovaVenda(false);
+    mostrarHistorico(false);
+    mostrarStock(false);
 
-        eventoInstalacao = event;
 
-        window.eventoInstalacaoPWA =
-            eventoInstalacao;
+    esconderElemento("menu-usuarios");
+    esconderElemento("menu-categorias");
+    esconderElemento("menu-produtos");
+    esconderElemento("menu-despesas");
+    esconderElemento("ver-detalhes-stock");
+
+
+    // -------------------------------------------------
+    // OBTER UTILIZADOR
+    // -------------------------------------------------
+
+    const usuarioSalvo =
+        localStorage.getItem("usuario");
+
+
+    if (usuarioSalvo) {
+
+        try {
+
+            usuarioLogado =
+                JSON.parse(usuarioSalvo);
+
+        } catch (erro) {
+
+            console.error(
+                "PVD: erro ao ler utilizador:",
+                erro
+            );
+
+            localStorage.removeItem("usuario");
+
+            usuarioLogado = null;
+
+        }
+
+    }
+
+
+    // -------------------------------------------------
+    // UTILIZADOR LOGADO
+    // -------------------------------------------------
+
+    if (usuarioLogado) {
 
         console.log(
-            "PWA: aplicação pronta para instalação."
+            "PVD: utilizador logado:",
+            usuarioLogado
         );
 
-    }
-);
 
+        // Carregar informações do utilizador
+        if (
+            typeof carregarUsuario === "function"
+        ) {
 
-// =====================================================
-// FUNÇÃO PARA INSTALAR A PWA
-// =====================================================
-
-window.instalarPWA = async function () {
-
-    if (!eventoInstalacao) {
-
-        alert(
-            "A instalação ainda não está disponível neste dispositivo."
-        );
-
-        return;
-
-    }
-
-
-    try {
-
-        eventoInstalacao.prompt();
-
-        const resultado =
-            await eventoInstalacao.userChoice;
-
-        console.log(
-            "Resultado da instalação:",
-            resultado.outcome
-        );
-
-    }
-    catch (error) {
-
-        console.error(
-            "PWA: erro durante instalação:",
-            error
-        );
-
-    }
-
-
-    eventoInstalacao = null;
-
-    window.eventoInstalacaoPWA = null;
-
-};
-
-
-// =====================================================
-// DETECTAR INSTALAÇÃO
-// =====================================================
-
-window.addEventListener(
-    "appinstalled",
-    function () {
-
-        console.log(
-            "PWA: aplicação instalada com sucesso."
-        );
-
-        eventoInstalacao = null;
-
-        window.eventoInstalacaoPWA = null;
-
-    }
-);
-
-
-// =====================================================
-// DETECTAR MODO PWA
-// =====================================================
-
-function verificarModoPWA() {
-
-    const standalone =
-        window.matchMedia(
-            "(display-mode: standalone)"
-        ).matches;
-
-
-    const iosStandalone =
-        window.navigator.standalone === true;
-
-
-    if (
-        standalone ||
-        iosStandalone
-    ) {
-
-        if (document.body) {
-
-            document.body.classList.add(
-                "pwa-standalone"
+            carregarUsuario(
+                usuarioLogado
             );
 
         }
 
 
-        console.log(
-            "PWA: aplicação aberta em modo standalone."
+        // -------------------------------------------------
+        // NOVA VENDA
+        // -------------------------------------------------
+
+        if (
+            usuarioLogado.tipo === "admin" ||
+            usuarioLogado.tipo === "vendedor"
+        ) {
+
+            mostrarNovaVenda(true);
+
+        } else {
+
+            mostrarNovaVenda(false);
+
+        }
+
+
+        // -------------------------------------------------
+        // DESPESAS
+        // -------------------------------------------------
+
+        mostrarElemento(
+            "menu-despesas",
+            "block"
         );
 
-    }
 
-}
+        // -------------------------------------------------
+        // BOTÃO LOGIN
+        // -------------------------------------------------
 
+        const botaoLogin =
+            obterElemento("login-button");
 
-// =====================================================
-// FUNÇÃO AUXILIAR - ELEMENTO
-// =====================================================
-
-function obterElemento(id) {
-
-    return document.getElementById(id);
-
-}
+        if (botaoLogin) {
+            botaoLogin.style.display = "none";
+        }
 
 
-// =====================================================
-// FUNÇÃO AUXILIAR - ESCONDER
-// =====================================================
+    } else {
 
-function esconderElemento(id) {
+        // -------------------------------------------------
+        // SEM LOGIN
+        // -------------------------------------------------
 
-    const elemento =
-        obterElemento(id);
-
-
-    if (elemento) {
-
-        elemento.style.display =
-            "none";
+        prepararDashboardVisitante();
 
     }
 
-}
 
+    // -------------------------------------------------
+    // DETALHES DO STOCK
+    // -------------------------------------------------
 
-// =====================================================
-// FUNÇÃO AUXILIAR - MOSTRAR
-// =====================================================
+    esconderElemento(
+        "ver-detalhes-stock"
+    );
 
-function mostrarElemento(
-    id,
-    display = "block"
-) {
-
-    const elemento =
-        obterElemento(id);
-
-
-    if (elemento) {
-
-        elemento.style.display =
-            display;
-
-    }
-
-}
+});
 
 
 // =====================================================
@@ -264,59 +197,19 @@ function prepararDashboardVisitante() {
 
 
     // -------------------------------------------------
-    // MENUS
+    // ESCONDER MENUS
     // -------------------------------------------------
 
-    esconderElemento(
-        "menu-usuarios"
-    );
-
-    esconderElemento(
-        "menu-categorias"
-    );
-
-    esconderElemento(
-        "menu-produtos"
-    );
-
-    esconderElemento(
-        "menu-despesas"
-    );
-
-    esconderElemento(
-        "ver-detalhes-stock"
-    );
+    esconderElemento("menu-usuarios");
+    esconderElemento("menu-categorias");
+    esconderElemento("menu-produtos");
+    esconderElemento("menu-despesas");
+    esconderElemento("ver-detalhes-stock");
 
 
-    // -------------------------------------------------
-    // FUNCIONALIDADES
-    // -------------------------------------------------
-
-    if (
-        typeof mostrarNovaVenda === "function"
-    ) {
-
-        mostrarNovaVenda(false);
-
-    }
-
-
-    if (
-        typeof mostrarHistorico === "function"
-    ) {
-
-        mostrarHistorico(false);
-
-    }
-
-
-    if (
-        typeof mostrarStock === "function"
-    ) {
-
-        mostrarStock(false);
-
-    }
+    mostrarNovaVenda(false);
+    mostrarHistorico(false);
+    mostrarStock(false);
 
 
     // -------------------------------------------------
@@ -324,10 +217,7 @@ function prepararDashboardVisitante() {
     // -------------------------------------------------
 
     const vendas =
-        obterElemento(
-            "vendas-dia"
-        );
-
+        obterElemento("vendas-dia");
 
     if (vendas) {
 
@@ -368,10 +258,7 @@ function prepararDashboardVisitante() {
     // -------------------------------------------------
 
     const lucro =
-        obterElemento(
-            "lucro-hoje"
-        );
-
+        obterElemento("lucro-hoje");
 
     if (lucro) {
 
@@ -386,10 +273,7 @@ function prepararDashboardVisitante() {
     // -------------------------------------------------
 
     const despesas =
-        obterElemento(
-            "despesas-hoje"
-        );
-
+        obterElemento("despesas-hoje");
 
     if (despesas) {
 
@@ -404,10 +288,7 @@ function prepararDashboardVisitante() {
     // -------------------------------------------------
 
     const totalStock =
-        obterElemento(
-            "total-stock"
-        );
-
+        obterElemento("total-stock");
 
     if (totalStock) {
 
@@ -422,10 +303,7 @@ function prepararDashboardVisitante() {
     // -------------------------------------------------
 
     const produtosNovos =
-        obterElemento(
-            "produtos-novos"
-        );
-
+        obterElemento("produtos-novos");
 
     if (produtosNovos) {
 
@@ -440,10 +318,7 @@ function prepararDashboardVisitante() {
     // -------------------------------------------------
 
     const baixoStock =
-        obterElemento(
-            "baixo-stock"
-        );
-
+        obterElemento("baixo-stock");
 
     if (baixoStock) {
 
@@ -475,9 +350,7 @@ function prepararDashboardVisitante() {
     // -------------------------------------------------
 
     const botaoLogin =
-        obterElemento(
-            "login-button"
-        );
+        obterElemento("login-button");
 
 
     if (botaoLogin) {
@@ -495,167 +368,13 @@ function prepararDashboardVisitante() {
 
 
 // =====================================================
-// CARREGAR UTILIZADOR
-// =====================================================
-
-function carregarUtilizadorSalvo() {
-
-    const usuarioSalvo =
-        localStorage.getItem(
-            "usuario"
-        );
-
-
-    if (!usuarioSalvo) {
-
-        prepararDashboardVisitante();
-
-        return;
-
-    }
-
-
-    try {
-
-        usuarioLogado =
-            JSON.parse(
-                usuarioSalvo
-            );
-
-    }
-    catch (erro) {
-
-        console.error(
-            "PVD: erro ao ler utilizador:",
-            erro
-        );
-
-
-        localStorage.removeItem(
-            "usuario"
-        );
-
-
-        prepararDashboardVisitante();
-
-        return;
-
-    }
-
-
-    if (!usuarioLogado) {
-
-        prepararDashboardVisitante();
-
-        return;
-
-    }
-
-
-    console.log(
-        "PVD: utilizador logado:",
-        usuarioLogado
-    );
-
-
-    // -------------------------------------------------
-    // CARREGAR UTILIZADOR NO PERFIL
-    // -------------------------------------------------
-
-    if (
-        typeof carregarUsuario === "function"
-    ) {
-
-        try {
-
-            carregarUsuario(
-                usuarioLogado
-            );
-
-        }
-        catch (erro) {
-
-            console.error(
-                "PVD: erro ao carregar perfil:",
-                erro
-            );
-
-        }
-
-    }
-
-
-    // -------------------------------------------------
-    // NOVA VENDA
-    // -------------------------------------------------
-
-    if (
-        usuarioLogado.tipo === "admin" ||
-        usuarioLogado.tipo === "vendedor"
-    ) {
-
-        if (
-            typeof mostrarNovaVenda === "function"
-        ) {
-
-            mostrarNovaVenda(true);
-
-        }
-
-    }
-    else {
-
-        if (
-            typeof mostrarNovaVenda === "function"
-        ) {
-
-            mostrarNovaVenda(false);
-
-        }
-
-    }
-
-
-    // -------------------------------------------------
-    // DESPESAS
-    // -------------------------------------------------
-
-    mostrarElemento(
-        "menu-despesas",
-        "block"
-    );
-
-
-    // -------------------------------------------------
-    // BOTÃO LOGIN
-    // -------------------------------------------------
-
-    const botaoLogin =
-        obterElemento(
-            "login-button"
-        );
-
-
-    if (botaoLogin) {
-
-        botaoLogin.style.display =
-            "none";
-
-    }
-
-}
-
-
-// =====================================================
-// ABRIR LOGIN
+// LOGIN
 // =====================================================
 
 function abrirLogin() {
 
     const loginScreen =
-        obterElemento(
-            "login-screen"
-        );
+        obterElemento("login-screen");
 
 
     if (loginScreen) {
@@ -675,9 +394,7 @@ function abrirLogin() {
 function fecharLogin() {
 
     const loginScreen =
-        obterElemento(
-            "login-screen"
-        );
+        obterElemento("login-screen");
 
 
     if (loginScreen) {
@@ -697,12 +414,12 @@ function fecharLogin() {
 function logout() {
 
     console.log(
-        "PVD: terminando sessão..."
+        "PVD: a terminar sessão..."
     );
 
 
     // -------------------------------------------------
-    // LIMPAR SESSÃO
+    // LIMPAR UTILIZADOR
     // -------------------------------------------------
 
     localStorage.removeItem(
@@ -722,7 +439,7 @@ function logout() {
 
 
     // -------------------------------------------------
-    // MENUS
+    // ESCONDER MENUS
     // -------------------------------------------------
 
     esconderElemento(
@@ -747,34 +464,12 @@ function logout() {
 
 
     // -------------------------------------------------
-    // FUNCIONALIDADES
+    // ESCONDER FUNCIONALIDADES
     // -------------------------------------------------
 
-    if (
-        typeof mostrarNovaVenda === "function"
-    ) {
-
-        mostrarNovaVenda(false);
-
-    }
-
-
-    if (
-        typeof mostrarHistorico === "function"
-    ) {
-
-        mostrarHistorico(false);
-
-    }
-
-
-    if (
-        typeof mostrarStock === "function"
-    ) {
-
-        mostrarStock(false);
-
-    }
+    mostrarNovaVenda(false);
+    mostrarHistorico(false);
+    mostrarStock(false);
 
 
     // -------------------------------------------------
@@ -782,9 +477,7 @@ function logout() {
     // -------------------------------------------------
 
     const user =
-        obterElemento(
-            "user-name"
-        );
+        obterElemento("user-name");
 
 
     if (user) {
@@ -832,9 +525,7 @@ function logout() {
     // -------------------------------------------------
 
     const vendas =
-        obterElemento(
-            "vendas-dia"
-        );
+        obterElemento("vendas-dia");
 
 
     if (vendas) {
@@ -850,9 +541,7 @@ function logout() {
     // -------------------------------------------------
 
     const lucro =
-        obterElemento(
-            "lucro-hoje"
-        );
+        obterElemento("lucro-hoje");
 
 
     if (lucro) {
@@ -868,9 +557,7 @@ function logout() {
     // -------------------------------------------------
 
     const despesas =
-        obterElemento(
-            "despesas-hoje"
-        );
+        obterElemento("despesas-hoje");
 
 
     if (despesas) {
@@ -882,13 +569,11 @@ function logout() {
 
 
     // -------------------------------------------------
-    // STOCK
+    // TOTAL STOCK
     // -------------------------------------------------
 
     const totalStock =
-        obterElemento(
-            "total-stock"
-        );
+        obterElemento("total-stock");
 
 
     if (totalStock) {
@@ -904,9 +589,7 @@ function logout() {
     // -------------------------------------------------
 
     const produtosNovos =
-        obterElemento(
-            "produtos-novos"
-        );
+        obterElemento("produtos-novos");
 
 
     if (produtosNovos) {
@@ -922,9 +605,7 @@ function logout() {
     // -------------------------------------------------
 
     const baixoStock =
-        obterElemento(
-            "baixo-stock"
-        );
+        obterElemento("baixo-stock");
 
 
     if (baixoStock) {
@@ -957,9 +638,7 @@ function logout() {
     // -------------------------------------------------
 
     const botaoLogin =
-        obterElemento(
-            "login-button"
-        );
+        obterElemento("login-button");
 
 
     if (botaoLogin) {
@@ -975,7 +654,7 @@ function logout() {
 
 
     // -------------------------------------------------
-    // FECHAR LOGIN
+    // FECHAR JANELA DE LOGIN
     // -------------------------------------------------
 
     fecharLogin();
@@ -984,98 +663,5 @@ function logout() {
     console.log(
         "PVD: sessão terminada."
     );
-
-}
-
-
-// =====================================================
-// INICIALIZAÇÃO
-// =====================================================
-
-function iniciarAplicacao() {
-
-    console.log(
-        "PVD: iniciando aplicação..."
-    );
-
-
-    // -------------------------------------------------
-    // MODO PWA
-    // -------------------------------------------------
-
-    verificarModoPWA();
-
-
-    // -------------------------------------------------
-    // ESTADO INICIAL
-    // -------------------------------------------------
-
-    if (
-        typeof mostrarNovaVenda === "function"
-    ) {
-
-        mostrarNovaVenda(false);
-
-    }
-
-
-    if (
-        typeof mostrarHistorico === "function"
-    ) {
-
-        mostrarHistorico(false);
-
-    }
-
-
-    if (
-        typeof mostrarStock === "function"
-    ) {
-
-        mostrarStock(false);
-
-    }
-
-
-    // -------------------------------------------------
-    // CARREGAR UTILIZADOR
-    // -------------------------------------------------
-
-    carregarUtilizadorSalvo();
-
-
-    // -------------------------------------------------
-    // DETALHES STOCK
-    // -------------------------------------------------
-
-    esconderElemento(
-        "ver-detalhes-stock"
-    );
-
-
-    console.log(
-        "PVD: aplicação iniciada."
-    );
-
-}
-
-
-// =====================================================
-// DOM READY
-// =====================================================
-
-if (
-    document.readyState === "loading"
-) {
-
-    document.addEventListener(
-        "DOMContentLoaded",
-        iniciarAplicacao
-    );
-
-}
-else {
-
-    iniciarAplicacao();
 
 }
