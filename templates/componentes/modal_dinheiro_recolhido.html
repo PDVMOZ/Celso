@@ -6,56 +6,144 @@
     id="modal-detalhes-dinheiro-recolhido"
     style="
         display:none;
+
         position:fixed;
         inset:0;
+
         background:rgba(0,0,0,0.5);
+
         z-index:9999;
+
         align-items:center;
         justify-content:center;
+
+        padding:10px;
+
+        box-sizing:border-box;
     "
 >
+
+    <!-- ===================================== -->
+    <!-- CAIXA PRINCIPAL -->
+    <!-- ===================================== -->
 
     <div
         style="
             background:white;
-            width:90%;
+
+            width:100%;
             max-width:500px;
+
+            max-height:95vh;
+
             border-radius:10px;
+
             padding:20px;
+
+            box-sizing:border-box;
+
+            display:flex;
+            flex-direction:column;
+
+            overflow:hidden;
+
+            box-shadow:
+                0 10px 30px
+                rgba(0,0,0,0.25);
         "
     >
 
+        <!-- ===================================== -->
         <!-- CABEÇALHO -->
+        <!-- FICA SEMPRE VISÍVEL -->
+        <!-- ===================================== -->
 
         <div
             style="
+                flex-shrink:0;
+
                 display:flex;
+
                 justify-content:space-between;
+
                 align-items:center;
+
+                gap:10px;
+
+                width:100%;
             "
         >
 
-            <h4 style="margin:0;">
+            <!-- ===================================== -->
+            <!-- TÍTULO -->
+            <!-- ===================================== -->
+
+            <h4
+                style="
+                    margin:0;
+
+                    flex:1;
+
+                    min-width:0;
+
+                    font-size:20px;
+
+                    line-height:1.3;
+                "
+            >
 
                 Dinheiro recolhido
 
             </h4>
 
 
-            <!-- X -->
+            <!-- ===================================== -->
+            <!-- BOTÃO X -->
+            <!-- ===================================== -->
 
             <button
                 type="button"
-                onclick="fecharDetalhesDinheiroRecolhido()"
-                style="
-                    border:none;
-                    background:none;
-                    color:#dc3545;
-                    font-size:28px;
-                    font-weight:bold;
-                    cursor:pointer;
-                    line-height:1;
+
+                onclick="
+                    fecharDetalhesDinheiroRecolhido()
                 "
+
+                style="
+                    flex-shrink:0;
+
+                    border:none;
+
+                    background:none;
+
+                    color:#dc3545;
+
+                    font-size:32px;
+
+                    font-weight:bold;
+
+                    cursor:pointer;
+
+                    line-height:1;
+
+                    padding:0 5px;
+
+                    width:42px;
+
+                    height:42px;
+
+                    min-width:42px;
+
+                    min-height:42px;
+
+                    display:flex;
+
+                    align-items:center;
+
+                    justify-content:center;
+
+                    border-radius:5px;
+                "
+
                 title="Fechar"
             >
 
@@ -66,44 +154,141 @@
         </div>
 
 
-        <hr>
+        <!-- ===================================== -->
+        <!-- LINHA -->
+        <!-- ===================================== -->
 
-
-        <!-- LISTA -->
-
-        <div id="lista-dinheiro-recolhido-gerentes">
-
-            <div class="text-center text-muted">
-
-                Carregando...
-
-            </div>
-
-        </div>
-
-
-        <hr>
-
-
-        <!-- TOTAL -->
-
-        <div
+        <hr
             style="
-                display:flex;
-                justify-content:space-between;
-                align-items:center;
-                font-weight:bold;
-                font-size:18px;
+                flex-shrink:0;
+
+                width:100%;
+
+                margin-top:12px;
+
+                margin-bottom:12px;
             "
         >
 
-            <span>
-                TOTAL
-            </span>
 
-            <span id="total-detalhes-recolhido">
-                0.00 MT
-            </span>
+        <!-- ===================================== -->
+        <!-- ÁREA COM SCROLL -->
+        <!-- VERTICAL + HORIZONTAL -->
+        <!-- ===================================== -->
+
+        <div
+            style="
+                flex:1;
+
+                min-height:0;
+
+                min-width:0;
+
+                width:100%;
+
+                overflow-y:auto;
+
+                overflow-x:auto;
+
+                -webkit-overflow-scrolling:touch;
+
+                overscroll-behavior:contain;
+
+                box-sizing:border-box;
+
+                padding-right:5px;
+            "
+        >
+
+            <!-- ===================================== -->
+            <!-- LISTA -->
+            <!-- ===================================== -->
+
+            <div
+                id="lista-dinheiro-recolhido-gerentes"
+
+                style="
+                    min-width:100%;
+
+                    box-sizing:border-box;
+                "
+            >
+
+                <div
+                    class="text-center text-muted"
+                >
+
+                    Carregando...
+
+                </div>
+
+            </div>
+
+
+            <!-- ===================================== -->
+            <!-- LINHA -->
+            <!-- ===================================== -->
+
+            <hr
+                style="
+                    margin-top:15px;
+
+                    margin-bottom:15px;
+                "
+            >
+
+
+            <!-- ===================================== -->
+            <!-- TOTAL -->
+            <!-- ===================================== -->
+
+            <div
+                style="
+                    display:flex;
+
+                    justify-content:space-between;
+
+                    align-items:center;
+
+                    gap:20px;
+
+                    font-weight:bold;
+
+                    font-size:18px;
+
+                    min-width:300px;
+
+                    padding-bottom:5px;
+                "
+            >
+
+                <!-- TOTAL -->
+
+                <span>
+
+                    TOTAL
+
+                </span>
+
+
+                <!-- VALOR TOTAL -->
+
+                <span
+                    id="total-detalhes-recolhido"
+
+                    style="
+                        white-space:nowrap;
+
+                        color:#198754;
+                    "
+                >
+
+                    0.00 MT
+
+                </span>
+
+            </div>
+
 
         </div>
 
