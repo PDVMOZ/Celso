@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "com.onrender.celso.twa",
-        "sha256_cert_fingerprints": ["A2:A6:F4:12:20:56:E3:19:F7:C7:03:BB:5B:26:BE:87:EF:B1:01:1A:6E:E3:48:3D:54:75:8D:99:E0:5A:E6:EF"]
+        "sha256_cert_fingerprints": ["AD:CD:E8:E5:54:BE:6E:BC:BB:D5:00:04:E0:BD:93:05:C6:36:DF:B6:42:A0:2B:CA:AE:8F:98:8B:FA:CA:2E:5E"]
       }
     }]
