@@ -1,8 +1,0 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "com.onrender.celso.twa",
-        "sha256_cert_fingerprints": ["2B:4D:56:DD:20:06:DA:53:3A:9D:64:0C:10:FA:4A:85:D2:73:7F:BF:1E:9A:EF:FB:B0:03:6B:AB:C2:94:48:94"]
-      }
-    }]
