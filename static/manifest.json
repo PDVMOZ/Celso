@@ -3,13 +3,10 @@
     "short_name": "PVD",
     "description": "Plataforma de vendas e gestão de stock",
     "lang": "pt",
-
     "start_url": "/dashboard",
     "scope": "/",
-
     "display": "standalone",
     "orientation": "portrait",
-
     "background_color": "#0d6efd",
     "theme_color": "#0d6efd",
 
