@@ -3,7 +3,7 @@
     "short_name": "PVD",
     "description": "Plataforma de vendas e gestão de stock",
     "lang": "pt",
-    "start_url": "/dashboard",
+    "start_url": "/",
     "scope": "/",
     "display": "standalone",
     "orientation": "portrait",
