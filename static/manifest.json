@@ -1,7 +1,7 @@
 {
-    "name": "Bar do Celso - Sistema de Gestão",
+    "name": "Bar do Celso",
     "short_name": "Bar do Celso",
-    "description": "Sistema de vendas, stock e gestão do Bar do Celso",
+    "description": "Sistema de vendas e gestão de stock",
     "lang": "pt",
     "start_url": "/",
     "scope": "/",
