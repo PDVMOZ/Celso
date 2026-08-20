@@ -869,13 +869,6 @@ async function abrirDetalhesDinheiroRecolhido(){
 
 
 // ============================================================
-// ============================================================
-// LUCRO DE SAQUE
-// ============================================================
-// ============================================================
-
-
-// ============================================================
 // CRIAR ÁREA DO LUCRO DE SAQUE
 // ============================================================
 
@@ -936,7 +929,7 @@ function criarAreaLucroSaqueNoModal(modal){
 
             <span>
 
-                Dinheiro disponível para levantamento.
+                Lucros disponível para levantamento.
 
             </span>
 

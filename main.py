@@ -26,7 +26,8 @@ from routers import (
     despesa_fora_caixa,
     relatorios,
     lucros,
-    configuracao
+    configuracao,
+    investimentos
 )
 
 
@@ -307,4 +308,7 @@ app.include_router(
 
 app.include_router(
     configuracao.router
+)
+app.include_router(
+    investimentos.router
 )
