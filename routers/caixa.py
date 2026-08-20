@@ -2001,6 +2001,7 @@ async def dinheiro_recolhido_gerentes(
     )
 
     if not usuario_logado:
+
         raise HTTPException(
             status_code=404,
             detail="Usuário não encontrado"
@@ -2016,6 +2017,7 @@ async def dinheiro_recolhido_gerentes(
         "admin",
         "administrador"
     ]:
+
         raise HTTPException(
             status_code=403,
             detail="Somente admin pode acessar"
@@ -2070,8 +2072,6 @@ async def dinheiro_recolhido_gerentes(
     # =====================================================
     # FUNÇÃO AUXILIAR
     # CALCULAR SALDO DISPONÍVEL DO GERENTE
-    #
-    # NÃO ALTERAR A LÓGICA EXISTENTE
     # =====================================================
 
     async def calcular_gerente(
@@ -2155,8 +2155,6 @@ async def dinheiro_recolhido_gerentes(
 
         # =================================================
         # QUANTO O GERENTE JÁ ENTREGOU AO ADMIN
-        #
-        # RECOLHA_GERENTE CONTINUA IGUAL
         # =================================================
 
         marcador_gerente = (
@@ -2203,14 +2201,12 @@ async def dinheiro_recolhido_gerentes(
         # =================================================
 
         disponivel = (
-
             recolhido
             - despesas
             - entregue
-
         )
 
-        if disponivel < 0:
+        if disponivel < Decimal("0.00"):
 
             disponivel = Decimal(
                 "0.00"
@@ -2254,6 +2250,10 @@ async def dinheiro_recolhido_gerentes(
         "0.00"
     )
 
+    admin_investimentos = Decimal(
+        "0.00"
+    )
+
 
     # =====================================================
     # CALCULAR MOVIMENTOS DOS ADMINS
@@ -2263,12 +2263,6 @@ async def dinheiro_recolhido_gerentes(
 
         # =================================================
         # RECOLHAS NORMAIS FEITAS PELO ADMIN
-        #
-        # ADMIN -> VENDEDORES
-        #
-        # TIPO = RECOLHA
-        #
-        # ISSO AUMENTA O DINHEIRO RECOLHIDO
         # =================================================
 
         resultado = await db.execute(
@@ -2305,16 +2299,7 @@ async def dinheiro_recolhido_gerentes(
 
 
         # =================================================
-        # RETIRADAS DA PRÓPRIA CAIXA DO ADMIN
-        #
-        # NÃO É RECOLHA_GERENTE
-        #
-        # É RETIRADA.
-        #
-        # O ADMIN ESTÁ TIRANDO DINHEIRO DA PRÓPRIA
-        # CAIXA DE VENDAS.
-        #
-        # ESSE VALOR AUMENTA O DINHEIRO RECOLHIDO
+        # RETIRADAS DO ADMIN
         # =================================================
 
         resultado = await db.execute(
@@ -2352,8 +2337,6 @@ async def dinheiro_recolhido_gerentes(
 
         # =================================================
         # DESPESAS DO ADMIN
-        #
-        # DESPESA DIMINUI O DINHEIRO DISPONÍVEL
         # =================================================
 
         resultado = await db.execute(
@@ -2389,11 +2372,58 @@ async def dinheiro_recolhido_gerentes(
         )
 
 
+        # =================================================
+        # INVESTIMENTOS DO ADMIN
+        #
+        # IMPORTANTE:
+        #
+        # Todo investimento criado em
+        # investimentos.py gera:
+        #
+        # MovimentoCaixa.tipo = "INVESTIMENTO"
+        #
+        # Portanto esse dinheiro deve sair
+        # do total disponível do Admin.
+        # =================================================
+
+        resultado = await db.execute(
+
+            select(
+                func.coalesce(
+                    func.sum(
+                        MovimentoCaixa.valor
+                    ),
+                    0
+                )
+            )
+
+            .where(
+                MovimentoCaixa.responsavel_id
+                == admin.id
+            )
+
+            .where(
+                MovimentoCaixa.tipo
+                == "INVESTIMENTO"
+            )
+
+        )
+
+        valor = (
+            resultado.scalar()
+            or Decimal("0.00")
+        )
+
+        admin_investimentos += Decimal(
+            str(valor)
+        )
+
+
     # =====================================================
     # DINHEIRO RECEBIDO DOS GERENTES
     #
-    # RECOLHA_GERENTE É USADO PARA
-    # TRANSFERÊNCIA GERENTE -> ADMIN.
+    # RECOLHA_GERENTE:
+    # GERENTE -> ADMIN
     # =====================================================
 
     resultado = await db.execute(
@@ -2436,24 +2466,7 @@ async def dinheiro_recolhido_gerentes(
 
 
     # =====================================================
-    # LUCROS JÁ LEVANTADOS
-    #
-    # IMPORTANTE:
-    #
-    # O LEVANTAMENTO DOS LUCROS NÃO CONTROLA A CAIXA
-    # DO ADMIN.
-    #
-    # ELE ACONTECE DEPOIS QUE O ADMIN JÁ TEM
-    # O DINHEIRO TOTAL.
-    #
-    # POR ISSO SOMENTE DESCONTAMOS AQUI O QUE
-    # JÁ FOI EFETIVAMENTE SACADO.
-    #
-    # NÃO USAMOS valor_enviado.
-    #
-    # USAMOS SOMENTE:
-    #
-    # LucroSaque.valor_sacado
+    # LUCROS JÁ SACADOS
     # =====================================================
 
     resultado = await db.execute(
@@ -2487,15 +2500,17 @@ async def dinheiro_recolhido_gerentes(
     # =====================================================
     # DISPONÍVEL DO ADMIN
     #
-    # RECOLHA
+    # RECOLHIDO
     #     +
-    # RETIRADA
+    # RETIRADO
+    #     +
+    # RECEBIDO DOS GERENTES
     #     -
     # DESPESAS
-    #     +
-    # RECOLHA_GERENTE
     #     -
-    # LUCROS JÁ SACADOS
+    # LUCROS SACADOS
+    #     -
+    # INVESTIMENTOS
     # =====================================================
 
     total_admin = (
@@ -2504,16 +2519,18 @@ async def dinheiro_recolhido_gerentes(
 
         + admin_retirado
 
-        - admin_despesas
-
         + admin_recebido_gerentes
 
+        - admin_despesas
+
         - admin_lucros_sacados
+
+        - admin_investimentos
 
     )
 
 
-    if total_admin < 0:
+    if total_admin < Decimal("0.00"):
 
         total_admin = Decimal(
             "0.00"
@@ -2575,13 +2592,6 @@ async def dinheiro_recolhido_gerentes(
 
     # =====================================================
     # TOTAL GERAL
-    #
-    # ADMIN
-    # +
-    # GERENTES
-    #
-    # O TOTAL DO ADMIN JÁ TEM O DESCONTO DOS
-    # LUCROS SACADOS.
     # =====================================================
 
     total_geral = (
@@ -2592,7 +2602,7 @@ async def dinheiro_recolhido_gerentes(
     )
 
 
-    if total_geral < 0:
+    if total_geral < Decimal("0.00"):
 
         total_geral = Decimal(
             "0.00"
@@ -2637,6 +2647,11 @@ async def dinheiro_recolhido_gerentes(
     )
 
     print(
+        "ADMIN INVESTIMENTOS:",
+        admin_investimentos
+    )
+
+    print(
         "ADMIN DISPONÍVEL:",
         total_admin
     )
@@ -2652,7 +2667,8 @@ async def dinheiro_recolhido_gerentes(
     )
 
     print(
-        "=====================================")
+        "====================================="
+    )
 
 
     # =====================================================
@@ -2692,6 +2708,11 @@ async def dinheiro_recolhido_gerentes(
             "lucros_sacados":
                 float(
                     admin_lucros_sacados
+                ),
+
+            "investimentos":
+                float(
+                    admin_investimentos
                 ),
 
             "total":

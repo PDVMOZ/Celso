@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Numeric, DateTime, ForeignKey
 from sqlalchemy.sql import func
-
+from models.levantamento import Levantamento
 from database import Base
 
 

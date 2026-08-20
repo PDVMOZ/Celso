@@ -35,9 +35,11 @@ async def calcular_saldo_caixa(
             "despesas": Decimal("0.00"),
             "retirado": Decimal("0.00"),
             "saldo_recolhido": Decimal("0.00"),
-            "saldo_caixa": Decimal("0.00")
+            "saldo_caixa": Decimal("0.00"),
+            "investimentos": Decimal("0.00"),
+            "lucro_saque_disponivel": Decimal("0.00"),
+            "disponivel_investimento": Decimal("0.00")
         }
-
 
     # =====================================
     # SOMAR VENDAS
@@ -47,7 +49,9 @@ async def calcular_saldo_caixa(
 
         select(
             func.coalesce(
-                func.sum(Venda.total),
+                func.sum(
+                    Venda.total
+                ),
                 0
             )
         )
@@ -63,17 +67,8 @@ async def calcular_saldo_caixa(
         )
     )
 
-
     # =====================================
     # SOMAR DESPESAS NORMAIS
-    #
-    # Somente despesas com
-    # valor_aprovado preenchido entram
-    # aqui.
-    #
-    # Despesas pagas com dinheiro
-    # recolhido ficam com
-    # valor_aprovado NULL.
     # =====================================
 
     resultado = await db.execute(
@@ -100,14 +95,15 @@ async def calcular_saldo_caixa(
         )
     )
 
-
     # =====================================
     # VENDEDOR
-    #
-    # A saída da caixa é RECOLHA.
     # =====================================
 
     if usuario.tipo == "vendedor":
+
+        # =================================
+        # RECOLHAS FEITAS PELO VENDEDOR
+        # =================================
 
         resultado = await db.execute(
 
@@ -137,12 +133,18 @@ async def calcular_saldo_caixa(
 
         saldo_recolhido = Decimal("0.00")
 
+        # =================================
+        # SALDO DO VENDEDOR
+        # =================================
+
         saldo_caixa = (
             vendas
             - despesas
             - retirado
         )
 
+        if saldo_caixa < Decimal("0.00"):
+            saldo_caixa = Decimal("0.00")
 
         return {
 
@@ -156,16 +158,24 @@ async def calcular_saldo_caixa(
                 saldo_recolhido,
 
             "saldo_caixa":
-                saldo_caixa
+                saldo_caixa,
 
+            "investimentos":
+                Decimal("0.00"),
+
+            "lucro_saque_disponivel":
+                Decimal("0.00"),
+
+            "disponivel_investimento":
+                Decimal("0.00")
         }
-
 
     # =====================================
     # ADMIN / GERENTE
-    #
-    # Aqui existe dinheiro recebido
-    # através das recolhas dos vendedores.
+    # =====================================
+
+    # =====================================
+    # RECOLHIMENTOS RECEBIDOS
     # =====================================
 
     resultado = await db.execute(
@@ -194,10 +204,8 @@ async def calcular_saldo_caixa(
         )
     )
 
-
     # =====================================
-    # DESPESAS PAGAS COM DINHEIRO
-    # RECOLHIDO
+    # DESPESAS PAGAS COM RECOLHIMENTO
     # =====================================
 
     resultado = await db.execute(
@@ -225,7 +233,6 @@ async def calcular_saldo_caixa(
             resultado.scalar() or 0
         )
     )
-
 
     # =====================================
     # RETIRADAS DO ADMIN / GERENTE
@@ -257,10 +264,8 @@ async def calcular_saldo_caixa(
         )
     )
 
-
     # =====================================
-    # SALDO DISPONÍVEL DO DINHEIRO
-    # RECOLHIDO
+    # SALDO DO DINHEIRO RECOLHIDO
     # =====================================
 
     saldo_recolhido = (
@@ -269,17 +274,59 @@ async def calcular_saldo_caixa(
         - retirado
     )
 
+    if saldo_recolhido < Decimal("0.00"):
 
-    if saldo_recolhido < 0:
-
-        saldo_recolhido = Decimal("0.00")
-
+        saldo_recolhido = Decimal(
+            "0.00"
+        )
 
     # =====================================
-    # SALDO FINAL ANTES DOS LUCROS SACADOS
+    # INVESTIMENTOS JÁ REALIZADOS
     #
-    # Mantemos exatamente a lógica
-    # que já existia.
+    # IMPORTANTE:
+    #
+    # O investimento é contabilizado
+    # separadamente.
+    #
+    # ELE NÃO DEVE SER SUBTRAÍDO
+    # DO SALDO DA CAIXA.
+    # =====================================
+
+    resultado = await db.execute(
+
+        select(
+            func.coalesce(
+                func.sum(
+                    MovimentoCaixa.valor
+                ),
+                0
+            )
+        )
+        .join(
+            Caixa
+        )
+        .where(
+            Caixa.usuario_id == usuario_id,
+            MovimentoCaixa.tipo == "INVESTIMENTO"
+        )
+
+    )
+
+    investimentos = Decimal(
+        str(
+            resultado.scalar() or 0
+        )
+    )
+
+    # =====================================
+    # SALDO DA CAIXA
+    #
+    # IMPORTANTE:
+    #
+    # INVESTIMENTO NÃO ENTRA AQUI.
+    #
+    # O investimento NÃO diminui
+    # o saldo da caixa.
     # =====================================
 
     saldo_caixa = (
@@ -290,32 +337,60 @@ async def calcular_saldo_caixa(
         - retirado
     )
 
-
-    # =====================================================
-    # DESCONTAR LUCROS DE SAQUE JÁ LEVANTADOS
+    # =====================================
+    # LUCRO DE SAQUE
     #
     # IMPORTANTE:
     #
-    # Isto NÃO cria movimento na Caixa.
+    # valor_enviado = valor reservado
+    # para o Admin levantar.
     #
-    # O levantamento de LucroSaque é separado.
+    # valor_sacado = quanto já foi
+    # levantado.
+    # =====================================
+
+    lucro_saque_disponivel = Decimal(
+        "0.00"
+    )
+
+    if usuario.tipo == "admin":
+
+        resultado = await db.execute(
+
+            select(
+                func.coalesce(
+                    func.sum(
+                        LucroSaque.valor_enviado
+                        -
+                        LucroSaque.valor_sacado
+                    ),
+                    0
+                )
+            )
+            .where(
+                LucroSaque.usuario_id == usuario_id
+            )
+
+        )
+
+        lucro_saque_disponivel = Decimal(
+            str(
+                resultado.scalar() or 0
+            )
+        )
+
+        if lucro_saque_disponivel < Decimal("0.00"):
+
+            lucro_saque_disponivel = Decimal(
+                "0.00"
+            )
+
+    # =====================================
+    # DESCONTAR LUCROS JÁ SACADOS
     #
-    # Apenas descontamos do dinheiro total aquilo
-    # que o Admin já levantou através do sistema
-    # de LucroSaque.
-    #
-    # Assim:
-    #
-    # Vendas próprias = 1.000
-    # Recebido gerente =   500
-    # Total            = 1.500
-    #
-    # Levantou lucro 300
-    #
-    # Saldo disponível = 1.200
-    #
-    # E os 300 não voltam a aparecer.
-    # =====================================================
+    # Isto continua sendo descontado
+    # do saldo real da caixa.
+    # =====================================
 
     if usuario.tipo == "admin":
 
@@ -341,25 +416,52 @@ async def calcular_saldo_caixa(
             )
         )
 
-        # =============================================
-        # DESCONTAR DO DINHEIRO TOTAL
-        # =============================================
-
         saldo_caixa = (
             saldo_caixa
             - lucros_sacados
         )
 
-        # =============================================
-        # PROTEÇÃO
-        #
-        # Nunca apresentar saldo negativo.
-        # =============================================
+    # =====================================
+    # PROTEÇÃO DO SALDO
+    # =====================================
 
-        if saldo_caixa < Decimal("0.00"):
+    if saldo_caixa < Decimal("0.00"):
 
-            saldo_caixa = Decimal("0.00")
+        saldo_caixa = Decimal(
+            "0.00"
+        )
 
+    # =====================================
+    # DISPONÍVEL PARA INVESTIMENTO
+    #
+    # IMPORTANTE:
+    #
+    # Aqui NÃO podemos simplesmente usar:
+    #
+    # saldo_caixa - lucro_saque
+    #
+    # porque os investimentos anteriores
+    # já foram realizados com dinheiro
+    # que não deve voltar a ficar disponível.
+    #
+    # Portanto:
+    #
+    # saldo_caixa
+    # - lucro reservado
+    # - investimentos realizados
+    # =====================================
+
+    disponivel_investimento = (
+        saldo_caixa
+        - lucro_saque_disponivel
+        - investimentos
+    )
+
+    if disponivel_investimento < Decimal("0.00"):
+
+        disponivel_investimento = Decimal(
+            "0.00"
+        )
 
     # =====================================
     # RETORNO
@@ -367,16 +469,27 @@ async def calcular_saldo_caixa(
 
     return {
 
-        "vendas": vendas,
+        "vendas":
+            vendas,
 
-        "despesas": despesas,
+        "despesas":
+            despesas,
 
-        "retirado": retirado,
+        "retirado":
+            retirado,
 
         "saldo_recolhido":
             saldo_recolhido,
 
         "saldo_caixa":
-            saldo_caixa
+            saldo_caixa,
 
+        "investimentos":
+            investimentos,
+
+        "lucro_saque_disponivel":
+            lucro_saque_disponivel,
+
+        "disponivel_investimento":
+            disponivel_investimento
     }
