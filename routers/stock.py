@@ -19,11 +19,23 @@ router = APIRouter(
 # LISTAR STOCK
 # =====================================================
 #
-# AQUI O STOCK VEM DE:
+# O STOCK REAL VEM DOS LOTES
 #
+# NÃO usar:
 # Produto.quantidade
 #
-# NÃO usar LoteProduto para o stock apresentado.
+# Usar:
+# SUM(LoteProduto.quantidade_atual)
+#
+# Exemplo:
+#
+# Camisa = 6
+# Calça  = 2
+#
+# O stock será:
+#
+# Camisa -> 6
+# Calça  -> 2
 #
 # =====================================================
 
@@ -35,18 +47,55 @@ async def listar_stock(
     resultado = await db.execute(
 
         select(
+
             Produto.id,
+
             Produto.nome,
+
             Produto.categoria_id,
+
             Produto.stock_minimo,
+
             Produto.preco_compra,
+
             Produto.preco_venda,
-            Produto.quantidade
+
+            func.coalesce(
+                func.sum(
+                    LoteProduto.quantidade_atual
+                ),
+                0
+            ).label(
+                "stock_total"
+            )
+
+        )
+
+        .outerjoin(
+            LoteProduto,
+            LoteProduto.produto_id == Produto.id
+        )
+
+        .group_by(
+
+            Produto.id,
+
+            Produto.nome,
+
+            Produto.categoria_id,
+
+            Produto.stock_minimo,
+
+            Produto.preco_compra,
+
+            Produto.preco_venda
+
         )
 
         .order_by(
             Produto.id.asc()
         )
+
     )
 
 
@@ -74,34 +123,40 @@ async def listar_stock(
                 float(preco_venda or 0),
 
             "stock_total":
-                int(quantidade or 0)
+                int(stock_total or 0)
 
         }
 
         for (
+
             id,
+
             nome,
+
             categoria_id,
+
             stock_minimo,
+
             preco_compra,
+
             preco_venda,
-            quantidade
+
+            stock_total
+
         ) in resultados
 
     ]
+
 
 # =====================================================
 # STOCK DOS LOTES
 # =====================================================
 #
-# Esta rota retorna a soma de:
+# Soma:
 #
 # LoteProduto.quantidade_atual
 #
 # agrupada por produto.
-#
-# O FRONT DEVE USAR ESTA ROTA PARA MOSTRAR
-# A QUANTIDADE DOS LOTES.
 #
 # =====================================================
 
@@ -135,8 +190,11 @@ async def listar_stock_lotes(
         )
 
         .group_by(
+
             Produto.id,
+
             Produto.nome
+
         )
 
         .order_by(
@@ -144,6 +202,7 @@ async def listar_stock_lotes(
         )
 
     )
+
 
     resultados = resultado.all()
 
@@ -163,19 +222,23 @@ async def listar_stock_lotes(
         }
 
         for (
+
             id,
+
             nome,
+
             stock_lotes
+
         ) in resultados
 
     ]
+
+
 # =====================================================
 # STOCK BAIXO
 # =====================================================
 #
-# AQUI usamos LoteProduto.quantidade_atual.
-#
-# NÃO usamos Produto.quantidade.
+# O stock baixo também usa os LOTES.
 #
 # =====================================================
 
@@ -187,8 +250,11 @@ async def stock_baixo(
     resultado = await db.execute(
 
         select(
+
             Produto.id,
+
             Produto.nome,
+
             Produto.stock_minimo,
 
             func.coalesce(
@@ -199,17 +265,26 @@ async def stock_baixo(
             ).label(
                 "stock_total"
             )
+
         )
 
         .outerjoin(
+
             LoteProduto,
-            LoteProduto.produto_id == Produto.id
+
+            LoteProduto.produto_id ==
+            Produto.id
+
         )
 
         .group_by(
+
             Produto.id,
+
             Produto.nome,
+
             Produto.stock_minimo
+
         )
 
         .having(
@@ -225,6 +300,10 @@ async def stock_baixo(
 
             Produto.stock_minimo
 
+        )
+
+        .order_by(
+            Produto.id.asc()
         )
 
     )
@@ -247,13 +326,111 @@ async def stock_baixo(
 
             "stock_total":
                 int(stock_total or 0)
+
         }
 
         for (
+
             id,
+
             nome,
+
             stock_minimo,
+
             stock_total
+
         ) in resultados
 
     ]
+
+
+# =====================================================
+# QUANTIDADE DE TIPOS DE PRODUTOS EM STOCK
+# =====================================================
+#
+# IMPORTANTE:
+#
+# Isto NÃO soma as unidades.
+#
+# Exemplo:
+#
+# Camisa = 6
+# Calça  = 2
+#
+# Resultado:
+#
+# quantidade_produtos = 2
+#
+# =====================================================
+
+# =====================================================
+# QUANTIDADE DE TIPOS DE PRODUTOS EM STOCK
+# =====================================================
+
+@router.get("/quantidade-produtos")
+async def quantidade_produtos_em_stock(
+    db: AsyncSession = Depends(get_db)
+):
+
+    # ---------------------------------------------
+    # Agrupar stock dos lotes por produto
+    # ---------------------------------------------
+
+    subquery = (
+
+        select(
+
+            LoteProduto.produto_id,
+
+            func.sum(
+                LoteProduto.quantidade_atual
+            ).label(
+                "stock_total"
+            )
+
+        )
+
+        .group_by(
+            LoteProduto.produto_id
+        )
+
+        .subquery()
+
+    )
+
+
+    # ---------------------------------------------
+    # CONTAR PRODUTOS QUE POSSUEM STOCK
+    #
+    # IMPORTANTE:
+    # Não somar quantidades.
+    #
+    # Conta apenas os produtos cujo stock_total > 0.
+    # ---------------------------------------------
+
+    resultado = await db.execute(
+
+        select(
+            func.count(
+                Produto.id
+            )
+        )
+
+        .join(
+            subquery,
+            subquery.c.produto_id == Produto.id
+        )
+
+        .where(
+            subquery.c.stock_total > 0
+        )
+
+    )
+
+
+    quantidade = resultado.scalar_one() or 0
+
+
+    return {
+        "quantidade_produtos": int(quantidade)
+    }
