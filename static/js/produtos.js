@@ -2,428 +2,1123 @@
 // PRODUTOS
 // =====================================================
 
+// Guarda os produtos carregados
+let produtosCache = [];
 
 
-async function abrirProdutos(){
+// =====================================================
+// ABRIR PRODUTOS
+// =====================================================
+
+async function abrirProdutos() {
+
+    const painel =
+        document.getElementById(
+            "produtos-panel"
+        );
+
+    if (!painel) {
+
+        console.error(
+            "Elemento produtos-panel não encontrado."
+        );
+
+        return;
+    }
 
 
-    document.getElementById(
-        "produtos-panel"
-    ).style.display="flex";
-
+    painel.style.display = "flex";
 
 
     await carregarCategoriasProduto();
 
-
     await carregarProdutos();
-
-
 
 }
 
 
+// =====================================================
+// FECHAR PRODUTOS
+// =====================================================
 
+function fecharProdutos() {
 
-
-
-async function carregarCategoriasProduto(){
-
-
-    try{
-
-
-        const resposta =
-        await fetch(
-            API + "/categorias/"
+    const painel =
+        document.getElementById(
+            "produtos-panel"
         );
 
 
+    if (painel) {
 
-        const categorias =
-        await resposta.json();
+        painel.style.display = "none";
+
+    }
 
 
+    fecharFormularioProduto();
+
+}
 
 
-        const select =
+// =====================================================
+// MOSTRAR FORMULÁRIO
+// =====================================================
+
+function mostrarFormularioProduto() {
+
+    const formulario =
+        document.getElementById(
+            "form-produto"
+        );
+
+
+    if (!formulario) {
+        return;
+    }
+
+
+    formulario.style.display = "block";
+
+
+    setTimeout(() => {
+
+        const campoNome =
+            document.getElementById(
+                "produto-nome"
+            );
+
+
+        if (campoNome) {
+
+            campoNome.focus();
+
+        }
+
+    }, 100);
+
+}
+
+
+// =====================================================
+// FECHAR FORMULÁRIO
+// =====================================================
+
+function fecharFormularioProduto() {
+
+    const formulario =
+        document.getElementById(
+            "form-produto"
+        );
+
+
+    if (formulario) {
+
+        formulario.style.display = "none";
+
+    }
+
+
+    const id =
+        document.getElementById(
+            "produto-id"
+        );
+
+
+    const categoria =
         document.getElementById(
             "produto-categoria"
         );
 
 
-
-        if(!select)
-            return;
-
-
-
-
-        select.innerHTML = `
-
-        <option value="">
-            Selecionar categoria
-        </option>
-
-        `;
-
-
-
-
-        categorias.forEach(c=>{
-
-
-            select.innerHTML += `
-
-            <option value="${c.id}">
-
-                ${c.nome}
-
-            </option>
-
-            `;
-
-
-        });
-
-
-
-    }
-
-    catch(error){
-
-
-        console.error(error);
-
-
-
-        alert(
-            "Erro ao carregar categorias"
+    const nome =
+        document.getElementById(
+            "produto-nome"
         );
 
 
+    const descricao =
+        document.getElementById(
+            "produto-descricao"
+        );
+
+
+    const compra =
+        document.getElementById(
+            "produto-compra"
+        );
+
+
+    const venda =
+        document.getElementById(
+            "produto-venda"
+        );
+
+
+    const quantidade =
+        document.getElementById(
+            "produto-quantidade"
+        );
+
+
+    const minimo =
+        document.getElementById(
+            "produto-minimo"
+        );
+
+
+    const unidade =
+        document.getElementById(
+            "produto-unidade"
+        );
+
+
+    if (id) {
+        id.value = "";
     }
 
 
+    if (categoria) {
+        categoria.value = "";
+    }
+
+
+    if (nome) {
+        nome.value = "";
+    }
+
+
+    if (descricao) {
+        descricao.value = "";
+    }
+
+
+    if (compra) {
+        compra.value = "";
+    }
+
+
+    if (venda) {
+        venda.value = "";
+    }
+
+
+    if (quantidade) {
+        quantidade.value = "";
+    }
+
+
+    if (minimo) {
+        minimo.value = "";
+    }
+
+
+    if (unidade) {
+        unidade.value = "";
+    }
 
 }
 
 
+// =====================================================
+// CARREGAR CATEGORIAS NO SELECT
+// =====================================================
 
+async function carregarCategoriasProduto() {
 
-
-
-
-async function carregarProdutos(){
-
-
-    try{
-
+    try {
 
         const resposta =
-        await fetch(
-            API + "/produtos/"
+            await fetch(
+                API + "/categorias/"
+            );
+
+
+        if (!resposta.ok) {
+
+            throw new Error(
+                "Erro HTTP: " +
+                resposta.status
+            );
+
+        }
+
+
+        const categorias =
+            await resposta.json();
+
+
+        const select =
+            document.getElementById(
+                "produto-categoria"
+            );
+
+
+        if (!select) {
+            return;
+        }
+
+
+        // Limpa o select
+        select.innerHTML = "";
+
+
+        // Opção inicial
+        const opcaoInicial =
+            document.createElement(
+                "option"
+            );
+
+
+        opcaoInicial.value = "";
+
+        opcaoInicial.textContent =
+            "Selecione a categoria";
+
+
+        select.appendChild(
+            opcaoInicial
         );
 
+
+        // Adiciona categorias
+        categorias.forEach(c => {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value = c.id;
+
+            option.textContent =
+                c.nome ?? "";
+
+
+            select.appendChild(
+                option
+            );
+
+        });
+
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Erro ao carregar categorias:",
+            error
+        );
+
+
+        alert(
+            "Erro ao carregar categorias."
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// CARREGAR PRODUTOS
+// =====================================================
+
+async function carregarProdutos() {
+
+    try {
+
+        const resposta =
+            await fetch(
+                API + "/produtos/"
+            );
+
+
+        if (!resposta.ok) {
+
+            throw new Error(
+                "Erro HTTP: " +
+                resposta.status
+            );
+
+        }
 
 
         const produtos =
-        await resposta.json();
+            await resposta.json();
 
 
+        // Guarda os produtos para edição
+        produtosCache =
+            Array.isArray(produtos)
+                ? produtos
+                : [];
 
 
         const tabela =
-        document.getElementById(
-            "lista-produtos"
-        );
+            document.getElementById(
+                "lista-produtos"
+            );
 
 
-
-        if(!tabela)
+        if (!tabela) {
             return;
+        }
 
 
-
-        tabela.innerHTML="";
-
+        tabela.innerHTML = "";
 
 
+        produtosCache.forEach(p => {
+
+            const tr =
+                document.createElement(
+                    "tr"
+                );
 
 
-        produtos.forEach(p=>{
+            // =================================================
+            // ID
+            // =================================================
+
+            const tdId =
+                document.createElement(
+                    "td"
+                );
+
+            tdId.textContent =
+                p.id ?? "";
 
 
+            // =================================================
+            // CATEGORIA
+            // =================================================
 
-            tabela.innerHTML += `
+            const tdCategoria =
+                document.createElement(
+                    "td"
+                );
 
-
-            <tr>
-
-
-                <td>
-                    ${p.id}
-                </td>
-
-
-
-                <td>
-                    ${p.categoria_id}
-                </td>
+            tdCategoria.textContent =
+                p.categoria_id ?? "";
 
 
+            // =================================================
+            // NOME
+            // =================================================
 
-                <td>
-                    ${p.nome}
-                </td>
+            const tdNome =
+                document.createElement(
+                    "td"
+                );
 
-
-
-                <td>
-                    ${p.descricao ?? ""}
-                </td>
-
-
-
-                <td>
-                    ${Number(
-                    p.preco_compra
-                    ).toFixed(2)} MT
-                </td>
+            tdNome.textContent =
+                p.nome ?? "";
 
 
+            // =================================================
+            // DESCRIÇÃO
+            // =================================================
 
-                <td>
-                    ${Number(
-                    p.preco_venda
-                    ).toFixed(2)} MT
-                </td>
+            const tdDescricao =
+                document.createElement(
+                    "td"
+                );
 
-
-
-                <td>
-                    ${p.quantidade}
-                </td>
-
+            tdDescricao.textContent =
+                p.descricao ?? "";
 
 
-                <td>
-                    ${p.stock_minimo}
-                </td>
+            // =================================================
+            // PREÇO COMPRA
+            // =================================================
+
+            const tdCompra =
+                document.createElement(
+                    "td"
+                );
+
+            tdCompra.textContent =
+                Number(
+                    p.preco_compra ?? 0
+                ).toFixed(2) + " MT";
 
 
+            // =================================================
+            // PREÇO VENDA
+            // =================================================
 
-                <td>
-                    ${p.unidade}
-                </td>
+            const tdVenda =
+                document.createElement(
+                    "td"
+                );
+
+            tdVenda.textContent =
+                Number(
+                    p.preco_venda ?? 0
+                ).toFixed(2) + " MT";
 
 
+            // =================================================
+            // QUANTIDADE
+            // =================================================
 
-                <td>
+            const tdQuantidade =
+                document.createElement(
+                    "td"
+                );
 
-                ${
-                    p.ativo
+            tdQuantidade.textContent =
+                p.quantidade ?? 0;
 
-                    ?
 
-                    '<span class="badge bg-success">Ativo</span>'
+            // =================================================
+            // STOCK MÍNIMO
+            // =================================================
 
-                    :
+            const tdMinimo =
+                document.createElement(
+                    "td"
+                );
 
-                    '<span class="badge bg-danger">Inativo</span>'
+            tdMinimo.textContent =
+                p.stock_minimo ?? 0;
+
+
+            // =================================================
+            // UNIDADE
+            // =================================================
+
+            const tdUnidade =
+                document.createElement(
+                    "td"
+                );
+
+            tdUnidade.textContent =
+                p.unidade ?? "";
+
+
+            // =================================================
+            // ESTADO
+            // =================================================
+
+            const tdEstado =
+                document.createElement(
+                    "td"
+                );
+
+
+            if (p.ativo) {
+
+                const badge =
+                    document.createElement(
+                        "span"
+                    );
+
+                badge.className =
+                    "badge bg-success";
+
+                badge.textContent =
+                    "Ativo";
+
+                tdEstado.appendChild(
+                    badge
+                );
+
+            }
+
+            else {
+
+                const badge =
+                    document.createElement(
+                        "span"
+                    );
+
+                badge.className =
+                    "badge bg-danger";
+
+                badge.textContent =
+                    "Inativo";
+
+                tdEstado.appendChild(
+                    badge
+                );
+
+            }
+
+
+            // =================================================
+            // DATA
+            // =================================================
+
+            const tdData =
+                document.createElement(
+                    "td"
+                );
+
+
+            if (p.criado_em) {
+
+                const data =
+                    new Date(
+                        p.criado_em
+                    );
+
+
+                tdData.textContent =
+                    data.toLocaleDateString(
+                        "pt-PT"
+                    );
+
+            }
+
+            else {
+
+                tdData.textContent = "";
+
+            }
+
+
+            // =================================================
+            // AÇÕES
+            // =================================================
+
+            const tdAcoes =
+                document.createElement(
+                    "td"
+                );
+
+
+            // -------------------------------------------------
+            // BOTÃO EDITAR
+            // -------------------------------------------------
+
+            const btnEditar =
+                document.createElement(
+                    "button"
+                );
+
+
+            btnEditar.type =
+                "button";
+
+
+            btnEditar.className =
+                "btn btn-warning btn-sm me-1";
+
+
+            btnEditar.innerHTML =
+                '<i class="bi bi-pencil"></i>';
+
+
+            btnEditar.addEventListener(
+                "click",
+                function () {
+
+                    editarProduto(
+                        p.id
+                    );
 
                 }
+            );
 
 
-                </td>
+            // -------------------------------------------------
+            // BOTÃO APAGAR
+            // -------------------------------------------------
+
+            const btnApagar =
+                document.createElement(
+                    "button"
+                );
 
 
+            btnApagar.type =
+                "button";
 
 
-                <td>
-
-                    ${new Date(
-                    p.criado_em
-                    )
-                    .toLocaleDateString("pt-PT")}
+            btnApagar.className =
+                "btn btn-danger btn-sm";
 
 
-                </td>
+            btnApagar.innerHTML =
+                '<i class="bi bi-trash"></i>';
 
 
+            btnApagar.addEventListener(
+                "click",
+                function () {
+
+                    apagarProduto(
+                        p.id
+                    );
+
+                }
+            );
 
 
-
-                <td>
-
-
-                    <button
-                    class="btn btn-warning btn-sm"
-                    onclick="editarProduto(
-                    ${p.id},
-                    ${p.categoria_id},
-                    '${p.nome}',
-                    '${p.descricao ?? ""}',
-                    ${p.preco_compra},
-                    ${p.preco_venda},
-                    ${p.quantidade},
-                    ${p.stock_minimo},
-                    '${p.unidade}'
-                    )">
+            // Adiciona botões
+            tdAcoes.appendChild(
+                btnEditar
+            );
 
 
-                    <i class="bi bi-pencil"></i>
+            tdAcoes.appendChild(
+                btnApagar
+            );
 
 
-                    </button>
+            // =================================================
+            // MONTA A LINHA
+            // =================================================
+
+            tr.appendChild(tdId);
+
+            tr.appendChild(tdCategoria);
+
+            tr.appendChild(tdNome);
+
+            tr.appendChild(tdDescricao);
+
+            tr.appendChild(tdCompra);
+
+            tr.appendChild(tdVenda);
+
+            tr.appendChild(tdQuantidade);
+
+            tr.appendChild(tdMinimo);
+
+            tr.appendChild(tdUnidade);
+
+            tr.appendChild(tdEstado);
+
+            tr.appendChild(tdData);
+
+            tr.appendChild(tdAcoes);
 
 
-
-
-
-                    <button
-                    class="btn btn-danger btn-sm"
-                    onclick="apagarProduto(${p.id})">
-
-
-                    <i class="bi bi-trash"></i>
-
-
-                    </button>
-
-
-
-                </td>
-
-
-            </tr>
-
-
-            `;
-
-
+            tabela.appendChild(
+                tr
+            );
 
         });
 
 
-
     }
 
+    catch (error) {
 
-    catch(error){
-
-
-        console.error(error);
-
-
-
-        alert(
-            "Erro ao carregar produtos"
+        console.error(
+            "Erro ao carregar produtos:",
+            error
         );
 
 
+        alert(
+            "Erro ao carregar produtos."
+        );
+
     }
-
-
 
 }
 
 
+// =====================================================
+// EDITAR PRODUTO
+// =====================================================
+
+function editarProduto(id) {
+
+    // Procura o produto no cache
+    const produto =
+        produtosCache.find(
+            p =>
+                String(p.id) ===
+                String(id)
+        );
 
 
+    if (!produto) {
+
+        console.error(
+            "Produto não encontrado:",
+            id
+        );
 
 
+        alert(
+            "Não foi possível encontrar o produto."
+        );
 
 
-async function salvarProduto(){
+        return;
 
+    }
+
+
+    // =================================================
+    // CAMPOS
+    // =================================================
+
+    const campoId =
+        document.getElementById(
+            "produto-id"
+        );
+
+
+    const campoCategoria =
+        document.getElementById(
+            "produto-categoria"
+        );
+
+
+    const campoNome =
+        document.getElementById(
+            "produto-nome"
+        );
+
+
+    const campoDescricao =
+        document.getElementById(
+            "produto-descricao"
+        );
+
+
+    const campoCompra =
+        document.getElementById(
+            "produto-compra"
+        );
+
+
+    const campoVenda =
+        document.getElementById(
+            "produto-venda"
+        );
+
+
+    const campoQuantidade =
+        document.getElementById(
+            "produto-quantidade"
+        );
+
+
+    const campoMinimo =
+        document.getElementById(
+            "produto-minimo"
+        );
+
+
+    const campoUnidade =
+        document.getElementById(
+            "produto-unidade"
+        );
+
+
+    // =================================================
+    // PREENCHER CAMPOS
+    // =================================================
+
+    if (campoId) {
+
+        campoId.value =
+            produto.id ?? "";
+
+    }
+
+
+    if (campoCategoria) {
+
+        campoCategoria.value =
+            produto.categoria_id ?? "";
+
+    }
+
+
+    if (campoNome) {
+
+        campoNome.value =
+            produto.nome ?? "";
+
+    }
+
+
+    if (campoDescricao) {
+
+        // IMPORTANTE:
+        // Não usamos innerHTML.
+        // O texto é colocado diretamente no value.
+
+        campoDescricao.value =
+            produto.descricao ?? "";
+
+    }
+
+
+    if (campoCompra) {
+
+        campoCompra.value =
+            produto.preco_compra ?? "";
+
+    }
+
+
+    if (campoVenda) {
+
+        campoVenda.value =
+            produto.preco_venda ?? "";
+
+    }
+
+
+    if (campoQuantidade) {
+
+        campoQuantidade.value =
+            produto.quantidade ?? "";
+
+    }
+
+
+    if (campoMinimo) {
+
+        campoMinimo.value =
+            produto.stock_minimo ?? "";
+
+    }
+
+
+    if (campoUnidade) {
+
+        campoUnidade.value =
+            produto.unidade ?? "";
+
+    }
+
+
+    // =================================================
+    // MOSTRAR FORMULÁRIO
+    // =================================================
+
+    mostrarFormularioProduto();
+
+
+    // =================================================
+    // COLOCAR CURSOR NO FINAL DA DESCRIÇÃO
+    // =================================================
+
+    setTimeout(() => {
+
+        if (campoDescricao) {
+
+            campoDescricao.focus();
+
+
+            const tamanho =
+                campoDescricao.value.length;
+
+
+            campoDescricao.setSelectionRange(
+                tamanho,
+                tamanho
+            );
+
+        }
+
+    }, 100);
+
+}
+
+
+// =====================================================
+// SALVAR PRODUTO
+// =====================================================
+
+async function salvarProduto() {
+
+    const campoId =
+        document.getElementById(
+            "produto-id"
+        );
+
+
+    const campoCategoria =
+        document.getElementById(
+            "produto-categoria"
+        );
+
+
+    const campoNome =
+        document.getElementById(
+            "produto-nome"
+        );
+
+
+    const campoDescricao =
+        document.getElementById(
+            "produto-descricao"
+        );
+
+
+    const campoCompra =
+        document.getElementById(
+            "produto-compra"
+        );
+
+
+    const campoVenda =
+        document.getElementById(
+            "produto-venda"
+        );
+
+
+    const campoQuantidade =
+        document.getElementById(
+            "produto-quantidade"
+        );
+
+
+    const campoMinimo =
+        document.getElementById(
+            "produto-minimo"
+        );
+
+
+    const campoUnidade =
+        document.getElementById(
+            "produto-unidade"
+        );
 
 
     const id =
-    document.getElementById(
-        "produto-id"
-    ).value;
+        campoId
+            ? campoId.value.trim()
+            : "";
 
 
+    const categoria_id =
+        campoCategoria
+            ? Number(
+                campoCategoria.value
+              )
+            : 0;
 
+
+    const nome =
+        campoNome
+            ? campoNome.value.trim()
+            : "";
+
+
+    const descricao =
+        campoDescricao
+            ? campoDescricao.value
+            : "";
+
+
+    const preco_compra =
+        campoCompra
+            ? campoCompra.value
+            : "";
+
+
+    const preco_venda =
+        campoVenda
+            ? campoVenda.value
+            : "";
+
+
+    const quantidade =
+        campoQuantidade
+            ? Number(
+                campoQuantidade.value
+              )
+            : 0;
+
+
+    const stock_minimo =
+        campoMinimo
+            ? Number(
+                campoMinimo.value
+              )
+            : 0;
+
+
+    const unidade =
+        campoUnidade
+            ? campoUnidade.value.trim()
+            : "";
+
+
+    // =================================================
+    // VALIDAÇÃO
+    // =================================================
+
+    if (!categoria_id) {
+
+        alert(
+            "Selecione uma categoria."
+        );
+
+
+        if (campoCategoria) {
+            campoCategoria.focus();
+        }
+
+
+        return;
+
+    }
+
+
+    if (!nome) {
+
+        alert(
+            "Digite o nome do produto."
+        );
+
+
+        if (campoNome) {
+            campoNome.focus();
+        }
+
+
+        return;
+
+    }
+
+
+    // =================================================
+    // DADOS
+    // =================================================
 
     const dados = {
 
-
-
         categoria_id:
-        Number(
-            document.getElementById(
-                "produto-categoria"
-            ).value
-        ),
-
-
-
+            categoria_id,
 
         nome:
-        document.getElementById(
-            "produto-nome"
-        ).value,
-
-
-
+            nome,
 
         descricao:
-        document.getElementById(
-            "produto-descricao"
-        ).value,
-
-
-
+            descricao,
 
         preco_compra:
-        document.getElementById(
-            "produto-compra"
-        ).value,
-
-
-
+            preco_compra,
 
         preco_venda:
-        document.getElementById(
-            "produto-venda"
-        ).value,
-
-
-
+            preco_venda,
 
         quantidade:
-        Number(
-            document.getElementById(
-                "produto-quantidade"
-            ).value
-        ),
-
-
-
+            quantidade,
 
         stock_minimo:
-        Number(
-            document.getElementById(
-                "produto-minimo"
-            ).value
-        ),
-
-
-
+            stock_minimo,
 
         unidade:
-        document.getElementById(
-            "produto-unidade"
-        ).value
-
+            unidade
 
     };
-
-
-
-
 
 
     let url;
@@ -431,425 +1126,239 @@ async function salvarProduto(){
     let metodo;
 
 
+    // =================================================
+    // ATUALIZAR
+    // =================================================
 
-
-
-    if(id){
-
-
+    if (id) {
 
         url =
-        API +
-        "/produtos/" +
-        id;
-
+            API +
+            "/produtos/" +
+            id;
 
 
         metodo =
-        "PUT";
-
-
-
-    }
-
-    else{
-
-
-        url =
-        API +
-        "/produtos/";
-
-
-
-        metodo =
-        "POST";
-
+            "PUT";
 
     }
 
 
+    // =================================================
+    // CRIAR
+    // =================================================
+
+    else {
+
+        url =
+            API +
+            "/produtos/";
 
 
+        metodo =
+            "POST";
+
+    }
 
 
-
-    try{
-
-
+    try {
 
         const resposta =
-        await fetch(
-            url,
-            {
+            await fetch(
+                url,
+                {
+
+                    method:
+                        metodo,
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify(
+                            dados
+                        )
+
+                }
+            );
 
 
-                method:metodo,
+        let resultado = {};
 
 
+        try {
 
-                headers:{
+            resultado =
+                await resposta.json();
 
+        }
 
-                    "Content-Type":
-                    "application/json"
+        catch {
 
+            resultado = {};
 
-                },
-
-
-
-                body:
-                JSON.stringify(dados)
+        }
 
 
-            }
+        // =================================================
+        // SUCESSO
+        // =================================================
 
-        );
-
-
-
-
-
-        const resultado =
-        await resposta.json();
-
-
-
-
-
-        if(resposta.ok){
-
-
+        if (resposta.ok) {
 
             alert(
 
-                id ?
+                id
 
-                "Produto atualizado"
+                    ? "Produto atualizado com sucesso."
 
-                :
-
-                "Produto cadastrado"
+                    : "Produto cadastrado com sucesso."
 
             );
-
 
 
             fecharFormularioProduto();
 
 
+            await carregarProdutos();
+
+
+        }
+
+
+        // =================================================
+        // ERRO
+        // =================================================
+
+        else {
+
+            console.error(
+                "Erro da API:",
+                resultado
+            );
+
+
+            alert(
+
+                resultado.detail ||
+
+                resultado.message ||
+
+                "Erro ao salvar produto."
+
+            );
+
+        }
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Erro de conexão:",
+            error
+        );
+
+
+        alert(
+            "Erro de conexão com o servidor."
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// APAGAR PRODUTO
+// =====================================================
+
+async function apagarProduto(id) {
+
+    try {
+
+        const resposta =
+            await fetch(
+
+                API +
+                "/produtos/" +
+                id,
+
+                {
+
+                    method:
+                        "DELETE"
+
+                }
+
+            );
+
+
+        let resultado = {};
+
+
+        try {
+
+            resultado =
+                await resposta.json();
+
+        }
+
+        catch {
+
+            resultado = {};
+
+        }
+
+
+        if (resposta.ok) {
+
+            // Sem confirm()
+            // Sem pergunta antes de apagar
 
             await carregarProdutos();
 
 
-
-        }
-
-        else{
-
-
-            alert(
-                resultado.detail ||
-                "Erro ao salvar produto"
-            );
-
+            return;
 
         }
 
 
-
-    }
-
-    catch(error){
-
-
-        console.error(error);
-
-
-
-        alert(
-            "Erro de conexão"
+        console.error(
+            "Erro ao apagar produto:",
+            resultado
         );
 
 
-    }
-
-
-
-
-}
-
-
-
-
-
-
-
-
-function editarProduto(
-id,
-categoria,
-nome,
-descricao,
-compra,
-venda,
-quantidade,
-minimo,
-unidade
-){
-
-
-
-    document.getElementById(
-        "produto-id"
-    ).value=id;
-
-
-
-    document.getElementById(
-        "produto-categoria"
-    ).value=categoria;
-
-
-
-    document.getElementById(
-        "produto-nome"
-    ).value=nome;
-
-
-
-    document.getElementById(
-        "produto-descricao"
-    ).value=descricao;
-
-
-
-    document.getElementById(
-        "produto-compra"
-    ).value=compra;
-
-
-
-    document.getElementById(
-        "produto-venda"
-    ).value=venda;
-
-
-
-    document.getElementById(
-        "produto-quantidade"
-    ).value=quantidade;
-
-
-
-    document.getElementById(
-        "produto-minimo"
-    ).value=minimo;
-
-
-
-    document.getElementById(
-        "produto-unidade"
-    ).value=unidade;
-
-
-
-    document.getElementById(
-        "form-produto"
-    ).style.display="block";
-
-
-
-}
-
-
-
-
-
-
-
-async function apagarProduto(id){
-
-
-
-    if(!confirm(
-        "Deseja apagar este produto?"
-    ))
-
-    return;
-
-
-
-
-
-    const resposta =
-    await fetch(
-
-        API +
-        "/produtos/" +
-        id,
-
-        {
-
-            method:"DELETE"
-
-        }
-
-    );
-
-
-
-
-
-    const resultado =
-    await resposta.json();
-
-
-
-
-
-    if(resposta.ok){
-
-
-
         alert(
-            "Produto apagado"
-        );
 
-
-
-        carregarProdutos();
-
-
-
-    }
-
-    else{
-
-
-        alert(
             resultado.detail ||
-            "Erro ao apagar"
+
+            resultado.message ||
+
+            "Erro ao apagar produto."
+
         );
 
 
     }
 
+    catch (error) {
 
+        console.error(
+            "Erro ao apagar produto:",
+            error
+        );
 
-}
 
+        alert(
+            "Erro de conexão com o servidor."
+        );
 
-
-
-
-
-
-
-function fecharProdutos(){
-
-
-
-    document.getElementById(
-        "produtos-panel"
-    ).style.display="none";
-
-
-
-    fecharFormularioProduto();
-
-
-
-}
-
-
-
-
-
-
-
-
-function mostrarFormularioProduto(){
-
-
-
-    document.getElementById(
-        "form-produto"
-    ).style.display="block";
-
-
-
-}
-
-
-
-
-
-
-
-
-function fecharFormularioProduto(){
-
-
-
-    document.getElementById(
-        "form-produto"
-    ).style.display="none";
-
-
-
-    document.getElementById(
-        "produto-id"
-    ).value="";
-
-
-
-    document.getElementById(
-        "produto-categoria"
-    ).value="";
-
-
-
-    document.getElementById(
-        "produto-nome"
-    ).value="";
-
-
-
-    document.getElementById(
-        "produto-descricao"
-    ).value="";
-
-
-
-    document.getElementById(
-        "produto-compra"
-    ).value="";
-
-
-
-    document.getElementById(
-        "produto-venda"
-    ).value="";
-
-
-
-    document.getElementById(
-        "produto-quantidade"
-    ).value="0";
-
-
-
-    document.getElementById(
-        "produto-minimo"
-    ).value="5";
-
-
-
-    document.getElementById(
-        "produto-unidade"
-    ).value="unidade";
-
-
+    }
 
 }
