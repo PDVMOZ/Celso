@@ -472,14 +472,6 @@ window.carregarDashboard = async function(){
         // =================================================
         // 3. TOTAL STOCK
         // =================================================
-        //
-        // Aqui usamos exclusivamente:
-        //
-        // stock_total
-        //
-        // vindo de /stock/
-        //
-        // =================================================
 
         const totalStock =
             document.getElementById(
@@ -490,20 +482,7 @@ window.carregarDashboard = async function(){
         if(totalStock){
 
             const total =
-                produtosStock.reduce(
-                    (
-                        soma,
-                        produto
-                    ) => {
-
-                        return soma +
-                            Number(
-                                produto.stock_total ?? 0
-                            );
-
-                    },
-                    0
-                );
+                produtosStock.length;
 
 
             totalStock.innerText =
@@ -511,7 +490,7 @@ window.carregarDashboard = async function(){
 
 
             console.log(
-                "TOTAL STOCK:",
+                "TOTAL PRODUTOS:",
                 total
             );
 
